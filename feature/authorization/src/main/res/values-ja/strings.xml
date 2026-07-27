@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="authorization_title">権限管理</string>
+    <string name="authorization_root">Root 権限</string>
+    <string name="authorization_root_granted">Root 権限を取得済み</string>
+    <string name="authorization_root_not_granted">Root 権限がありません、タップして更新</string>
+    <string name="authorization_kernelsu">KernelSU</string>
+    <string name="authorization_kernelsu_summary">KernelSU ユーザーはマネージャーでこのアプリを手動で許可してください</string>
+    <string name="authorization_app_info">アプリ情報</string>
+    <string name="authorization_app_info_summary">右上のメニューで制限付き設定を許可してオーバーレイ権限を有効にします</string>
+    <string name="authorization_notifications">通知設定</string>
+    <string name="authorization_notifications_enabled">有効、無効にしても機能には影響しません</string>
+    <string name="authorization_notifications_disabled">無効、機能には影響しません</string>
+</resources>

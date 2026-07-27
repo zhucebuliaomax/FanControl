@@ -1,0 +1,27 @@
+{
+  "format": "fan-curve",
+  "version": 1,
+  "curve": "normal",
+  "points": [
+    {
+      "temperatureC": 30,
+      "speedPercent": 15
+    },
+    {
+      "temperatureC": 50,
+      "speedPercent": 15
+    },
+    {
+      "temperatureC": 65,
+      "speedPercent": 25
+    },
+    {
+      "temperatureC": 80,
+      "speedPercent": 40
+    },
+    {
+      "temperatureC": 90,
+      "speedPercent": 75
+    }
+  ]
+}

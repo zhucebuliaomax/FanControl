@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "referenceImages": {
+    "nativeSettings": "../system.png",
+    "fanControlBefore": "../fancontrol.png",
+    "singleChoiceDialog": "../list.png"
+  },
+  "modules": [
+    {
+      "gradlePath": ":core:designsystem",
+      "role": "native settings visual primitives",
+      "dependsOn": []
+    },
+    {
+      "gradlePath": ":feature:authorization",
+      "role": "reusable authorization management section",
+      "dependsOn": [":core:designsystem"],
+      "hostResponsibilities": [
+        "root state and refresh",
+        "KernelSU navigation",
+        "app info navigation",
+        "notification settings navigation"
+      ]
+    },
+    {
+      "gradlePath": ":feature:fan",
+      "role": "reusable fan profile and telemetry sections",
+      "dependsOn": [":core:designsystem"],
+      "hostResponsibilities": [
+        "curve selection and editing",
+        "overlay permission and state",
+        "temperature formatting and sensor data"
+      ]
+    },
+    {
+      "gradlePath": ":app",
+      "role": "standalone host, hardware runtime and platform adapters",
+      "dependsOn": [
+        ":core:designsystem",
+        ":feature:authorization",
+        ":feature:fan"
+      ]
+    }
+  ],
+  "layoutDp": {
+    "pageHorizontalPadding": 16,
+    "sectionTitleInset": 16,
+    "sectionTitleBottomPadding": 8,
+    "sectionGap": 22,
+    "pageBottomPadding": 40,
+    "standardIcon": 24,
+    "standardIconTouchTarget": 48
+  },
+  "semanticColors": {
+    "page": "MaterialTheme.colorScheme.surfaceContainer",
+    "row": "MaterialTheme.colorScheme.surfaceContainerHighest",
+    "primaryText": "MaterialTheme.colorScheme.onSurface",
+    "secondaryText": "MaterialTheme.colorScheme.onSurfaceVariant",
+    "accent": "MaterialTheme.colorScheme.primary",
+    "danger": "MaterialTheme.colorScheme.error"
+  },
+  "authorizationRows": [
+    {
+      "id": "root",
+      "icons": {
+        "notGranted": "refresh",
+        "granted": "check"
+      }
+    },
+    {
+      "id": "kernelsu",
+      "icon": "open_in_new"
+    },
+    {
+      "id": "app_info",
+      "icon": "open_in_new"
+    },
+    {
+      "id": "notifications",
+      "icon": "open_in_new"
+    }
+  ],
+  "curveEditor": {
+    "titleFormat": "{curveName}",
+    "renameIcon": "edit_square",
+    "deleteIcon": "delete_forever",
+    "toolbarOrder": [
+      "set_current_as_default",
+      "reset_to_curve_default",
+      "import",
+      "export"
+    ],
+    "deleteRequiresConfirmation": true
+  },
+  "notificationFormat": "{curveName} · {fanPercent}% · CPU {cpuTemperature} · GPU {gpuTemperature}",
+  "overlayLayouts": [
+    {
+      "storageValue": "data_only",
+      "content": ["telemetry"]
+    },
+    {
+      "storageValue": "data_fan_curve",
+      "content": ["telemetry", "fan_adjustment", "live_curve_preview"]
+    }
+  ],
+  "iconProvider": "Google Fonts Material Symbols / Material Icons"
+}

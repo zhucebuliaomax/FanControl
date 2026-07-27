@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="authorization_title">授权管理</string>
+    <string name="authorization_root">Root 权限</string>
+    <string name="authorization_root_granted">已获取 Root 权限</string>
+    <string name="authorization_root_not_granted">未获取 Root 权限，点击刷新</string>
+    <string name="authorization_kernelsu">KernelSU</string>
+    <string name="authorization_kernelsu_summary">KernelSU 用户需要在管理器中手动允许本应用</string>
+    <string name="authorization_app_info">应用信息</string>
+    <string name="authorization_app_info_summary">在右上角允许受限制的设置以开启浮窗权限</string>
+    <string name="authorization_notifications">通知设置</string>
+    <string name="authorization_notifications_enabled">已开启，关闭不影响功能</string>
+    <string name="authorization_notifications_disabled">已关闭，关闭不影响功能</string>
+</resources>

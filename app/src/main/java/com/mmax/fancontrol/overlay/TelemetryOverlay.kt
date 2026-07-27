@@ -1,0 +1,455 @@
+package com.mmax.fancontrol.overlay
+
+import android.content.Context
+import android.graphics.PixelFormat
+import android.os.Handler
+import android.os.Looper
+import android.view.Gravity
+import android.view.WindowManager
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.mmax.fancontrol.R
+import com.mmax.fancontrol.data.Prefs
+import com.mmax.fancontrol.data.FanCurvePoint
+import com.mmax.fancontrol.hardware.TelemetryRepository
+import com.mmax.fancontrol.hardware.TemperatureSummary
+import com.mmax.fancontrol.util.formatTemperature
+import kotlin.math.roundToInt
+
+class TelemetryOverlay(
+    private val context: Context,
+    private val onAdjustFan: (Int) -> Unit,
+) {
+    private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    private val prefs = context.getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    private var host: OverlayViewHost? = null
+    private var params: WindowManager.LayoutParams? = null
+    private var posX = 100
+    private var posY = 100
+
+    fun show() {
+        if (host != null) return
+        posX = prefs.getInt(Prefs.OVERLAY_X, 100)
+        posY = prefs.getInt(Prefs.OVERLAY_Y, 100)
+
+        mainHandler.post {
+            if (host != null) return@post
+            val newHost = OverlayViewHost(context)
+            val layout = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT,
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                x = posX
+                y = posY
+            }
+            newHost.setContent {
+                OverlayContent(
+                    initialDisplayMode = OverlayDisplayMode.fromStored(
+                        prefs.getString(Prefs.OVERLAY_DISPLAY_MODE, null)
+                    ),
+                    onDisplayModeChanged = { displayMode ->
+                        prefs.edit()
+                            .putString(Prefs.OVERLAY_DISPLAY_MODE, displayMode.storageValue)
+                            .apply()
+                    },
+                    onDrag = ::moveBy,
+                    onAdjustFan = onAdjustFan,
+                    onClose = {
+                        prefs.edit().putBoolean(Prefs.OVERLAY_ENABLED, false).apply()
+                    },
+                )
+            }
+            runCatching {
+                windowManager.addView(newHost.composeView, layout)
+                newHost.onResumed()
+                host = newHost
+                params = layout
+            }
+        }
+    }
+
+    fun hide() {
+        val current = host
+        host = null
+        params = null
+        mainHandler.post {
+            current?.let {
+                runCatching { windowManager.removeView(it.composeView) }
+                it.onDestroyed()
+            }
+        }
+    }
+
+    private fun moveBy(dx: Float, dy: Float) {
+        val layout = params ?: return
+        posX += dx.roundToInt()
+        posY += dy.roundToInt()
+        layout.x = posX
+        layout.y = posY
+        mainHandler.post {
+            host?.let {
+                runCatching { windowManager.updateViewLayout(it.composeView, layout) }
+                prefs.edit()
+                    .putInt(Prefs.OVERLAY_X, posX)
+                    .putInt(Prefs.OVERLAY_Y, posY)
+                    .apply()
+            }
+        }
+    }
+}
+
+/**
+ * Ordered layout registry for the floating window. Adding another presentation
+ * later only requires one enum entry and one rendering branch; cycling and
+ * persistence remain unchanged.
+ */
+private enum class OverlayDisplayMode(val storageValue: String) {
+    DATA_ONLY("data_only"),
+    DATA_FAN_CURVE("data_fan_curve");
+
+    fun next(): OverlayDisplayMode = entries[(ordinal + 1) % entries.size]
+
+    companion object {
+        fun fromStored(value: String?): OverlayDisplayMode =
+            entries.firstOrNull { it.storageValue == value } ?: DATA_FAN_CURVE
+    }
+}
+
+@Composable
+private fun OverlayContent(
+    initialDisplayMode: OverlayDisplayMode,
+    onDisplayModeChanged: (OverlayDisplayMode) -> Unit,
+    onDrag: (Float, Float) -> Unit,
+    onAdjustFan: (Int) -> Unit,
+    onClose: () -> Unit,
+) {
+    val telemetry by TelemetryRepository.state.collectAsState()
+    val thermal = telemetry.thermal
+    var displayMode by remember { mutableStateOf(initialDisplayMode) }
+
+    fun cycleDisplayMode() {
+        displayMode = displayMode.next()
+        onDisplayModeChanged(displayMode)
+    }
+
+    Box(
+        modifier = Modifier
+            .width(168.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color(0xE6151B1C))
+            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(18.dp))
+            .padding(horizontal = 9.dp, vertical = 10.dp)
+            .pointerInput(Unit) {
+                detectDragGestures { change, amount ->
+                    change.consume()
+                    onDrag(amount.x, amount.y)
+                }
+            }
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(
+                modifier = Modifier.clickable(onClick = ::cycleDisplayMode),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.live_telemetry),
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = stringResource(R.string.close),
+                        tint = Color(0xFFFFB000),
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clickable(onClick = onClose),
+                    )
+                }
+                Spacer(Modifier.height(1.dp))
+                OverlayTemperatureGroup(stringResource(R.string.cpu), thermal.cpuSummary)
+                OverlayTemperatureGroup(stringResource(R.string.gpu), thermal.gpuSummary)
+                Spacer(Modifier.height(1.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    OverlayCompactMetric(
+                        stringResource(R.string.ddr_short),
+                        thermal.ddr?.let { formatTemperature(it.tempC) }
+                            ?: stringResource(R.string.not_available),
+                    )
+                    OverlayCompactMetric(
+                        stringResource(R.string.battery_short),
+                        thermal.battery?.let { formatTemperature(it.tempC) }
+                            ?: stringResource(R.string.not_available),
+                    )
+                }
+            }
+            if (displayMode == OverlayDisplayMode.DATA_FAN_CURVE) {
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OverlayFanButton(
+                        increase = false,
+                        enabled = telemetry.fanAdjustEnabled,
+                        onClick = { onAdjustFan(-5) },
+                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = stringResource(R.string.fan_speed),
+                            color = Color(0xFFFFB000),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "${telemetry.fanPercent}%",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            lineHeight = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    OverlayFanButton(
+                        increase = true,
+                        enabled = telemetry.fanAdjustEnabled,
+                        onClick = { onAdjustFan(5) },
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                OverlayCurvePreview(
+                    name = telemetry.activeCurveName,
+                    points = telemetry.activeCurvePoints,
+                    currentTempC = thermal.computeSummary.averageC,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverlayCurvePreview(
+    name: String,
+    points: List<FanCurvePoint>,
+    currentTempC: Double,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x1AFFFFFF), RoundedCornerShape(7.dp))
+            .padding(horizontal = 7.dp, vertical = 5.dp),
+    ) {
+        Text(
+            text = name,
+            color = Color(0xFFFFB000),
+            fontSize = 9.sp,
+            lineHeight = 10.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+        Spacer(Modifier.height(2.dp))
+        val lineColor = Color(0xFFFFB000)
+        val markerColor = Color(0xFFFF5D6C)
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+        ) {
+            if (points.size < 2) return@Canvas
+            fun x(temp: Int): Float = ((temp - 20f) / 80f * size.width)
+                .coerceIn(0f, size.width)
+            fun y(percent: Int): Float = size.height -
+                (percent / 100f * size.height).coerceIn(0f, size.height)
+
+            drawLine(
+                color = Color(0x24FFFFFF),
+                start = androidx.compose.ui.geometry.Offset(0f, size.height),
+                end = androidx.compose.ui.geometry.Offset(size.width, size.height),
+            )
+            val path = Path()
+            points.sortedBy { it.tempC }.forEachIndexed { index, point ->
+                val pointX = x(point.tempC)
+                val pointY = y(point.speedPercent)
+                if (index == 0) path.moveTo(pointX, pointY) else path.lineTo(pointX, pointY)
+            }
+            drawPath(
+                path = path,
+                color = lineColor,
+                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
+            )
+            points.forEach { point ->
+                drawCircle(
+                    color = Color.White,
+                    radius = 2.2.dp.toPx(),
+                    center = androidx.compose.ui.geometry.Offset(x(point.tempC), y(point.speedPercent)),
+                )
+            }
+            if (currentTempC in 20.0..100.0) {
+                val currentX = ((currentTempC.toFloat() - 20f) / 80f * size.width)
+                    .coerceIn(0f, size.width)
+                drawLine(
+                    color = markerColor,
+                    start = androidx.compose.ui.geometry.Offset(currentX, 0f),
+                    end = androidx.compose.ui.geometry.Offset(currentX, size.height),
+                    strokeWidth = 1.5.dp.toPx(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverlayFanButton(
+    increase: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    OutlinedIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(42.dp),
+        shape = RoundedCornerShape(13.dp),
+        border = BorderStroke(
+            1.dp,
+            if (enabled) Color(0x99FFFFFF) else Color(0x33FFFFFF),
+        ),
+        colors = IconButtonDefaults.outlinedIconButtonColors(
+            contentColor = Color.White,
+            disabledContentColor = Color(0x55FFFFFF),
+        ),
+    ) {
+        Icon(
+            imageVector = if (increase) Icons.Default.Add else Icons.Default.Remove,
+            contentDescription = stringResource(
+                if (increase) R.string.increase_fan_speed else R.string.decrease_fan_speed
+            ),
+            modifier = Modifier.size(23.dp),
+        )
+    }
+}
+
+@Composable
+private fun OverlayTemperatureGroup(
+    title: String,
+    summary: TemperatureSummary,
+) {
+    val maxColor = tempColor(summary.maxC)
+    val averageLabel = stringResource(R.string.average_short)
+    val maximumLabel = stringResource(R.string.maximum_short)
+    val unavailable = stringResource(R.string.not_available)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x1AFFFFFF), RoundedCornerShape(7.dp))
+            .padding(horizontal = 7.dp, vertical = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
+    ) {
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = Color(0xFFFFB000), fontWeight = FontWeight.Bold)) {
+                    append("$title: ")
+                }
+                withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.Bold)) {
+                    append(
+                        if (summary.count > 0) {
+                            "$averageLabel ${formatTemperature(summary.averageC)}"
+                        } else {
+                            "$averageLabel $unavailable"
+                        }
+                    )
+                }
+            },
+            fontSize = 10.sp,
+            maxLines = 1,
+        )
+        Text(
+            if (summary.count > 0) {
+                "$maximumLabel: ${summary.hottest?.name ?: unavailable}  " +
+                    formatTemperature(summary.maxC)
+            } else {
+                "$maximumLabel: $unavailable"
+            },
+            color = maxColor,
+            fontSize = 9.5.sp,
+            lineHeight = 10.sp,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun OverlayCompactMetric(title: String, value: String) {
+    Text(
+        text = "$title: $value",
+        color = Color.White,
+        fontSize = 9.sp,
+        lineHeight = 10.sp,
+        fontWeight = FontWeight.SemiBold,
+    )
+}
+
+private fun tempColor(value: Double): Color = when {
+    value >= 80.0 -> Color(0xFFFF5D6C)
+    value >= 65.0 -> Color(0xFFFFB000)
+    else -> Color.White
+}

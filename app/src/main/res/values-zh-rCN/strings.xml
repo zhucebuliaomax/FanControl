@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">风扇控制</string>
+    <string name="settings_summary">基于温度的风扇曲线与实时监控</string>
+
+    <string name="notification_channel_name">风扇控制</string>
+    <string name="notification_channel_description">显示当前曲线、风扇百分比和 CPU/GPU 温度</string>
+    <string name="notification_content">%1$s · %2$d%% · CPU %3$s · GPU %4$s</string>
+
+    <string name="tile_fan_label">风扇曲线</string>
+    <string name="tile_overlay_label">温度浮窗</string>
+    <string name="tile_on">开启</string>
+    <string name="tile_off">关闭</string>
+
+    <string name="fan_profiles">风扇方案</string>
+    <string name="fan_curve">风扇曲线</string>
+    <string name="fan_control_off">风扇控制已关闭</string>
+    <string name="edit_fan_curve">编辑风扇曲线</string>
+    <plurals name="curve_points_summary">
+        <item quantity="other">%1$s • %2$d 个控制点</item>
+    </plurals>
+
+    <string name="live_telemetry">实时温度</string>
+    <string name="open_app_info">应用信息</string>
+    <string name="open_app_info_summary">在右上角允许受限制的设置以开启浮窗权限</string>
+    <string name="telemetry_overlay">温度浮窗</string>
+    <string name="telemetry_overlay_summary">可使用 “− / +” 按 5% 调整转速并自动保存至当前曲线</string>
+    <string name="overlay_permission_not_granted">未获取权限</string>
+    <string name="cpu">CPU</string>
+    <string name="gpu">GPU</string>
+    <string name="memory_temperature">内存温度</string>
+    <string name="battery_temperature">电池温度</string>
+    <string name="ddr_short">DDR</string>
+    <string name="battery_short">电池</string>
+    <string name="fan_speed">风扇</string>
+    <string name="decrease_fan_speed">风扇转速降低 5%</string>
+    <string name="increase_fan_speed">风扇转速提高 5%</string>
+    <string name="average_short">平均</string>
+    <string name="maximum_short">最高</string>
+    <string name="average_value">平均 %1$s</string>
+    <string name="maximum_value">最高：%1$s %2$s</string>
+    <string name="not_available">无数据</string>
+
+    <string name="thermal_details_title">%1$s 温度详情</string>
+    <string name="thermal_average">平均温度</string>
+    <string name="thermal_hottest">最高温度</string>
+    <string name="all_hotspots">全部热点</string>
+    <string name="no_thermal_readings">当前没有可用的温度数据。</string>
+
+    <string name="select_fan_curve">选择风扇曲线</string>
+    <string name="add_fan_curve">添加曲线</string>
+    <string name="new_fan_curve">新曲线</string>
+    <string name="unnamed_fan_curve">未命名曲线</string>
+    <string name="cancel">取消</string>
+    <string name="rename_curve">重命名曲线</string>
+    <string name="curve_name">曲线名称</string>
+    <string name="delete_curve">删除曲线</string>
+    <string name="delete_curve_confirmation">确定删除“%1$s”吗？此操作无法撤销。</string>
+    <string name="set_as_default">设置默认</string>
+    <string name="reset">重置</string>
+    <string name="import_curve">导入</string>
+    <string name="export_curve">导出</string>
+    <string name="curve_imported">风扇曲线已导入并应用</string>
+    <string name="curve_import_failed">无法导入该风扇曲线 JSON</string>
+    <string name="curve_exported">风扇曲线已导出</string>
+    <string name="curve_export_failed">无法导出风扇曲线</string>
+    <string name="control_points">控制点</string>
+    <string name="control_point_value">%1$d°C   %2$s</string>
+    <string name="add_point">添加控制点</string>
+    <string name="fan_mode_off">关闭</string>
+    <string name="fan_mode_quiet">静音</string>
+    <string name="fan_mode_normal">标准</string>
+    <string name="fan_mode_performance">性能</string>
+    <string name="fan_mode_custom">自定义</string>
+
+    <string name="root_notice_message">风扇控制需要 Root 权限。 KernelSU用户需要手动授权。通知权限仅为展示运行状态，禁用不影响功能。</string>
+    <string name="confirm">确定</string>
+    <string name="authorization_management">授权管理</string>
+    <string name="root_permission">Root 权限</string>
+    <string name="root_permission_granted">已获取 Root 权限</string>
+    <string name="root_permission_not_granted">未获取root权限，点击刷新</string>
+    <string name="open_kernelsu">KernelSU</string>
+    <string name="open_kernelsu_summary">KernelSU用户需要在管理器中手动允许本应用</string>
+    <string name="kernelsu_not_found">未找到 KernelSU 管理器</string>
+    <string name="notification_settings">通知设置</string>
+    <string name="notification_enabled">已开启，关闭不影响功能</string>
+    <string name="notification_disabled">已关闭，关闭不影响功能</string>
+
+    <string name="back">返回</string>
+    <string name="close">关闭</string>
+    <string name="delete">删除</string>
+</resources>

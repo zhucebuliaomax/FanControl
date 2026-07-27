@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fanfeature_profiles">ファンプロファイル</string>
+    <string name="fanfeature_curve">ファンカーブ</string>
+    <string name="fanfeature_off">ファン制御はオフです</string>
+    <string name="fanfeature_edit_curve">ファンカーブを編集</string>
+    <plurals name="fanfeature_curve_points">
+        <item quantity="other">%1$s • 制御ポイント %2$d 個</item>
+    </plurals>
+    <string name="fanfeature_live_telemetry">ライブテレメトリー</string>
+    <string name="fanfeature_overlay">テレメトリーオーバーレイ</string>
+    <string name="fanfeature_overlay_summary">データ領域をタップして表示を切り替え、詳細表示で現在のカーブを調整・確認できます</string>
+    <string name="fanfeature_overlay_permission_missing">権限がありません</string>
+    <string name="fanfeature_cpu">CPU</string>
+    <string name="fanfeature_gpu">GPU</string>
+    <string name="fanfeature_memory">メモリ温度</string>
+    <string name="fanfeature_battery">バッテリー温度</string>
+    <string name="fanfeature_average">平均 %1$s</string>
+    <string name="fanfeature_maximum">最高: %1$s</string>
+</resources>

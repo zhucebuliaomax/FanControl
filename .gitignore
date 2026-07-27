@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+**/build/
+
+# Local Android configuration
+local.properties
+
+# Native build output
+.cxx/
+.externalNativeBuild/
+
+# Build and signing artifacts
+*.apk
+*.aab
+*.apks
+*.idsig
+*.jks
+*.keystore

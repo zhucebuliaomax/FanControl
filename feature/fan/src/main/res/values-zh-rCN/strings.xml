@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fanfeature_profiles">风扇方案</string>
+    <string name="fanfeature_curve">风扇曲线</string>
+    <string name="fanfeature_off">风扇控制已关闭</string>
+    <string name="fanfeature_edit_curve">编辑风扇曲线</string>
+    <plurals name="fanfeature_curve_points">
+        <item quantity="other">%1$s · %2$d 个控制点</item>
+    </plurals>
+    <string name="fanfeature_live_telemetry">实时温度</string>
+    <string name="fanfeature_overlay">温度浮窗</string>
+    <string name="fanfeature_overlay_summary">点击数据区域可循环切换样式；详细样式可调节并预览当前曲线</string>
+    <string name="fanfeature_overlay_permission_missing">未获取权限</string>
+    <string name="fanfeature_cpu">CPU</string>
+    <string name="fanfeature_gpu">GPU</string>
+    <string name="fanfeature_memory">内存温度</string>
+    <string name="fanfeature_battery">电池温度</string>
+    <string name="fanfeature_average">平均 %1$s</string>
+    <string name="fanfeature_maximum">最高：%1$s</string>
+</resources>
