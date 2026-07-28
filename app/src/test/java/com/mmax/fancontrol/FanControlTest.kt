@@ -68,8 +68,9 @@ class FanControlTest {
         val controller = FanResponseController()
         controller.resetImmediate(tempC = 50.0, percent = 25.0, nowMs = 0L)
         val samples = listOf(50.0, 50.0, 75.0, 50.0, 50.0, 50.0)
+        // Curve returns 25% for temps below 60, 90% above. Median stays 50 → no trigger.
         samples.forEachIndexed { index, temp ->
-            controller.update(temp, (index + 1) * 500L) { 90.0 }
+            controller.update(temp, (index + 1) * 500L) { t -> if (t < 60.0) 25.0 else 90.0 }
         }
         assertEquals(25.0, controller.currentLevel(6_000L), 0.001)
     }
@@ -87,11 +88,12 @@ class FanControlTest {
     }
 
     @Test
-    fun twoDegreeDeadband_ignoresSmallerSustainedChange() {
+    fun outputDeadband_ignoresSmallCurveOutputChange() {
         val controller = FanResponseController()
         controller.resetImmediate(tempC = 50.0, percent = 25.0, nowMs = 0L)
+        // Curve output at 51.9°C is 26.9%, diff from target 25% is 1.9% < 3% deadband.
         repeat(6) { index ->
-            controller.update(51.9, (index + 1) * 500L) { 90.0 }
+            controller.update(51.9, (index + 1) * 500L) { t -> t * 0.5 }
         }
         assertEquals(25.0, controller.currentLevel(10_000L), 0.001)
     }

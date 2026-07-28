@@ -4,13 +4,13 @@ import java.util.ArrayDeque
 import kotlin.math.abs
 
 /**
- * Filters temperature spikes, applies a 2°C deadband and ramps an accepted
- * curve target over five seconds. A user-initiated curve change calls
+ * Filters temperature spikes, applies an output-based deadband and ramps an
+ * accepted curve target over five seconds. A user-initiated curve change calls
  * [resetImmediate] and deliberately bypasses all smoothing.
  */
 class FanResponseController(
     private val filterWindowMs: Long = 3_000L,
-    private val deadbandC: Double = 2.0,
+    private val outputDeadbandPercent: Double = 3.0,
     private val rampDurationMs: Long = 5_000L,
 ) {
     private data class Sample(val atMs: Long, val tempC: Double)
@@ -46,12 +46,12 @@ class FanResponseController(
                 if (sorted.size % 2 == 0) (sorted[middle - 1] + sorted[middle]) / 2.0
                 else sorted[middle]
             }
-            val accepted = acceptedTempC ?: median
-            if (abs(median - accepted) >= deadbandC) {
+            val targetAtMedian = curve(median).coerceIn(0.0, 100.0)
+            if (abs(targetAtMedian - rampTargetPercent) >= outputDeadbandPercent) {
                 val current = currentLevel(nowMs)
                 acceptedTempC = median
                 rampStartPercent = current
-                rampTargetPercent = curve(median).coerceIn(0.0, 100.0)
+                rampTargetPercent = targetAtMedian
                 rampStartMs = nowMs
                 samples.clear()
                 samples.addLast(Sample(nowMs, median))
