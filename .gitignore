@@ -24,3 +24,19 @@ local.properties
 *.idsig
 *.jks
 *.keystore
+
+# 密码/私密配置文件（若额外创建了本地密钥属性文件）
+secrets.properties
+key.properties
+
+# 日志与内存分析文件
+*.log
+*.hprof
+
+# Windows 缓存文件（跨平台协作防污染）
+Thumbs.db
+
+# Android Studio 捕捉/剖析文件
+captures/
+.navigation/
+
