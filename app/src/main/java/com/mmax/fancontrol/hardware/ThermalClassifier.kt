@@ -27,6 +27,17 @@ object ThermalProfiles {
     private val profiles = mapOf(
         "rp6" to DeviceThermalProfile(
             name = "Retroid Pocket 6 (rp6)",
+            cpuZones = listOf(
+                "cpu-0-0", "cpu-0-1", "cpu-0-2",
+                "cpu-1-0", "cpu-1-1", "cpu-1-2", "cpu-1-3", "cpu-1-4",
+                "cpu-1-5", "cpu-1-6", "cpu-1-7", "cpu-1-8", "cpu-1-9", "cpu-1-10",
+            ),
+            gpuZones = listOf(
+                "gpuss-0", "gpuss-1", "gpuss-2", "gpuss-3",
+                "gpuss-4", "gpuss-5", "gpuss-6", "gpuss-7",
+            ),
+            ddrZones = listOf("ddr"),
+            batteryZones = listOf("battery"),
         ),
     )
 
