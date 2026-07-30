@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material3.AlertDialog
@@ -107,6 +108,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mmax.fancontrol.R
+import com.mmax.fancontrol.BuildConfig
 import com.mmax.fancontrol.RootAccessManager
 import com.mmax.fancontrol.data.FanCurveJson
 import com.mmax.fancontrol.data.FanCurvePoint
@@ -277,6 +279,8 @@ fun DashboardScreen(
                 onOpenAppInfo = { context.openAppInfo() },
                 onOpenNotificationSettings = { context.openFanNotificationSettings() },
             )
+            Spacer(Modifier.height(48.dp))
+            AppFooter()
         }
     }
 
@@ -918,6 +922,56 @@ private fun Context.openKernelSu() {
         startActivity(managerIntent)
     } else {
         Toast.makeText(this, R.string.kernelsu_not_found, Toast.LENGTH_SHORT).show()
+    }
+}
+
+@Composable
+private fun AppFooter(
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val githubUrl = stringResource(R.string.github_url)
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.app_version, BuildConfig.VERSION_NAME),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(githubUrl))
+                    )
+                }
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_github),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.github),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = stringResource(R.string.open_github),
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

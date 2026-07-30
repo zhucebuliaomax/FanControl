@@ -90,4 +90,9 @@
     <string name="back">Back</string>
     <string name="close">Close</string>
     <string name="delete">Delete</string>
+
+    <string name="app_version">FanControl v%1$s</string>
+    <string name="github">GitHub</string>
+    <string name="github_url">https://github.com/zhucebuliaomax/FanControl</string>
+    <string name="open_github">Open GitHub repository</string>
 </resources>
