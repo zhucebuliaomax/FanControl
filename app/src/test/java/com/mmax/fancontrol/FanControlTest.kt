@@ -9,6 +9,10 @@ import com.mmax.fancontrol.hardware.FanResponseController
 import com.mmax.fancontrol.hardware.ThermalReading
 import com.mmax.fancontrol.hardware.ThermalSnapshot
 import com.mmax.fancontrol.hardware.ThermalKind
+import com.mmax.fancontrol.hardware.ThermalClassificationProfiles
+import com.mmax.fancontrol.hardware.ThermalClassificationRule
+import com.mmax.fancontrol.hardware.ThermalClassifier
+import com.mmax.fancontrol.hardware.ThermalMatchMode
 import com.mmax.fancontrol.hardware.ThermalSensorReader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -115,6 +119,48 @@ class FanControlTest {
         assertEquals(ThermalKind.BATTERY, ThermalSensorReader.classify("battery"))
         assertNull(ThermalSensorReader.classify("usb-therm"))
         assertNull(ThermalSensorReader.classify("vbat"))
+    }
+
+    @Test
+    fun thermalClassifier_usesFirstMatchingRule() {
+        val classifier = ThermalClassifier(
+            listOf(
+                ThermalClassificationRule(ThermalKind.CPU, "cpu-"),
+                ThermalClassificationRule(ThermalKind.GPU, "gpu-"),
+                ThermalClassificationRule(ThermalKind.DDR, "ddr", ThermalMatchMode.EXACT),
+            )
+        )
+
+        assertEquals(ThermalKind.CPU, classifier.classify("cpu-1-3"))
+        assertEquals(ThermalKind.GPU, classifier.classify("gpu-0"))
+        assertEquals(ThermalKind.DDR, classifier.classify("ddr"))
+        assertNull(classifier.classify("battery"))
+    }
+
+    @Test
+    fun thermalClassifier_supportsAllMatchModes() {
+        val classifier = ThermalClassifier(
+            listOf(
+                ThermalClassificationRule(ThermalKind.CPU, "cpu", ThermalMatchMode.CONTAINS),
+                ThermalClassificationRule(ThermalKind.GPU, "^gpu.*", ThermalMatchMode.REGEX),
+                ThermalClassificationRule(ThermalKind.BATTERY, "battery", ThermalMatchMode.EXACT),
+            )
+        )
+
+        assertEquals(ThermalKind.CPU, classifier.classify("soc-cpu-zone"))
+        assertEquals(ThermalKind.GPU, classifier.classify("gpu-0"))
+        assertEquals(ThermalKind.BATTERY, classifier.classify("battery"))
+        assertNull(classifier.classify("batteries"))
+    }
+
+    @Test
+    fun thermalClassificationProfiles_deviceSpecificRulesTakePriority() {
+        val classifier = ThermalClassificationProfiles.classifierFor("rp6")
+
+        // Generic rules still work on rp6.
+        assertEquals(ThermalKind.CPU, classifier.classify("cpu-1-3"))
+        assertEquals(ThermalKind.GPU, classifier.classify("gpuss-7"))
+        assertEquals(ThermalKind.DDR, classifier.classify("ddr"))
     }
 
     @Test

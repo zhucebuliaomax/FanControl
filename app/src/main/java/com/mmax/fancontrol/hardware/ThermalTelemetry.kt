@@ -1,5 +1,6 @@
 package com.mmax.fancontrol.hardware
 
+import android.os.Build
 import java.io.File
 
 enum class ThermalKind { CPU, GPU, DDR, BATTERY }
@@ -57,6 +58,10 @@ object ThermalSensorReader {
     @Volatile
     private var sensors: List<Sensor>? = null
 
+    private val classifier by lazy {
+        ThermalClassificationProfiles.classifierFor(Build.DEVICE)
+    }
+
     fun read(): ThermalSnapshot {
         val values = discover().mapNotNull { sensor ->
             val raw = runCatching { sensor.temp.readText().trim().toDouble() }.getOrNull()
@@ -85,7 +90,7 @@ object ThermalSensorReader {
                 val type = runCatching { File(zone, "type").readText().trim() }.getOrNull()
                     ?.lowercase()
                     ?: return@mapNotNull null
-                val kind = classify(type) ?: return@mapNotNull null
+                val kind = classifier.classify(type) ?: return@mapNotNull null
                 val temp = File(zone, "temp").takeIf { it.exists() } ?: return@mapNotNull null
                 Sensor(zone.name, type, kind, temp)
             }
@@ -94,11 +99,6 @@ object ThermalSensorReader {
         return discovered
     }
 
-    internal fun classify(type: String): ThermalKind? = when {
-        type.startsWith("cpu-") || type.startsWith("cpuss-") -> ThermalKind.CPU
-        type.startsWith("gpuss-") -> ThermalKind.GPU
-        type == "ddr" -> ThermalKind.DDR
-        type == "battery" -> ThermalKind.BATTERY
-        else -> null
-    }
+    internal fun classify(type: String): ThermalKind? =
+        ThermalClassificationProfiles.defaultClassifier.classify(type)
 }
