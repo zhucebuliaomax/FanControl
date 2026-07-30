@@ -58,8 +58,8 @@ object ThermalSensorReader {
     @Volatile
     private var sensors: List<Sensor>? = null
 
-    private val classifier by lazy {
-        ThermalClassificationProfiles.classifierFor(Build.DEVICE)
+    private val deviceProfile by lazy {
+        ThermalProfiles.profileFor(Build.DEVICE)
     }
 
     fun read(): ThermalSnapshot {
@@ -90,7 +90,8 @@ object ThermalSensorReader {
                 val type = runCatching { File(zone, "type").readText().trim() }.getOrNull()
                     ?.lowercase()
                     ?: return@mapNotNull null
-                val kind = classifier.classify(type) ?: return@mapNotNull null
+                val kind = deviceProfile?.kindOf(type) ?: classifyGeneric(type)
+                    ?: return@mapNotNull null
                 val temp = File(zone, "temp").takeIf { it.exists() } ?: return@mapNotNull null
                 Sensor(zone.name, type, kind, temp)
             }
@@ -100,5 +101,13 @@ object ThermalSensorReader {
     }
 
     internal fun classify(type: String): ThermalKind? =
-        ThermalClassificationProfiles.defaultClassifier.classify(type)
+        classifyGeneric(type)
+
+    private fun classifyGeneric(type: String): ThermalKind? = when {
+        type.startsWith("cpu-") || type.startsWith("cpuss-") -> ThermalKind.CPU
+        type.startsWith("gpuss-") -> ThermalKind.GPU
+        type == "ddr" -> ThermalKind.DDR
+        type == "battery" -> ThermalKind.BATTERY
+        else -> null
+    }
 }

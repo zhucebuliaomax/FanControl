@@ -1,177 +1,128 @@
 # Device Thermal Zone Adaptation Guide
 
-This guide explains how to add per-device thermal zone classification rules for `FanControl`.
+This guide explains how to add per-device thermal zone layouts for `FanControl`.
 
-## Overview
+## Core Idea
 
-`ThermalSensorReader` discovers thermal zones under `/sys/class/thermal/thermal_zone*`. Each zone has a `type` string (e.g. `cpu-1-3`, `gpuss-7`, `battery`). The reader must map these strings to one of the four categories in [`ThermalKind`](ThermalClassifier.kt):
+`ThermalSensorReader` reads thermal zones from `/sys/class/thermal/thermal_zone*/type` and groups them into four categories: `CPU`, `GPU`, `DDR`, and `BATTERY`.
 
-- `CPU`
-- `GPU`
-- `DDR`
-- `BATTERY`
+Each device exposes its own thermal zone names. The simplest and most reliable way to support a new device is to list the exact zone names for that device.
 
-The mapping is configured through **rules** and **device profiles** so that new devices can be supported without changing the core reading logic.
-
-## Core Components
-
-### `ThermalClassificationRule`
-
-A single rule that maps a thermal zone `type` string to a `ThermalKind`.
-
-```kotlin
-data class ThermalClassificationRule(
-    val kind: ThermalKind,
-    val pattern: String,
-    val mode: ThermalMatchMode = ThermalMatchMode.PREFIX,
-)
-```
-
-- `kind`: the category to assign.
-- `pattern`: the value to match against the `type` string.
-- `mode`: how to match. See [Match Modes](#match-modes).
-
-Rules are evaluated in order; the **first matching rule wins**.
-
-### `ThermalMatchMode`
-
-| Mode | Behavior | Example pattern | Matches | Does not match |
-|------|----------|-----------------|---------|----------------|
-| `EXACT` | Full equality | `ddr` | `ddr` | `ddram`, `ddr0` |
-| `PREFIX` | Type starts with pattern | `cpu-` | `cpu-1-3` | `cpuss-0` |
-| `CONTAINS` | Type contains pattern | `cpu` | `soc-cpu-zone` | `gpu-0` |
-| `REGEX` | Pattern is a case-insensitive regex | `^gpu.*` | `gpu-0`, `gpu-1` | `sgpu` |
+## Data Structures
 
 ### `DeviceThermalProfile`
 
-A per-device configuration.
+A plain data class that lists the exact thermal zone `type` strings for one device.
 
 ```kotlin
 data class DeviceThermalProfile(
     val name: String,
-    val additionalRules: List<ThermalClassificationRule> = emptyList(),
-    val overrideRules: List<ThermalClassificationRule>? = null,
+    val cpuZones: List<String> = emptyList(),
+    val gpuZones: List<String> = emptyList(),
+    val ddrZones: List<String> = emptyList(),
+    val batteryZones: List<String> = emptyList(),
 )
 ```
 
-- `additionalRules`: appended **before** the generic rules, so they take priority.
-- `overrideRules`: if set, replaces the generic rules entirely for that device.
+### `ThermalProfiles`
 
-### `ThermalClassificationProfiles`
-
-The registry that holds all device profiles. It matches the running device's `Build.DEVICE` value against profile keys.
+A registry that maps device codenames (regular expressions) to `DeviceThermalProfile` instances.
 
 ```kotlin
-private val profiles = mapOf(
-    "rp6" to DeviceThermalProfile(
-        name = "Redmi Pad Pro (rp6)",
-        additionalRules = emptyList(),
-    ),
-)
+object ThermalProfiles {
+    private val profiles = mapOf(
+        "rp6" to DeviceThermalProfile(
+            name = "Retroid Pocket 6 (rp6)",
+            cpuZones = listOf("cpu-0-0", "cpu-0-1"),
+            gpuZones = listOf("gpuss-0"),
+            ddrZones = listOf("ddr"),
+            batteryZones = listOf("battery"),
+        ),
+    )
+}
 ```
 
-- Profile keys are **case-insensitive regular expressions** matched against `Build.DEVICE`.
-- A device that does not match any profile uses the **generic rules** only.
-
-## Generic Rules
-
-Generic rules are the default classification used for any device that has no specific profile, or as the base for devices with `additionalRules`.
-
-```kotlin
-val genericRules = listOf(
-    ThermalClassificationRule(ThermalKind.CPU, "cpu-"),
-    ThermalClassificationRule(ThermalKind.CPU, "cpuss-"),
-    ThermalClassificationRule(ThermalKind.GPU, "gpuss-"),
-    ThermalClassificationRule(ThermalKind.DDR, "ddr", ThermalMatchMode.EXACT),
-    ThermalClassificationRule(ThermalKind.BATTERY, "battery", ThermalMatchMode.EXACT),
-)
-```
+- Map keys are **case-insensitive regular expressions** matched against `android.os.Build.DEVICE`.
+- If a device has a profile, `ThermalSensorReader` uses **exact zone name matching**.
+- If a device has no profile, `ThermalSensorReader` falls back to a small set of generic prefix patterns.
 
 ## How to Add a New Device
 
-1. Identify the device codename. On the device or emulator, run:
+1. Get the device codename:
 
    ```shell
    adb shell getprop ro.product.device
    ```
 
-2. Inspect the thermal zone types:
+2. List the thermal zones on the device:
 
    ```shell
    adb shell 'for z in /sys/class/thermal/thermal_zone*; do echo "$z/type -> $(cat $z/type)"; done'
    ```
 
-3. Decide which zone types belong to `CPU`, `GPU`, `DDR`, and `BATTERY`.
+   Example output:
 
-4. Open [`ThermalClassificationProfiles`](ThermalClassifier.kt) and add a new entry to the `profiles` map.
+   ```text
+   /sys/class/thermal/thermal_zone0/type -> cpu-0-0
+   /sys/class/thermal/thermal_zone1/type -> cpu-0-1
+   /sys/class/thermal/thermal_zone2/type -> gpuss-0
+   /sys/class/thermal/thermal_zone3/type -> ddr
+   /sys/class/thermal/thermal_zone4/type -> battery
+   ```
 
-### Example: adding a device with extra sensors
+3. Open [`ThermalProfiles`](ThermalClassifier.kt) and add a new entry.
 
-Assume a device codenamed `example` reports a thermal zone type `soc-cpu-big-0` that the generic `cpu-` prefix does not match.
+### Example
+
+For a device codenamed `example`:
 
 ```kotlin
 "example" to DeviceThermalProfile(
     name = "Example Device",
-    additionalRules = listOf(
-        ThermalClassificationRule(ThermalKind.CPU, "soc-cpu-", ThermalMatchMode.PREFIX),
-    ),
+    cpuZones = listOf("cpu-0-0", "cpu-0-1"),
+    gpuZones = listOf("gpu-0"),
+    ddrZones = listOf("ddr"),
+    batteryZones = listOf("battery"),
 ),
 ```
 
-This keeps all generic rules and adds the new rule at the front.
+### Matching multiple variants
 
-### Example: adding a device that needs different rules
-
-Assume a device codenamed `custom` uses `processor-cpu` and `processor-gpu` instead of the generic names.
+Use a regex key when several variants share the same thermal layout:
 
 ```kotlin
-"custom" to DeviceThermalProfile(
-    name = "Custom Device",
-    overrideRules = listOf(
-        ThermalClassificationRule(ThermalKind.CPU, "processor-cpu", ThermalMatchMode.CONTAINS),
-        ThermalClassificationRule(ThermalKind.GPU, "processor-gpu", ThermalMatchMode.CONTAINS),
-        ThermalClassificationRule(ThermalKind.DDR, "ddr", ThermalMatchMode.EXACT),
-        ThermalClassificationRule(ThermalKind.BATTERY, "battery", ThermalMatchMode.EXACT),
-    ),
-),
-```
-
-### Example: matching multiple device variants with one regex
-
-Use a regex key when several variants share the same thermal naming.
-
-```kotlin
-"custom-(pro|plus|max)" to DeviceThermalProfile(
-    name = "Custom Pro/Plus/Max series",
-    additionalRules = listOf(
-        ThermalClassificationRule(ThermalKind.CPU, "cluster-0-", ThermalMatchMode.PREFIX),
-    ),
+"example-(pro|plus|max)" to DeviceThermalProfile(
+    name = "Example Pro/Plus/Max",
+    cpuZones = listOf("cluster-0-0", "cluster-0-1"),
+    gpuZones = listOf("gpu-0"),
+    ddrZones = listOf("ddr"),
+    batteryZones = listOf("battery"),
 ),
 ```
 
 ## Testing
 
-Add unit tests in [`FanControlTest`](../../../../../test/java/com/mmax/fancontrol/FanControlTest.kt). Verify both the generic rules and the device-specific rules.
+Add a unit test in [`FanControlTest`](../../../../../test/java/com/mmax/fancontrol/FanControlTest.kt) for each new profile:
 
 ```kotlin
 @Test
-fun profileCustom_cpuZoneIsClassified() {
-    val classifier = ThermalClassificationProfiles.classifierFor("custom-pro")
-    assertEquals(ThermalKind.CPU, classifier.classify("processor-cpu-0"))
-    assertEquals(ThermalKind.GPU, classifier.classify("processor-gpu-0"))
+fun exampleDeviceProfile_hasExpectedZones() {
+    val profile = requireNotNull(ThermalProfiles.profileFor("example"))
+    assertEquals(ThermalKind.CPU, profile.kindOf("cpu-0-0"))
+    assertEquals(ThermalKind.GPU, profile.kindOf("gpu-0"))
+    assertEquals(ThermalKind.DDR, profile.kindOf("ddr"))
+    assertEquals(ThermalKind.BATTERY, profile.kindOf("battery"))
 }
 ```
 
-Run tests before building:
+Run tests:
 
 ```shell
 ./gradlew :app:testDebugUnitTest
 ```
 
-## Best Practices
+## Notes
 
-- **Prefer `additionalRules` over `overrideRules`**: only replace the generic rules when the device truly uses incompatible naming.
-- **Keep patterns specific**: a very broad `CONTAINS` or `REGEX` pattern can misclassify unrelated zones.
-- **Order matters**: place the most specific rules first.
-- **Document the device**: use a clear `name` in the profile.
-- **Add a test for every new device profile** to prevent regressions.
+- **Exact matching**: a zone is only classified if its `type` string appears in the profile. This avoids false positives.
+- **Fallback**: devices without a profile still work through generic prefix matching (`cpu-*`, `cpuss-*`, `gpuss-*`, `ddr`, `battery`). Add a profile when the generic fallback is not enough.
+- **Fill in real zone names**: the `rp6` profile currently contains only placeholder comments. Replace them with the actual zone names read from a real device.
