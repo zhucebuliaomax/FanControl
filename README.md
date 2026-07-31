@@ -14,19 +14,19 @@ RetroFanControl comes with three default fan profiles: Quiet, Normal, and Perfor
 
 Easily edit the fan curve by tapping and dragging.
 
-<video src="./assets/edit%20curve.mp4" autoplay muted loop playsinline></video>
+<video src="https://github.com/zhucebuliaomax/RetroFanControl/raw/refs/heads/main/assets/edit%20curve.mp4" autoplay muted loop playsinline></video>
 
 Tap the Fan Curve tile to toggle the fan on or off; long-press it to bring up the profile switcher.
 
-<video src="./assets/swtich%20profile.mp4" autoplay muted loop playsinline></video>
+<video src="https://github.com/zhucebuliaomax/RetroFanControl/raw/refs/heads/main/assets/swtich%20profile.mp4" autoplay muted loop playsinline></video>
 
 The floating overlay provides quick-adjust controls, so you can tweak and save fan speeds without interrupting your play.
 
-<video src="./assets/quick%20adjust.mp4" autoplay muted loop playsinline></video>
+<video src="https://github.com/zhucebuliaomax/RetroFanControl/raw/refs/heads/main/assets/quick%20adjust.mp4" autoplay muted loop playsinline></video>
 
 Tap the data area to switch layouts, minimize the overlay.
 
-<video src="./assets/minimize%20overlay.mp4" autoplay muted loop playsinline></video>
+<video src="https://github.com/zhucebuliaomax/RetroFanControl/raw/refs/heads/main/assets/minimize%20overlay.mp4" autoplay muted loop playsinline></video>
 
 ## Fan control strategy
 
