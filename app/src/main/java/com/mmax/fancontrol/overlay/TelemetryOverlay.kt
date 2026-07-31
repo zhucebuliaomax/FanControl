@@ -280,7 +280,7 @@ private fun OverlayContent(
                 OverlayCurvePreview(
                     name = telemetry.activeCurveName,
                     points = telemetry.activeCurvePoints,
-                    currentTempC = thermal.computeSummary.averageC,
+                    currentTempC = thermal.controlTempC,
                 )
             }
         }

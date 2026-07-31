@@ -35,10 +35,6 @@ class FanResponseController(
         if (acceptedTempC == null) return resetImmediate(tempC, curve(tempC), nowMs)
 
         samples.addLast(Sample(nowMs, tempC))
-        while (samples.size > 1 && nowMs - samples.first().atMs > filterWindowMs) {
-            samples.removeFirst()
-        }
-
         val coversWindow = samples.size >= 2 && nowMs - samples.first().atMs >= filterWindowMs
         if (coversWindow) {
             val median = samples.map { it.tempC }.sorted().let { sorted ->
@@ -53,9 +49,9 @@ class FanResponseController(
                 rampStartPercent = current
                 rampTargetPercent = targetAtMedian
                 rampStartMs = nowMs
-                samples.clear()
-                samples.addLast(Sample(nowMs, median))
             }
+            samples.clear()
+            samples.addLast(Sample(nowMs, tempC))
         }
         return currentLevel(nowMs)
     }

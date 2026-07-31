@@ -90,7 +90,6 @@
     <string name="close">关闭</string>
     <string name="delete">删除</string>
 
-    <string name="app_version">RetroFanControl v%1$s</string>
     <string name="github">GitHub</string>
     <string name="github_url">https://github.com/zhucebuliaomax/RetroFanControl</string>
     <string name="open_github">打开 GitHub 仓库</string>

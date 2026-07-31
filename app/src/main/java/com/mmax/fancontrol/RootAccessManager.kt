@@ -45,7 +45,6 @@ object RootAccessManager {
             }.getOrNull()
             if (shellToReplace != null) {
                 runCatching { shellToReplace.close() }
-                // libsu clears a closed main-shell reference on the next cache lookup.
                 .also { runCatching { Shell.getCachedShell() } }
             }
             Shell.getShell(Shell.EXECUTOR) { shell ->

@@ -9,8 +9,6 @@ import com.mmax.fancontrol.hardware.FanResponseController
 import com.mmax.fancontrol.hardware.ThermalReading
 import com.mmax.fancontrol.hardware.ThermalSnapshot
 import com.mmax.fancontrol.hardware.ThermalKind
-import com.mmax.fancontrol.hardware.DeviceThermalProfile
-import com.mmax.fancontrol.hardware.ThermalProfiles
 import com.mmax.fancontrol.hardware.ThermalSensorReader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -70,7 +68,6 @@ class FanControlTest {
         val controller = FanResponseController()
         controller.resetImmediate(tempC = 50.0, percent = 25.0, nowMs = 0L)
         val samples = listOf(50.0, 50.0, 75.0, 50.0, 50.0, 50.0)
-        // Curve returns 25% for temps below 60, 90% above. Median stays 50 → no trigger.
         samples.forEachIndexed { index, temp ->
             controller.update(temp, (index + 1) * 500L) { t -> if (t < 60.0) 25.0 else 90.0 }
         }
@@ -90,10 +87,24 @@ class FanControlTest {
     }
 
     @Test
+    fun sustainedChange_doesNotRequireAnExactWindowBoundary() {
+        val controller = FanResponseController()
+        controller.resetImmediate(tempC = 50.0, percent = 25.0, nowMs = 0L)
+
+        listOf(317L, 641L, 966L, 1_292L, 1_619L, 1_947L, 2_276L, 2_606L, 2_936L, 3_267L)
+            .forEach { nowMs ->
+                controller.update(70.0, nowMs) { 75.0 }
+            }
+
+        assertEquals(25.0, controller.currentLevel(3_267L), 0.001)
+        assertEquals(50.0, controller.currentLevel(5_767L), 0.001)
+        assertEquals(75.0, controller.currentLevel(8_267L), 0.001)
+    }
+
+    @Test
     fun outputDeadband_ignoresSmallCurveOutputChange() {
         val controller = FanResponseController()
         controller.resetImmediate(tempC = 50.0, percent = 25.0, nowMs = 0L)
-        // Curve output at 51.9°C is 26.9%, diff from target 25% is 1.9% < 3% deadband.
         repeat(6) { index ->
             controller.update(51.9, (index + 1) * 500L) { t -> t * 0.5 }
         }
@@ -112,40 +123,32 @@ class FanControlTest {
     fun thermalClassification_keepsOnlyRequestedKinds() {
         assertEquals(ThermalKind.CPU, ThermalSensorReader.classify("cpu-1-3"))
         assertEquals(ThermalKind.CPU, ThermalSensorReader.classify("cpuss-0"))
+        assertEquals(ThermalKind.CPU, ThermalSensorReader.classify("mtktscpu"))
         assertEquals(ThermalKind.GPU, ThermalSensorReader.classify("gpuss-7"))
+        assertEquals(ThermalKind.GPU, ThermalSensorReader.classify("GPU-thermal"))
         assertEquals(ThermalKind.DDR, ThermalSensorReader.classify("ddr"))
+        assertEquals(ThermalKind.DDR, ThermalSensorReader.classify("dram-thermal"))
         assertEquals(ThermalKind.BATTERY, ThermalSensorReader.classify("battery"))
+        assertEquals(ThermalKind.BATTERY, ThermalSensorReader.classify("battery-thermal"))
         assertNull(ThermalSensorReader.classify("usb-therm"))
         assertNull(ThermalSensorReader.classify("vbat"))
+        assertNull(ThermalSensorReader.classify("pm8550_tz"))
     }
 
     @Test
-    fun deviceProfile_classifiesByExactZoneName() {
-        val profile = DeviceThermalProfile(
-            name = "Test Device",
-            cpuZones = listOf("cpu-0-0", "cpu-0-1"),
-            gpuZones = listOf("gpuss-0"),
-            ddrZones = listOf("ddr"),
-            batteryZones = listOf("battery"),
+    fun controlTemperature_usesHotterComponentAverage() {
+        val thermal = ThermalSnapshot(
+            listOf(
+                ThermalReading("thermal_zone1", "cpu-0", ThermalKind.CPU, 40.0),
+                ThermalReading("thermal_zone2", "cpu-1", ThermalKind.CPU, 50.0),
+                ThermalReading("thermal_zone3", "gpu-0", ThermalKind.GPU, 51.0),
+                ThermalReading("thermal_zone4", "gpu-1", ThermalKind.GPU, 55.0),
+            )
         )
 
-        assertEquals(ThermalKind.CPU, profile.kindOf("cpu-0-0"))
-        assertEquals(ThermalKind.GPU, profile.kindOf("gpuss-0"))
-        assertEquals(ThermalKind.DDR, profile.kindOf("ddr"))
-        assertEquals(ThermalKind.BATTERY, profile.kindOf("battery"))
-        assertNull(profile.kindOf("usb-therm"))
-    }
-
-    @Test
-    fun thermalProfiles_returnsMatchingDeviceProfile() {
-        val profile = ThermalProfiles.profileFor("rp6")
-        assertEquals("Retroid Pocket 6 (rp6)", profile?.name)
-    }
-
-    @Test
-    fun thermalProfiles_isCaseInsensitive() {
-        val profile = ThermalProfiles.profileFor("RP6")
-        assertEquals("Retroid Pocket 6 (rp6)", profile?.name)
+        assertEquals(45.0, thermal.cpuSummary.averageC, 0.001)
+        assertEquals(53.0, thermal.gpuSummary.averageC, 0.001)
+        assertEquals(53.0, thermal.controlTempC, 0.001)
     }
 
     @Test

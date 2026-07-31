@@ -90,7 +90,6 @@
     <string name="close">閉じる</string>
     <string name="delete">削除</string>
 
-    <string name="app_version">RetroFanControl v%1$s</string>
     <string name="github">GitHub</string>
     <string name="github_url">https://github.com/zhucebuliaomax/RetroFanControl</string>
     <string name="open_github">GitHub リポジトリを開く</string>

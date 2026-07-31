@@ -182,21 +182,21 @@ class SystemControlService : Service() {
                 val profile = config.activeProfile
                 val revision = configRevision
                 val configChanged = revision != appliedRevision
-                val averageTemp = thermal.computeSummary.averageC
+                val controlTemp = thermal.controlTempC
 
                 val output = when {
                     fanSuspendedForScreenOff || profile == null -> {
                         if (configChanged) {
-                            response.resetImmediate(averageTemp, 0.0, now)
+                            response.resetImmediate(controlTemp, 0.0, now)
                         }
                         0.0
                     }
-                    averageTemp <= 0.0 -> null
+                    controlTemp <= 0.0 -> null
                     configChanged -> {
-                        val immediate = curvePercent(profile.points, averageTemp)
-                        response.resetImmediate(averageTemp, immediate, now)
+                        val immediate = curvePercent(profile.points, controlTemp)
+                        response.resetImmediate(controlTemp, immediate, now)
                     }
-                    else -> response.update(averageTemp, now) { temp ->
+                    else -> response.update(controlTemp, now) { temp ->
                         curvePercent(profile.points, temp)
                     }
                 }
@@ -210,7 +210,7 @@ class SystemControlService : Service() {
                         fanPercent = percent,
                         fanAdjustEnabled = profile != null &&
                             !fanSuspendedForScreenOff &&
-                            averageTemp > 0.0,
+                            controlTemp > 0.0,
                         activeCurveName = profileName,
                         activeCurvePoints = profilePoints,
                     )
@@ -223,7 +223,7 @@ class SystemControlService : Service() {
                         fanPercent = percent,
                         fanAdjustEnabled = profile != null &&
                             !fanSuspendedForScreenOff &&
-                            averageTemp > 0.0,
+                            controlTemp > 0.0,
                         activeCurveName = profileName,
                         activeCurvePoints = profilePoints,
                     )
@@ -265,13 +265,13 @@ class SystemControlService : Service() {
     private fun adjustActiveCurve(deltaPercent: Int) {
         scope.launch {
             val profile = fanConfig.activeProfile
-            val averageTemp = TelemetryRepository.state.value.thermal.computeSummary.averageC
-            if (profile == null || averageTemp <= 0.0) return@launch
+            val controlTemp = TelemetryRepository.state.value.thermal.controlTempC
+            if (profile == null || controlTemp <= 0.0) return@launch
             runCatching {
                 FanCurvePreferences.adjustAroundTemperature(
                     prefs = prefs,
                     profileId = profile.id,
-                    tempC = averageTemp,
+                    tempC = controlTemp,
                     deltaPercent = deltaPercent,
                 )
             }

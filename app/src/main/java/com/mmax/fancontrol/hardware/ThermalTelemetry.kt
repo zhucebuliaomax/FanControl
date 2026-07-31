@@ -1,6 +1,5 @@
 package com.mmax.fancontrol.hardware
 
-import android.os.Build
 import java.io.File
 
 enum class ThermalKind { CPU, GPU, DDR, BATTERY }
@@ -30,6 +29,11 @@ data class ThermalSnapshot(
     val cpuSummary: TemperatureSummary = summarize(cpu)
     val gpuSummary: TemperatureSummary = summarize(gpu)
     val computeSummary: TemperatureSummary = summarize(cpu + gpu)
+    /** The fan curve follows the hotter of the CPU and GPU average temperatures. */
+    val controlTempC: Double = listOf(cpuSummary, gpuSummary)
+        .filter { it.count > 0 }
+        .maxOfOrNull { it.averageC }
+        ?: 0.0
 
     companion object {
         private fun summarize(items: List<ThermalReading>): TemperatureSummary =
@@ -57,10 +61,6 @@ object ThermalSensorReader {
 
     @Volatile
     private var sensors: List<Sensor>? = null
-
-    private val deviceProfile by lazy {
-        ThermalProfiles.profileFor(Build.DEVICE)
-    }
 
     fun read(): ThermalSnapshot {
         val values = discover().mapNotNull { sensor ->
@@ -90,7 +90,7 @@ object ThermalSensorReader {
                 val type = runCatching { File(zone, "type").readText().trim() }.getOrNull()
                     ?.lowercase()
                     ?: return@mapNotNull null
-                val kind = deviceProfile?.kindOf(type) ?: classifyGeneric(type)
+                val kind = ThermalClassifier.classify(type)
                     ?: return@mapNotNull null
                 val temp = File(zone, "temp").takeIf { it.exists() } ?: return@mapNotNull null
                 Sensor(zone.name, type, kind, temp)
@@ -101,13 +101,5 @@ object ThermalSensorReader {
     }
 
     internal fun classify(type: String): ThermalKind? =
-        classifyGeneric(type)
-
-    private fun classifyGeneric(type: String): ThermalKind? = when {
-        type.startsWith("cpu-") || type.startsWith("cpuss-") -> ThermalKind.CPU
-        type.startsWith("gpuss-") -> ThermalKind.GPU
-        type == "ddr" -> ThermalKind.DDR
-        type == "battery" -> ThermalKind.BATTERY
-        else -> null
-    }
+        ThermalClassifier.classify(type)
 }

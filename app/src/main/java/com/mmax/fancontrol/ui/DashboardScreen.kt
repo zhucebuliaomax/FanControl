@@ -313,7 +313,7 @@ fun DashboardScreen(
             profileName = profile.displayName(context),
             points = profile.points,
             defaultPoints = profile.defaultPoints,
-            currentTempC = thermal.computeSummary.averageC,
+            currentTempC = thermal.controlTempC,
             onPointsChanged = { vm.setFanCurve(profile.id, it) },
             onSetDefault = { vm.setFanCurveAsDefault(profile.id, it) },
             onReset = { vm.resetFanCurve(profile.id) },
@@ -937,7 +937,7 @@ private fun AppFooter(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(R.string.app_version, BuildConfig.VERSION_NAME),
+            text = "RetroFanControl v${BuildConfig.VERSION_NAME}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
