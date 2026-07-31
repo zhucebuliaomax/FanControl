@@ -1,32 +1,32 @@
-# RetroFanControl
+# ![Icon](./assets/icon.svg) RetroFanControl
 
-RetroFanControl is an app for **rooted Android handhelds** that gives you direct control over the cooling fan. It requires Android 8.0 or later.
+RetroFanControl is an app for the **rooted** Retroid Pocket 6 that gives you full control over the cooling fan.
 
-Note: Tested only on the Retroid Pocket 6 running LineageOS (untested on Stock OS or other devices).
+**Note:** Although it should work on other similar devices, it has only been tested on the RP6 running LineageOS 23.
 
 ### What can it do?
 
 RetroFanControl comes with three default fan profiles: Quiet, Normal, and Performance. Every profile can be fully customized, saved, or deleted, and you can create as many custom fan curves as you like. Easily import or export an individual fan curve, save a curve's current settings as its default, or reset everything with a single tap if you want a fresh start.
 
-![Fan profiles](assets/fan%20profiles.png)
+![Fan profiles](./assets/fan%20profiles.png)
 
-![Export and import curves](assets/export&import%20curves.png)
+![Export and import curves](./assets/export&import%20curves.png)
 
 Easily edit the fan curve by tapping and dragging.
 
-<video src="assets/edit%20curve.mp4" autoplay muted loop playsinline></video>
+<video src="./assets/edit%20curve.mp4" autoplay muted loop playsinline></video>
 
 Tap the Fan Curve tile to toggle the fan on or off; long-press it to bring up the profile switcher.
 
-<video src="assets/swtich%20profile.mp4" autoplay muted loop playsinline></video>
+<video src="./assets/swtich%20profile.mp4" autoplay muted loop playsinline></video>
 
 The floating overlay provides quick-adjust controls, so you can tweak and save fan speeds without interrupting your play.
 
-<video src="assets/quick%20adjust.mp4" autoplay muted loop playsinline></video>
+<video src="./assets/quick%20adjust.mp4" autoplay muted loop playsinline></video>
 
 Tap the data area to switch layouts, minimize the overlay.
 
-<video src="assets/minimize%20overlay.mp4" autoplay muted loop playsinline></video>
+<video src="./assets/minimize%20overlay.mp4" autoplay muted loop playsinline></video>
 
 ## Fan control strategy
 
