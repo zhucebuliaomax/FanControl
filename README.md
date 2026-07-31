@@ -6,9 +6,11 @@ RetroFanControl is an app for the **rooted** Retroid Pocket 6 that gives you ful
 
 ### What can it do?
 
-RetroFanControl comes with three default fan profiles: Quiet, Normal, and Performance. Every profile can be fully customized, saved, or deleted, and you can create as many custom fan curves as you like. Easily import or export an individual fan curve, save a curve's current settings as its default, or reset everything with a single tap if you want a fresh start.
+RetroFanControl comes with three default fan profiles: Quiet, Normal, and Performance. Every profile can be fully customized, saved, or deleted, and you can create as many custom fan curves as you like. 
 
 ![Fan profiles](./assets/fan%20profiles.png)
+
+Easily import or export an individual fan curve, save a curve's current settings as its default, or reset everything with a single tap if you want a fresh start.
 
 ![Export and import curves](./assets/export&import%20curves.png)
 
