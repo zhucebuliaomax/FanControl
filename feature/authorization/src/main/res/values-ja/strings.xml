@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="authorization_title">権限管理</string>
+    <string name="authorization_auto_start">起動時に開始</string>
+    <string name="authorization_auto_start_enabled">有効、再起動後にファン制御を自動的に再開できます</string>
+    <string name="authorization_auto_start_disabled">無効、再起動後にアプリを自動起動しません</string>
     <string name="authorization_root">Root 権限</string>
     <string name="authorization_root_granted">Root 権限を取得済み</string>
     <string name="authorization_root_not_granted">Root 権限がありません、タップして更新</string>

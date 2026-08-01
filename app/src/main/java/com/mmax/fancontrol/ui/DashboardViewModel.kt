@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 data class DashboardState(
     val fanConfig: FanControlConfig = FanControlConfig(),
     val overlayEnabled: Boolean = false,
+    val autoStartEnabled: Boolean = false,
     val telemetry: TelemetrySnapshot = TelemetrySnapshot(),
 )
 
@@ -54,6 +55,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             it.copy(
                 fanConfig = FanCurvePreferences.load(prefs),
                 overlayEnabled = prefs.getBoolean(Prefs.OVERLAY_ENABLED, false),
+                autoStartEnabled = prefs.getBoolean(Prefs.AUTO_START_ENABLED, false),
             )
         }
     }
@@ -111,5 +113,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         prefs.edit().putBoolean(Prefs.OVERLAY_ENABLED, enabled).apply()
         mutableState.update { it.copy(overlayEnabled = enabled) }
         SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun setAutoStartEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(Prefs.AUTO_START_ENABLED, enabled).apply()
+        mutableState.update { it.copy(autoStartEnabled = enabled) }
     }
 }

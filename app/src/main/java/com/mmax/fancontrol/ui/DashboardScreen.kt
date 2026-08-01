@@ -271,9 +271,11 @@ fun DashboardScreen(
             Spacer(Modifier.height(SettingsTokens.sectionGap))
             AuthorizationManagementSection(
                 state = AuthorizationUiState(
+                    autoStartEnabled = state.autoStartEnabled,
                     rootGranted = hasRoot,
                     notificationsEnabled = notificationsEnabled,
                 ),
+                onAutoStartEnabledChange = vm::setAutoStartEnabled,
                 onRefreshRoot = onRefreshRoot,
                 onOpenKernelSu = { context.openKernelSu() },
                 onOpenAppInfo = { context.openAppInfo() },

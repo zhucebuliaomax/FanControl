@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="authorization_title">授权管理</string>
+    <string name="authorization_auto_start">开机启动</string>
+    <string name="authorization_auto_start_enabled">已开启，重启后可自动恢复风扇控制</string>
+    <string name="authorization_auto_start_disabled">已关闭，重启后不会自动启动</string>
     <string name="authorization_root">Root 权限</string>
     <string name="authorization_root_granted">已获取 Root 权限</string>
     <string name="authorization_root_not_granted">未获取 Root 权限，点击刷新</string>

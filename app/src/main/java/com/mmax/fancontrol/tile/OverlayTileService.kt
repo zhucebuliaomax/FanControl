@@ -48,7 +48,16 @@ class OverlayTileService : TileService() {
             .putBoolean(Prefs.OVERLAY_ENABLED, next)
             .apply()
         updateTile(next)
-        SystemControlService.startOrUpdate(applicationContext)
+        val started = runCatching {
+            SystemControlService.startOrUpdate(applicationContext)
+        }.isSuccess
+        if (next && !started) {
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(Prefs.OVERLAY_ENABLED, false)
+                .apply()
+            updateTile(false)
+        }
     }
 
     private fun isActuallyEnabled(): Boolean =

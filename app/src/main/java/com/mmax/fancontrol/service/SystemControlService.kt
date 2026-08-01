@@ -130,6 +130,8 @@ class SystemControlService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
         startFanLoop()
         applyOverlayState()
+        FanQuickSettingsTile.requestRefresh(applicationContext)
+        OverlayTileService.requestRefresh(applicationContext)
         if (!getSystemService(PowerManager::class.java).isInteractive) {
             scheduleScreenOffSuspend()
         }

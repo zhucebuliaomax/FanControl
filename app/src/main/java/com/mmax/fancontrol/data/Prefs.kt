@@ -19,6 +19,7 @@ object Prefs {
     const val OVERLAY_X = "overlay_x"
     const val OVERLAY_Y = "overlay_y"
     const val OVERLAY_DISPLAY_MODE = "overlay_display_mode"
+    const val AUTO_START_ENABLED = "auto_start_enabled"
     const val NOTIFICATION_PERMISSION_REQUESTED = "notification_permission_requested"
     const val ROOT_NOTICE_ACKNOWLEDGED = "root_notice_acknowledged"
 }

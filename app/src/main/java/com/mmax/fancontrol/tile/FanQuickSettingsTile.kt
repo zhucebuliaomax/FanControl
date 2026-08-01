@@ -29,8 +29,14 @@ class FanQuickSettingsTile : TileService() {
         val prefs = getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
         val next = FanCurvePreferences.toggle(prefs)
         updateTile(next)
-        RootAccessManager.ensureRoot {
-            SystemControlService.startOrUpdate(applicationContext)
+        RootAccessManager.ensureRoot { granted ->
+            val started = granted && runCatching {
+                SystemControlService.startOrUpdate(applicationContext)
+            }.isSuccess
+            if (next.enabled && !started) {
+                FanCurvePreferences.select(prefs, null)
+            }
+            requestRefresh(applicationContext)
         }
     }
 
