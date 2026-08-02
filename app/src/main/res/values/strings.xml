@@ -19,6 +19,10 @@
     <string name="app_profile_preset">Preset</string>
     <string name="search_apps">Search apps</string>
     <string name="no_apps_found">No apps found</string>
+    <string name="filter_apps">Filter apps</string>
+    <string name="filter_games">Games</string>
+    <string name="filter_other">Other</string>
+    <string name="filter_all">All</string>
     <string name="no_options_available">No options available</string>
     <string name="select_preset">Select preset</string>
     <string name="preset_default">Default</string>

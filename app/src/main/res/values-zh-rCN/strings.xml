@@ -19,6 +19,10 @@
     <string name="app_profile_preset">预设</string>
     <string name="search_apps">搜索应用</string>
     <string name="no_apps_found">未找到应用</string>
+    <string name="filter_apps">筛选应用</string>
+    <string name="filter_games">游戏</string>
+    <string name="filter_other">其他</string>
+    <string name="filter_all">全部</string>
     <string name="no_options_available">暂无可用选项</string>
     <string name="select_preset">选择预设</string>
     <string name="preset_default">默认</string>

@@ -7,6 +7,10 @@
     <string name="app_profile_preset">プリセット</string>
     <string name="search_apps">アプリを検索</string>
     <string name="no_apps_found">アプリが見つかりません</string>
+    <string name="filter_apps">アプリを絞り込む</string>
+    <string name="filter_games">ゲーム</string>
+    <string name="filter_other">その他</string>
+    <string name="filter_all">すべて</string>
     <string name="no_options_available">利用できる項目がありません</string>
     <string name="select_preset">プリセットを選択</string>
 

@@ -8,13 +8,6 @@ package com.mmax.retrocontrol.ui
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.Image
@@ -46,10 +39,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -95,6 +91,12 @@ import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.designsystem.FocusScrollMargin
 import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
 
+private enum class AppListFilter {
+    GAME,
+    OTHER,
+    ALL,
+}
+
 internal enum class DashboardDestination(
     @param:StringRes val label: Int,
     @param:DrawableRes val outlinedIcon: Int,
@@ -131,7 +133,6 @@ internal enum class ControlModule(@param:StringRes val label: Int) {
 }
 
 internal const val DEFAULT_PRESET_APP_KEY = "@default-preset"
-private val emphasizedEasing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
 
 /**
  * Landscape-first Material layout. Window size classes keep the list/detail
@@ -335,47 +336,24 @@ private fun ControlsPage(
                 focusRequesters = controlFocusRequesters,
                 modifier = Modifier.width(360.dp),
             )
-            AnimatedVisibility(
-                visible = selectedControl != null,
-                modifier = Modifier.weight(1f),
-                enter = expandHorizontally(
-                    animationSpec = tween(
-                        durationMillis = 500,
-                        easing = emphasizedEasing,
-                    ),
-                    expandFrom = Alignment.Start,
-                ) + fadeIn(
-                    animationSpec = tween(
-                        durationMillis = 500,
-                        easing = emphasizedEasing,
-                    ),
-                ),
-                exit = shrinkHorizontally(
-                    animationSpec = tween(
-                        durationMillis = 400,
-                        easing = emphasizedEasing,
-                    ),
-                    shrinkTowards = Alignment.Start,
-                ) + fadeOut(animationSpec = tween(durationMillis = 200)),
-            ) {
-                selectedControl?.let { control ->
-                    ControlDetailPane(
-                        control = control,
-                        fanContent = fanContent,
-                        fanAction = fanAction,
-                        presetContent = presetContent,
-                        presetAction = presetAction,
-                        emptyDetailFocusRequester = emptyDetailFocusRequester,
-                        modifier = Modifier
-                            .windowInsetsPadding(
-                                WindowInsets.statusBars.only(WindowInsetsSides.Top)
-                            )
-                            .windowInsetsPadding(
-                                WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
-                            )
-                            .padding(vertical = 16.dp),
-                    )
-                }
+            selectedControl?.let { control ->
+                ControlDetailPane(
+                    control = control,
+                    fanContent = fanContent,
+                    fanAction = fanAction,
+                    presetContent = presetContent,
+                    presetAction = presetAction,
+                    emptyDetailFocusRequester = emptyDetailFocusRequester,
+                    modifier = Modifier
+                        .weight(1f)
+                        .windowInsetsPadding(
+                            WindowInsets.statusBars.only(WindowInsetsSides.Top)
+                        )
+                        .windowInsetsPadding(
+                            WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
+                        )
+                        .padding(vertical = 16.dp),
+                )
             }
         }
     } else if (selectedControl == null) {
@@ -649,54 +627,31 @@ private fun AppsPage(
                 focusRequester = appFocusRequester,
                 modifier = Modifier.width(360.dp),
             )
-            AnimatedVisibility(
-                visible = selectedApp != null,
-                modifier = Modifier.weight(1f),
-                enter = expandHorizontally(
-                    animationSpec = tween(
-                        durationMillis = 500,
-                        easing = emphasizedEasing,
-                    ),
-                    expandFrom = Alignment.Start,
-                ) + fadeIn(
-                    animationSpec = tween(
-                        durationMillis = 500,
-                        easing = emphasizedEasing,
-                    ),
-                ),
-                exit = shrinkHorizontally(
-                    animationSpec = tween(
-                        durationMillis = 400,
-                        easing = emphasizedEasing,
-                    ),
-                    shrinkTowards = Alignment.Start,
-                ) + fadeOut(animationSpec = tween(durationMillis = 200)),
-            ) {
-                selectedApp?.let { appKey ->
-                    AppDetailPane(
-                        title = if (appKey == DEFAULT_PRESET_APP_KEY) {
-                            stringResource(R.string.app_default_preset)
+            selectedApp?.let { appKey ->
+                AppDetailPane(
+                    title = if (appKey == DEFAULT_PRESET_APP_KEY) {
+                        stringResource(R.string.app_default_preset)
+                    } else {
+                        installedApps.firstOrNull { it.packageName == appKey }?.label
+                            ?: appKey
+                    },
+                    content = {
+                        if (appKey == DEFAULT_PRESET_APP_KEY) {
+                            globalPresetContent()
                         } else {
-                            installedApps.firstOrNull { it.packageName == appKey }?.label
-                                ?: appKey
-                        },
-                        content = {
-                            if (appKey == DEFAULT_PRESET_APP_KEY) {
-                                globalPresetContent()
-                            } else {
-                                appProfileContent(appKey)
-                            }
-                        },
-                        modifier = Modifier
-                            .windowInsetsPadding(
-                                WindowInsets.statusBars.only(WindowInsetsSides.Top)
-                            )
-                            .windowInsetsPadding(
-                                WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
-                            )
-                            .padding(vertical = 16.dp),
-                    )
-                }
+                            appProfileContent(appKey)
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .windowInsetsPadding(
+                            WindowInsets.statusBars.only(WindowInsetsSides.Top)
+                        )
+                        .windowInsetsPadding(
+                            WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
+                        )
+                        .padding(vertical = 16.dp),
+                )
             }
         }
     } else if (selectedApp == null) {
@@ -742,19 +697,24 @@ private fun AppListPane(
     modifier: Modifier = Modifier,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    var appFilter by rememberSaveable { mutableStateOf(AppListFilter.GAME) }
+    var filterMenuExpanded by remember { mutableStateOf(false) }
     var searchFieldFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val filteredApps = remember(installedApps, query) {
+    val filteredApps = remember(installedApps, query, appFilter) {
         val normalized = query.trim()
-        if (normalized.isEmpty()) {
-            installedApps
-        } else {
-            installedApps.filter { app ->
-                app.label.contains(normalized, ignoreCase = true) ||
-                    app.packageName.contains(normalized, ignoreCase = true)
+        installedApps.filter { app ->
+            val matchesCategory = when (appFilter) {
+                AppListFilter.GAME -> app.isGame
+                AppListFilter.OTHER -> !app.isGame
+                AppListFilter.ALL -> true
             }
+            val matchesQuery = normalized.isEmpty() ||
+                app.label.contains(normalized, ignoreCase = true) ||
+                app.packageName.contains(normalized, ignoreCase = true)
+            matchesCategory && matchesQuery
         }
     }
     BackHandler(enabled = searchFieldFocused) {
@@ -771,6 +731,65 @@ private fun AppListPane(
             CollapsingTopBar(
                 title = stringResource(R.string.nav_apps),
                 scrollBehavior = scrollBehavior,
+                actions = {
+                    Box {
+                        IconButton(onClick = { filterMenuExpanded = true }) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_filter_alt),
+                                contentDescription = stringResource(R.string.filter_apps),
+                                tint = if (appFilter == AppListFilter.ALL) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = filterMenuExpanded,
+                            onDismissRequest = { filterMenuExpanded = false },
+                            modifier = Modifier.width(220.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        ) {
+                            listOf(
+                                AppListFilter.GAME to R.string.filter_games,
+                                AppListFilter.OTHER to R.string.filter_other,
+                                AppListFilter.ALL to R.string.filter_all,
+                            ).forEach { (filter, label) ->
+                                val selected = appFilter == filter
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(label)) },
+                                    onClick = {
+                                        appFilter = filter
+                                        filterMenuExpanded = false
+                                    },
+                                    modifier = Modifier
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                        .clip(MaterialTheme.shapes.large)
+                                        .background(
+                                            if (selected) {
+                                                MaterialTheme.colorScheme.secondaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.surfaceContainer
+                                            }
+                                        ),
+                                    leadingIcon = if (selected) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            )
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                )
+                            }
+                        }
+                    }
+                },
+                actionsEndPadding = 8.dp,
             )
             Spacer(Modifier.size(8.dp))
             OutlinedTextField(
@@ -939,6 +958,8 @@ private fun CollapsingTopBar(
     title: String,
     scrollBehavior: TopAppBarScrollBehavior,
     horizontalPadding: Dp = 16.dp,
+    actions: @Composable () -> Unit = {},
+    actionsEndPadding: Dp = horizontalPadding,
 ) {
     val density = LocalDensity.current
     val collapseRange = with(density) { (152.dp - 64.dp).toPx() }
@@ -975,6 +996,17 @@ private fun CollapsingTopBar(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(
+                        end = actionsEndPadding,
+                        bottom = lerpDp(8.dp, 8.dp, collapsedFraction),
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                actions()
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.mmax.retrocontrol.ui
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherApps
 import android.content.SharedPreferences
 import android.graphics.Bitmap
@@ -34,6 +35,7 @@ data class InstalledAppInfo(
     val label: String,
     val packageName: String,
     val icon: Bitmap?,
+    val isGame: Boolean,
     val profileSummary: String = "",
 )
 
@@ -80,6 +82,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                             icon = runCatching {
                                 activity.getBadgedIcon(0).toBitmap(width = 96, height = 96)
                             }.getOrNull(),
+                            isGame = activity.applicationInfo.category ==
+                                ApplicationInfo.CATEGORY_GAME,
                         )
                     }
                     .sortedWith(
