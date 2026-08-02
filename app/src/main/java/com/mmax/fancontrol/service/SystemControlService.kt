@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import com.mmax.retrocontrol.MainActivity
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.data.FanCurvePreferences
+import com.mmax.retrocontrol.data.FanSelectionPreferences
 import com.mmax.retrocontrol.data.FanControlConfig
 import com.mmax.retrocontrol.data.FanCurveSerializer
 import com.mmax.retrocontrol.data.Prefs
@@ -100,6 +101,14 @@ class SystemControlService : Service() {
             Prefs.FAN_CURVE_PERFORMANCE,
             Prefs.FAN_CURVE_CUSTOM,
             Prefs.LEGACY_FAN_CURVE_CUSTOM -> loadFanPreferences()
+            Prefs.PRESET_CATALOG,
+            Prefs.SELECTED_PRESET,
+            Prefs.FAN_SELECTION_SOURCE,
+            Prefs.FAN_SELECTION_CURVE,
+            Prefs.FAN_TILE_ENABLED -> {
+                FanSelectionPreferences.apply(prefs)
+                loadFanPreferences()
+            }
             Prefs.OVERLAY_ENABLED -> {
                 loadOverlayPreference()
                 applyOverlayState()

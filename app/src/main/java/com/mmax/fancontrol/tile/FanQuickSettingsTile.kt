@@ -10,6 +10,8 @@ import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.RootAccessManager
 import com.mmax.retrocontrol.data.FanControlConfig
 import com.mmax.retrocontrol.data.FanCurvePreferences
+import com.mmax.retrocontrol.data.FanSelectionPreferences
+import com.mmax.retrocontrol.data.FanSelectionSource
 import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.data.displayName
 import com.mmax.retrocontrol.service.SystemControlService
@@ -27,31 +29,43 @@ class FanQuickSettingsTile : TileService() {
     override fun onClick() {
         super.onClick()
         val prefs = getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
-        val next = FanCurvePreferences.toggle(prefs)
+        val next = FanSelectionPreferences.toggle(prefs)
         updateTile(next)
         RootAccessManager.ensureRoot { granted ->
             val started = granted && runCatching {
                 SystemControlService.startOrUpdate(applicationContext)
             }.isSuccess
             if (next.enabled && !started) {
-                FanCurvePreferences.select(prefs, null)
+                prefs.edit().putBoolean(Prefs.FAN_TILE_ENABLED, false).apply()
+                FanSelectionPreferences.apply(prefs)
             }
             requestRefresh(applicationContext)
         }
     }
 
-    private fun currentConfig(): FanControlConfig =
-        FanCurvePreferences.load(getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE))
+    private fun currentConfig(): FanControlConfig {
+        val prefs = getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+        return FanSelectionPreferences.apply(prefs, FanCurvePreferences.load(prefs))
+    }
 
     private fun updateTile(config: FanControlConfig) {
+        val selection = FanSelectionPreferences.load(
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE),
+            config,
+        )
         qsTile?.apply {
             icon = Icon.createWithResource(applicationContext, R.drawable.ic_tile_fan)
             label = getString(R.string.tile_fan_label)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                subtitle = config.activeProfile?.displayName(this@FanQuickSettingsTile)
-                    ?: getString(R.string.fan_mode_off)
+                subtitle = when (val source = selection.source) {
+                    FanSelectionSource.FollowPreset -> getString(R.string.follow_preset)
+                    is FanSelectionSource.DirectCurve -> config.catalog
+                        .profile(source.profileId)
+                        ?.displayName(this@FanQuickSettingsTile)
+                        ?: getString(R.string.follow_preset)
+                }
             }
-            state = if (config.enabled) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+            state = if (selection.enabled) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
             updateTile()
         }
     }

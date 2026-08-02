@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="fanfeature_profiles">风扇方案</string>
+    <string name="fanfeature_profiles">风扇曲线</string>
     <string name="fanfeature_curve">风扇曲线</string>
     <string name="fanfeature_off">风扇控制已关闭</string>
     <string name="fanfeature_edit_curve">编辑风扇曲线</string>

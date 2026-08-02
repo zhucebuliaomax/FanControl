@@ -5,6 +5,12 @@ import com.mmax.retrocontrol.data.FanCurveCatalog
 import com.mmax.retrocontrol.data.FanCurvePoint
 import com.mmax.retrocontrol.data.FanCurveProfile
 import com.mmax.retrocontrol.data.FanCurveSerializer
+import com.mmax.retrocontrol.data.ControlPreset
+import com.mmax.retrocontrol.data.ControlPresetCatalog
+import com.mmax.retrocontrol.data.ControlPresetConfig
+import com.mmax.retrocontrol.data.FanSelectionConfig
+import com.mmax.retrocontrol.data.FanSelectionPreferences
+import com.mmax.retrocontrol.data.FanSelectionSource
 import com.mmax.retrocontrol.hardware.FanResponseController
 import com.mmax.retrocontrol.hardware.ThermalReading
 import com.mmax.retrocontrol.hardware.ThermalSnapshot
@@ -16,6 +22,57 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FanControlTest {
+    @Test
+    fun fanSelection_directCurveOverridesGlobalPreset() {
+        val preset = ControlPreset(
+            id = ControlPresetCatalog.DEFAULT_ID,
+            name = "Default",
+            isDefault = true,
+            fanCurveId = BuiltInFanCurve.QUIET.id,
+        )
+        val presets = ControlPresetConfig(
+            catalog = ControlPresetCatalog(listOf(preset)),
+            selectedPresetId = preset.id,
+        )
+        val catalog = FanCurveCatalog()
+
+        assertEquals(
+            BuiltInFanCurve.QUIET.id,
+            FanSelectionPreferences.resolveTargetProfileId(
+                FanSelectionConfig(FanSelectionSource.FollowPreset, enabled = true),
+                presets,
+                catalog,
+            ),
+        )
+        assertEquals(
+            BuiltInFanCurve.PERFORMANCE.id,
+            FanSelectionPreferences.resolveTargetProfileId(
+                FanSelectionConfig(
+                    FanSelectionSource.DirectCurve(BuiltInFanCurve.PERFORMANCE.id),
+                    enabled = true,
+                ),
+                presets,
+                catalog,
+            ),
+        )
+        assertNull(
+            FanSelectionPreferences.resolveTargetProfileId(
+                FanSelectionConfig(FanSelectionSource.FollowPreset, enabled = false),
+                presets,
+                catalog,
+            )
+        )
+    }
+
+    @Test
+    fun presetCatalog_keepsBuiltInDefaultWhenCustomPresetIsRemoved() {
+        val default = ControlPresetCatalog.defaultPreset()
+        val custom = ControlPreset(id = "custom", name = "Custom")
+        val catalog = ControlPresetCatalog(listOf(default, custom)).remove(custom.id)
+
+        assertEquals(listOf(default), catalog.presets)
+    }
+
     @Test
     fun curveInterpolation_isLinearAndBounded() {
         val points = listOf(FanCurvePoint(40, 25), FanCurvePoint(60, 75))

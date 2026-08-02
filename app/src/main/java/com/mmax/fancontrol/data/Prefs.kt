@@ -7,6 +7,11 @@ object Prefs {
     const val FAN_MODE = "fan_mode"
     const val LAST_FAN_CURVE = "last_fan_curve"
     const val FAN_CURVE_CATALOG = "fan_curve_catalog_v2"
+    const val PRESET_CATALOG = "control_preset_catalog_v1"
+    const val SELECTED_PRESET = "selected_control_preset"
+    const val FAN_SELECTION_SOURCE = "fan_selection_source"
+    const val FAN_SELECTION_CURVE = "fan_selection_curve"
+    const val FAN_TILE_ENABLED = "fan_tile_enabled"
 
     // Version 1 migration keys.
     const val FAN_CURVE_QUIET = "fan_curve_quiet"

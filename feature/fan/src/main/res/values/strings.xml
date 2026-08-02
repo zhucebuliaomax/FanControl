@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="fanfeature_profiles">Fan profiles</string>
+    <string name="fanfeature_profiles">Fan curves</string>
     <string name="fanfeature_curve">Fan curve</string>
     <string name="fanfeature_off">Fan control is off</string>
     <string name="fanfeature_edit_curve">Edit fan curve</string>

@@ -99,7 +99,6 @@ object FanCurvePreferences {
         )
         val updated = current.copy(
             catalog = current.catalog.plus(profile),
-            activeProfileId = profile.id,
         )
         persist(prefs, updated)
         return updated

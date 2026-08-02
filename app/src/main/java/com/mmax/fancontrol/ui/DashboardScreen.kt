@@ -150,12 +150,15 @@ fun DashboardScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var editingProfileId by remember { mutableStateOf<String?>(null) }
-    var restoreFanProfileFocus by remember { mutableStateOf(false) }
+    var restoreFanCurveFocusId by remember { mutableStateOf<String?>(null) }
+    var editingPresetId by remember { mutableStateOf<String?>(null) }
+    var restorePresetFocusId by remember { mutableStateOf<String?>(null) }
     var detailKind by remember { mutableStateOf<ThermalKind?>(null) }
     var selectedDestination by rememberSaveable {
         mutableStateOf(DashboardDestination.TELEMETRY)
     }
     var selectedControl by rememberSaveable { mutableStateOf<ControlModule?>(null) }
+    var selectedApp by rememberSaveable { mutableStateOf<AppModule?>(null) }
     var lastControl by rememberSaveable { mutableStateOf(ControlModule.FAN) }
     var navigationLayer by rememberSaveable {
         mutableStateOf(DashboardNavigationLayer.CONTENT)
@@ -171,6 +174,15 @@ fun DashboardScreen(
         List(fanProfileIds.size + 1) { FocusRequester() }
     }
     val addCurveFocusRequester = remember { FocusRequester() }
+    val presetIds = state.presetConfig.catalog.presets.map { it.id }
+    val presetFocusRequesters = remember(presetIds) {
+        List(presetIds.size) { FocusRequester() }
+    }
+    val globalPresetFocusRequesters = remember(presetIds) {
+        List(presetIds.size) { FocusRequester() }
+    }
+    val addPresetFocusRequester = remember { FocusRequester() }
+    val appFocusRequester = remember { FocusRequester() }
     val overlayFocusRequester = remember { FocusRequester() }
     val telemetryFocusRequester = remember { FocusRequester() }
     val authorizationFocusRequesters = remember { List(5) { FocusRequester() } }
@@ -196,13 +208,26 @@ fun DashboardScreen(
 
     val thermal = state.telemetry.thermal
     val unavailable = stringResource(R.string.not_available)
+    val offName = stringResource(R.string.fan_mode_off)
+    fun fanCurveName(profileId: String?): String = profileId
+        ?.let { state.fanConfig.catalog.profile(it)?.displayName(context) }
+        ?: offName
+    val presetItems = state.presetConfig.catalog.presets.map { preset ->
+        PresetListItemUiState(
+            id = preset.id,
+            name = preset.name,
+            isDefault = preset.isDefault,
+            fanCurveName = fanCurveName(preset.fanCurveId),
+        )
+    }
 
     LaunchedEffect(
         selectedDestination,
         selectedControl,
+        selectedApp,
         navigationLayer,
         fanProfileIds,
-        state.fanConfig.activeProfileId,
+        presetIds,
     ) {
         when (navigationLayer) {
             DashboardNavigationLayer.TOP_LEVEL -> {
@@ -216,51 +241,67 @@ fun DashboardScreen(
                 DashboardDestination.ACCESS -> {
                     authorizationFocusRequesters.first().requestFocus()
                 }
-                DashboardDestination.APPS -> {
-                    navigationLayer = DashboardNavigationLayer.TOP_LEVEL
-                }
+                DashboardDestination.APPS -> appFocusRequester.requestFocus()
             }
-            DashboardNavigationLayer.DETAIL -> when (selectedControl) {
-                ControlModule.FAN -> {
-                    val selectedIndex = fanProfileIds
-                        .indexOf(state.fanConfig.activeProfileId)
-                        .takeIf { it >= 0 }
-                        ?.plus(1)
-                        ?: 0
-                    fanProfileFocusRequesters[selectedIndex].requestFocus()
+            DashboardNavigationLayer.DETAIL -> when (selectedDestination) {
+                DashboardDestination.CONTROLS -> when (selectedControl) {
+                    ControlModule.FAN -> fanProfileFocusRequesters[0].requestFocus()
+                    ControlModule.PRESET -> presetFocusRequesters.first().requestFocus()
+                    ControlModule.JOYSTICK,
+                    ControlModule.BUTTON_LAYOUT,
+                    ControlModule.CORE -> emptyDetailFocusRequester.requestFocus()
+                    null -> navigationLayer = DashboardNavigationLayer.CONTENT
                 }
-                ControlModule.PRESET,
-                ControlModule.JOYSTICK,
-                ControlModule.BUTTON_LAYOUT,
-                ControlModule.CORE -> emptyDetailFocusRequester.requestFocus()
-                null -> navigationLayer = DashboardNavigationLayer.CONTENT
+                DashboardDestination.APPS -> {
+                    if (selectedApp == AppModule.DEFAULT_PRESET) {
+                        globalPresetFocusRequesters.first().requestFocus()
+                    } else {
+                        navigationLayer = DashboardNavigationLayer.CONTENT
+                    }
+                }
+                else -> navigationLayer = DashboardNavigationLayer.CONTENT
             }
         }
     }
 
     LaunchedEffect(
         editingProfileId,
-        restoreFanProfileFocus,
+        restoreFanCurveFocusId,
         fanProfileIds,
-        state.fanConfig.activeProfileId,
     ) {
-        if (editingProfileId == null && restoreFanProfileFocus) {
+        val restoreId = restoreFanCurveFocusId
+        if (editingProfileId == null && restoreId != null) {
             navigationLayer = DashboardNavigationLayer.DETAIL
             withFrameNanos { }
             val selectedIndex = fanProfileIds
-                .indexOf(state.fanConfig.activeProfileId)
+                .indexOf(restoreId)
                 .takeIf { it >= 0 }
                 ?.plus(1)
                 ?: 0
             fanProfileFocusRequesters[selectedIndex].requestFocus()
-            restoreFanProfileFocus = false
+            restoreFanCurveFocusId = null
+        }
+    }
+
+    LaunchedEffect(editingPresetId, restorePresetFocusId, presetIds) {
+        val restoreId = restorePresetFocusId
+        if (editingPresetId == null && restoreId != null) {
+            navigationLayer = DashboardNavigationLayer.DETAIL
+            withFrameNanos { }
+            val index = presetIds.indexOf(restoreId).takeIf { it >= 0 } ?: 0
+            presetFocusRequesters[index].requestFocus()
+            restorePresetFocusId = null
         }
     }
 
     BackHandler(enabled = navigationLayer != DashboardNavigationLayer.TOP_LEVEL) {
         when (navigationLayer) {
             DashboardNavigationLayer.DETAIL -> {
-                selectedControl = null
+                if (selectedDestination == DashboardDestination.APPS) {
+                    selectedApp = null
+                } else {
+                    selectedControl = null
+                }
                 navigationLayer = DashboardNavigationLayer.CONTENT
             }
             DashboardNavigationLayer.CONTENT -> {
@@ -289,11 +330,8 @@ fun DashboardScreen(
         onDestinationSelected = {
             selectedDestination = it
             selectedControl = null
-            navigationLayer = if (it == DashboardDestination.APPS) {
-                DashboardNavigationLayer.TOP_LEVEL
-            } else {
-                DashboardNavigationLayer.CONTENT
-            }
+            selectedApp = null
+            navigationLayer = DashboardNavigationLayer.CONTENT
         },
         selectedControl = selectedControl,
         onControlSelected = { control ->
@@ -305,8 +343,18 @@ fun DashboardScreen(
                 DashboardNavigationLayer.DETAIL
             }
         },
+        selectedApp = selectedApp,
+        onAppSelected = { app ->
+            selectedApp = app
+            navigationLayer = if (app == null) {
+                DashboardNavigationLayer.CONTENT
+            } else {
+                DashboardNavigationLayer.DETAIL
+            }
+        },
         navigationFocusRequesters = navigationFocusRequesters,
         controlFocusRequesters = controlFocusRequesters,
+        appFocusRequester = appFocusRequester,
         emptyDetailFocusRequester = emptyDetailFocusRequester,
         onNavigationFocused = {
             navigationLayer = DashboardNavigationLayer.TOP_LEVEL
@@ -370,7 +418,6 @@ fun DashboardScreen(
         fanContent = {
             FanProfilesSection(
                 state = FanProfileSectionState(
-                    activeProfileId = state.fanConfig.activeProfileId,
                     profiles = state.fanConfig.catalog.profiles.map { profile ->
                         FanProfileItemUiState(
                             id = profile.id,
@@ -379,13 +426,7 @@ fun DashboardScreen(
                         )
                     },
                 ),
-                onOffSelected = {
-                    vm.selectFanProfile(null)
-                    onFanCurveSelected(false)
-                },
                 onProfileSelected = { profileId ->
-                    vm.selectFanProfile(profileId)
-                    onFanCurveSelected(true)
                     editingProfileId = profileId
                 },
                 onDeleteProfile = vm::deleteFanCurve,
@@ -425,7 +466,6 @@ fun DashboardScreen(
                     editingProfileId = vm.addFanCurve(
                         context.getString(R.string.new_fan_curve)
                     )
-                    onFanCurveSelected(true)
                 },
                 modifier = Modifier
                     .focusRequester(addCurveFocusRequester)
@@ -435,6 +475,74 @@ fun DashboardScreen(
                         left = FocusRequester.Cancel
                         right = FocusRequester.Cancel
                     },
+            )
+        },
+        presetContent = {
+            PresetManagementSection(
+                presets = presetItems,
+                onPresetClick = { editingPresetId = it },
+                onDeletePreset = vm::deletePreset,
+                itemModifier = { index ->
+                    Modifier
+                        .focusRequester(presetFocusRequesters[index])
+                        .focusProperties {
+                            up = if (index == 0) {
+                                FocusRequester.Cancel
+                            } else {
+                                presetFocusRequesters[index - 1]
+                            }
+                            down = if (index == presetItems.lastIndex) {
+                                addPresetFocusRequester
+                            } else {
+                                presetFocusRequesters[index + 1]
+                            }
+                            left = FocusRequester.Cancel
+                            right = FocusRequester.Cancel
+                        }
+                },
+            )
+        },
+        presetAction = {
+            AddPresetButton(
+                onClick = {
+                    editingPresetId = vm.addPreset(context.getString(R.string.new_preset))
+                },
+                modifier = Modifier
+                    .focusRequester(addPresetFocusRequester)
+                    .focusProperties {
+                        up = presetFocusRequesters.last()
+                        down = FocusRequester.Cancel
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
+                    },
+            )
+        },
+        globalPresetContent = {
+            GlobalPresetSelectionSection(
+                presets = presetItems,
+                selectedPresetId = state.presetConfig.selectedPresetId,
+                onPresetSelected = {
+                    vm.selectGlobalPreset(it)
+                    onFanCurveSelected(true)
+                },
+                itemModifier = { index ->
+                    Modifier
+                        .focusRequester(globalPresetFocusRequesters[index])
+                        .focusProperties {
+                            up = if (index == 0) {
+                                FocusRequester.Cancel
+                            } else {
+                                globalPresetFocusRequesters[index - 1]
+                            }
+                            down = if (index == presetItems.lastIndex) {
+                                FocusRequester.Cancel
+                            } else {
+                                globalPresetFocusRequesters[index + 1]
+                            }
+                            left = FocusRequester.Cancel
+                            right = FocusRequester.Cancel
+                        }
+                },
             )
         },
         accessContent = {
@@ -519,12 +627,45 @@ fun DashboardScreen(
             onRename = { vm.renameFanCurve(profile.id, it) },
             onDelete = {
                 vm.deleteFanCurve(profile.id)
-                restoreFanProfileFocus = true
+                restoreFanCurveFocusId = profile.id
                 editingProfileId = null
             },
             onDismiss = {
-                restoreFanProfileFocus = true
+                restoreFanCurveFocusId = profile.id
                 editingProfileId = null
+            },
+        )
+    }
+
+    editingPresetId?.let { presetId ->
+        val preset = state.presetConfig.catalog.preset(presetId) ?: return@let
+        PresetEditorDialog(
+            preset = preset,
+            fanCurveName = fanCurveName(preset.fanCurveId),
+            fanCurveChoices = buildList {
+                add(PresetFanCurveChoice(id = null, name = offName))
+                state.fanConfig.catalog.profiles.forEach { profile ->
+                    add(
+                        PresetFanCurveChoice(
+                            id = profile.id,
+                            name = profile.displayName(context),
+                        )
+                    )
+                }
+            },
+            onFanCurveSelected = {
+                vm.setPresetFanCurve(preset.id, it)
+                if (it != null) onFanCurveSelected(true)
+            },
+            onRename = { vm.renamePreset(preset.id, it) },
+            onDelete = {
+                vm.deletePreset(preset.id)
+                restorePresetFocusId = preset.id
+                editingPresetId = null
+            },
+            onDismiss = {
+                restorePresetFocusId = preset.id
+                editingPresetId = null
             },
         )
     }

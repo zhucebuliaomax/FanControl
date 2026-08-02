@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="fanfeature_profiles">ファンプロファイル</string>
+    <string name="fanfeature_profiles">ファンカーブ</string>
     <string name="fanfeature_curve">ファンカーブ</string>
     <string name="fanfeature_off">ファン制御はオフです</string>
     <string name="fanfeature_edit_curve">ファンカーブを編集</string>

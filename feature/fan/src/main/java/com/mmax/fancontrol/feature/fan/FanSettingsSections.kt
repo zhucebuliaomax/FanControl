@@ -7,7 +7,6 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,40 +20,38 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mmax.retrocontrol.designsystem.SettingsPreferenceRow
+import com.mmax.retrocontrol.designsystem.SecondaryMenuList
+import com.mmax.retrocontrol.designsystem.SecondaryMenuListItem
 import com.mmax.retrocontrol.designsystem.SettingsSectionTitle
 import com.mmax.retrocontrol.designsystem.SettingsSegmentGroup
 import com.mmax.retrocontrol.designsystem.SettingsTokens
+import com.mmax.retrocontrol.designsystem.SwipeToDeleteSecondaryMenuListItem
 import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
 
 data class FanProfileSectionState(
-    val activeProfileId: String?,
     val profiles: List<FanProfileItemUiState>,
 )
 
@@ -82,11 +79,9 @@ data class FanTelemetrySectionState(
  * Host-independent fan profile manager. Persistence and curve editing remain
  * host responsibilities, allowing the list to be embedded as a feature subset.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FanProfilesSection(
     state: FanProfileSectionState,
-    onOffSelected: () -> Unit,
     onProfileSelected: (String) -> Unit,
     onDeleteProfile: (String) -> Unit,
     showTitle: Boolean = true,
@@ -102,24 +97,22 @@ fun FanProfilesSection(
             )
         }
 
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp)),
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        ) {
-            Column {
-                FanProfileListItem(
-                    name = stringResource(R.string.fanfeature_off_title),
-                    summary = stringResource(R.string.fanfeature_off),
-                    selected = state.activeProfileId == null,
-                    onClick = onOffSelected,
-                    modifier = offModifier,
-                )
-                state.profiles.forEachIndexed { index, profile ->
+        val itemCount = state.profiles.size + 1
+        SecondaryMenuList {
+            FanProfileListItem(
+                name = stringResource(R.string.fanfeature_off_title),
+                summary = stringResource(R.string.fanfeature_off),
+                index = 0,
+                count = itemCount,
+                onClick = {},
+                modifier = offModifier,
+            )
+            state.profiles.forEachIndexed { index, profile ->
+                key(profile.id) {
                     SwipeToDeleteProfileItem(
                         profile = profile,
-                        selected = profile.id == state.activeProfileId,
+                        index = index + 1,
+                        count = itemCount,
                         onClick = { onProfileSelected(profile.id) },
                         onDelete = { onDeleteProfile(profile.id) },
                         modifier = profileModifier(index),
@@ -153,12 +146,16 @@ fun FanProfilesAddCurveButton(
 private fun FanProfileListItem(
     name: String,
     summary: String,
-    selected: Boolean,
+    index: Int,
+    count: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        headlineContent = {
+    SecondaryMenuListItem(
+        index = index,
+        count = count,
+        onClick = onClick,
+        content = {
             Text(
                 text = name,
                 maxLines = 1,
@@ -172,77 +169,41 @@ private fun FanProfileListItem(
                 overflow = TextOverflow.Ellipsis,
             )
         },
-        leadingContent = {
-            RadioButton(
-                selected = selected,
-                onClick = null,
-                modifier = Modifier.focusProperties { canFocus = false },
-            )
-        },
-        colors = ListItemDefaults.colors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHighest
-            },
-        ),
-        modifier = modifier
-            .fillMaxWidth()
-            .bringIntoViewOnFocus()
-            .clickable(onClick = onClick),
+        modifier = modifier,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeToDeleteProfileItem(
     profile: FanProfileItemUiState,
-    selected: Boolean,
+    index: Int,
+    count: Int,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showDeleteConfirmation by remember(profile.id) { mutableStateOf(false) }
-    val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value != SwipeToDismissBoxValue.Settled) {
-                showDeleteConfirmation = true
-            }
-            false
-        },
-    )
-
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        backgroundContent = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-                    .background(MaterialTheme.colorScheme.errorContainer)
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.fanfeature_delete_curve),
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-        },
-        content = {
-            FanProfileListItem(
-                name = profile.name,
-                summary = stringResource(
+    SwipeToDeleteSecondaryMenuListItem(
+        index = index,
+        count = count,
+        onClick = onClick,
+        onDeleteRequest = { showDeleteConfirmation = true },
+        deleteIcon = Icons.Default.Delete,
+        deleteContentDescription = stringResource(R.string.fanfeature_delete_curve),
+        modifier = modifier,
+        supportingContent = {
+            Text(
+                stringResource(
                     R.string.fanfeature_control_points,
                     profile.controlPointCount,
-                ),
-                selected = selected,
-                onClick = onClick,
-                modifier = modifier,
+                )
+            )
+        },
+        content = {
+            Text(
+                text = profile.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         },
     )

@@ -7,13 +7,24 @@
     <string name="nav_controls">控制</string>
     <string name="nav_apps">应用</string>
     <string name="nav_access">授权</string>
-    <string name="control_title">控制</string>
-    <string name="control_preset">预设</string>
-    <string name="control_fan">风扇方案</string>
+    <string name="control_title">控制项</string>
+    <string name="control_preset">预设方案</string>
+    <string name="control_fan">风扇曲线</string>
     <string name="control_joystick">摇杆</string>
     <string name="control_button_layout">按键布局</string>
     <string name="control_core">性能方案</string>
     <string name="control_back">返回控制模块</string>
+    <string name="app_default_preset">默认预设</string>
+    <string name="preset_default">默认</string>
+    <string name="new_preset">新预设</string>
+    <string name="add_preset">添加预设</string>
+    <string name="rename_preset">重命名预设</string>
+    <string name="preset_name">预设名称</string>
+    <string name="delete_preset">删除预设</string>
+    <string name="delete_preset_confirmation">确定删除“%1$s”吗？此操作无法撤销。</string>
+    <string name="preset_fan_curve">风扇曲线</string>
+    <string name="preset_performance_profile">性能方案</string>
+    <string name="follow_preset">跟随预设</string>
 
     <string name="notification_channel_name">风扇控制</string>
     <string name="notification_channel_description">显示当前曲线、风扇百分比和 CPU/GPU 温度</string>

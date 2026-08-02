@@ -7,13 +7,24 @@
     <string name="nav_controls">Controls</string>
     <string name="nav_apps">Apps</string>
     <string name="nav_access">Access</string>
-    <string name="control_title">Control</string>
-    <string name="control_preset">Preset</string>
-    <string name="control_fan">Fan profiles</string>
+    <string name="control_title">Controls</string>
+    <string name="control_preset">Presets</string>
+    <string name="control_fan">Fan curves</string>
     <string name="control_joystick">Joysticks</string>
     <string name="control_button_layout">Button layout</string>
     <string name="control_core">Performance profiles</string>
     <string name="control_back">Back to control modules</string>
+    <string name="app_default_preset">Default preset</string>
+    <string name="preset_default">Default</string>
+    <string name="new_preset">New preset</string>
+    <string name="add_preset">Add preset</string>
+    <string name="rename_preset">Rename preset</string>
+    <string name="preset_name">Preset name</string>
+    <string name="delete_preset">Delete preset</string>
+    <string name="delete_preset_confirmation">Delete “%1$s”? This cannot be undone.</string>
+    <string name="preset_fan_curve">Fan curve</string>
+    <string name="preset_performance_profile">Performance profile</string>
+    <string name="follow_preset">Follow preset</string>
 
     <string name="notification_channel_name">Fan control</string>
     <string name="notification_channel_description">Shows the active curve, fan percentage, and CPU/GPU temperatures</string>
@@ -24,7 +35,7 @@
     <string name="tile_on">On</string>
     <string name="tile_off">Off</string>
 
-    <string name="fan_profiles">Fan profiles</string>
+    <string name="fan_profiles">Fan curves</string>
     <string name="fan_curve">Fan curve</string>
     <string name="fan_control_off">Fan control is off</string>
     <string name="edit_fan_curve">Edit fan curve</string>

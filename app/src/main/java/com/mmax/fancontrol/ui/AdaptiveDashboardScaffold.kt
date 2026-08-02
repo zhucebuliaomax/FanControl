@@ -93,6 +93,10 @@ internal enum class ControlModule(@StringRes val label: Int) {
     CORE(R.string.control_core),
 }
 
+internal enum class AppModule(@StringRes val label: Int) {
+    DEFAULT_PRESET(R.string.app_default_preset),
+}
+
 /**
  * Landscape-first Material layout. Window size classes keep the list/detail
  * behavior usable when the same activity is resized or shown in multi-window.
@@ -103,8 +107,11 @@ internal fun AdaptiveDashboardScaffold(
     onDestinationSelected: (DashboardDestination) -> Unit,
     selectedControl: ControlModule?,
     onControlSelected: (ControlModule?) -> Unit,
+    selectedApp: AppModule?,
+    onAppSelected: (AppModule?) -> Unit,
     navigationFocusRequesters: List<FocusRequester>,
     controlFocusRequesters: List<FocusRequester>,
+    appFocusRequester: FocusRequester,
     emptyDetailFocusRequester: FocusRequester,
     onNavigationFocused: () -> Unit,
     onContentFocused: () -> Unit,
@@ -112,6 +119,9 @@ internal fun AdaptiveDashboardScaffold(
     telemetryContent: @Composable () -> Unit,
     fanContent: @Composable () -> Unit,
     fanAction: @Composable () -> Unit,
+    presetContent: @Composable () -> Unit,
+    presetAction: @Composable () -> Unit,
+    globalPresetContent: @Composable () -> Unit,
     accessContent: @Composable () -> Unit,
     footer: @Composable () -> Unit,
 ) {
@@ -209,11 +219,18 @@ internal fun AdaptiveDashboardScaffold(
                     onDetailFocused = onDetailFocused,
                     fanContent = fanContent,
                     fanAction = fanAction,
+                    presetContent = presetContent,
+                    presetAction = presetAction,
                 )
 
-                DashboardDestination.APPS -> DashboardPage(
-                    title = stringResource(R.string.nav_apps),
-                    content = {},
+                DashboardDestination.APPS -> AppsPage(
+                    selectedApp = selectedApp,
+                    onAppSelected = onAppSelected,
+                    showTwoPanes = showTwoControlPanes,
+                    appFocusRequester = appFocusRequester,
+                    onContentFocused = onContentFocused,
+                    onDetailFocused = onDetailFocused,
+                    globalPresetContent = globalPresetContent,
                 )
 
                 DashboardDestination.ACCESS -> DashboardPage(
@@ -265,6 +282,8 @@ private fun ControlsPage(
     onDetailFocused: () -> Unit,
     fanContent: @Composable () -> Unit,
     fanAction: @Composable () -> Unit,
+    presetContent: @Composable () -> Unit,
+    presetAction: @Composable () -> Unit,
 ) {
     if (showTwoPanes) {
         Row(
@@ -291,6 +310,8 @@ private fun ControlsPage(
                         control = control,
                         fanContent = fanContent,
                         fanAction = fanAction,
+                        presetContent = presetContent,
+                        presetAction = presetAction,
                         emptyDetailFocusRequester = emptyDetailFocusRequester,
                         onFocused = onDetailFocused,
                     )
@@ -312,6 +333,8 @@ private fun ControlsPage(
             control = selectedControl,
             fanContent = fanContent,
             fanAction = fanAction,
+            presetContent = presetContent,
+            presetAction = presetAction,
             emptyDetailFocusRequester = emptyDetailFocusRequester,
             onFocused = onDetailFocused,
             onBack = { onControlSelected(null) },
@@ -404,7 +427,15 @@ private fun ControlModuleRow(
     SegmentedListItem(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        shapes = ListItemDefaults.segmentedShapes(
+            index = index,
+            count = count,
+            defaultShapes = if (count == 1) {
+                ListItemDefaults.shapes(shape = MaterialTheme.shapes.extraLarge)
+            } else {
+                ListItemDefaults.shapes()
+            },
+        ),
         colors = ListItemDefaults.segmentedColors(
             containerColor = if (selected) {
                 MaterialTheme.colorScheme.secondaryContainer
@@ -443,6 +474,8 @@ private fun ControlDetailPane(
     control: ControlModule,
     fanContent: @Composable () -> Unit,
     fanAction: @Composable () -> Unit,
+    presetContent: @Composable () -> Unit,
+    presetAction: @Composable () -> Unit,
     emptyDetailFocusRequester: FocusRequester,
     onFocused: () -> Unit,
     modifier: Modifier = Modifier,
@@ -466,7 +499,9 @@ private fun ControlDetailPane(
                             start = 30.dp,
                             top = 30.dp,
                             end = 30.dp,
-                            bottom = if (control == ControlModule.FAN) 112.dp else 30.dp,
+                            bottom = if (
+                                control == ControlModule.FAN || control == ControlModule.PRESET
+                            ) 112.dp else 30.dp,
                         ),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -484,6 +519,9 @@ private fun ControlDetailPane(
                     if (control == ControlModule.FAN) {
                         Spacer(Modifier.size(18.dp))
                         fanContent()
+                    } else if (control == ControlModule.PRESET) {
+                        Spacer(Modifier.size(18.dp))
+                        presetContent()
                     } else {
                         Spacer(
                             Modifier
@@ -507,7 +545,170 @@ private fun ControlDetailPane(
                     ) {
                         fanAction()
                     }
+                } else if (control == ControlModule.PRESET) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(30.dp),
+                    ) {
+                        presetAction()
+                    }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppsPage(
+    selectedApp: AppModule?,
+    onAppSelected: (AppModule?) -> Unit,
+    showTwoPanes: Boolean,
+    appFocusRequester: FocusRequester,
+    onContentFocused: () -> Unit,
+    onDetailFocused: () -> Unit,
+    globalPresetContent: @Composable () -> Unit,
+) {
+    if (showTwoPanes) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            AppListPane(
+                selectedApp = selectedApp,
+                onAppSelected = { onAppSelected(it) },
+                focusRequester = appFocusRequester,
+                onFocused = onContentFocused,
+                modifier = Modifier.width(264.dp),
+            )
+            AnimatedVisibility(
+                visible = selectedApp != null,
+                modifier = Modifier.weight(1f),
+                enter = expandHorizontally(expandFrom = Alignment.Start),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.Start),
+            ) {
+                selectedApp?.let {
+                    AppDetailPane(
+                        module = it,
+                        onFocused = onDetailFocused,
+                        content = globalPresetContent,
+                    )
+                }
+            }
+        }
+    } else if (selectedApp == null) {
+        AppListPane(
+            selectedApp = null,
+            onAppSelected = { onAppSelected(it) },
+            focusRequester = appFocusRequester,
+            onFocused = onContentFocused,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+        )
+    } else {
+        AppDetailPane(
+            module = selectedApp,
+            onFocused = onDetailFocused,
+            onBack = { onAppSelected(null) },
+            content = globalPresetContent,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Composable
+private fun AppListPane(
+    selectedApp: AppModule?,
+    onAppSelected: (AppModule) -> Unit,
+    focusRequester: FocusRequester,
+    onFocused: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .focusGroup()
+            .onFocusChanged { if (it.hasFocus) onFocused() }
+            .padding(horizontal = 8.dp, vertical = 14.dp),
+    ) {
+        PageTitle(
+            title = stringResource(R.string.nav_apps),
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        Spacer(Modifier.size(16.dp))
+        SegmentedListItem(
+            onClick = { onAppSelected(AppModule.DEFAULT_PRESET) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester),
+            shapes = ListItemDefaults.segmentedShapes(
+                index = 0,
+                count = 1,
+                defaultShapes = ListItemDefaults.shapes(
+                    shape = MaterialTheme.shapes.extraLarge,
+                ),
+            ),
+            colors = ListItemDefaults.segmentedColors(
+                containerColor = if (selectedApp == AppModule.DEFAULT_PRESET) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                },
+            ),
+            trailingContent = {
+                Icon(Icons.Default.ChevronRight, contentDescription = null)
+            },
+            content = {
+                Text(
+                    text = stringResource(AppModule.DEFAULT_PRESET.label),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun AppDetailPane(
+    module: AppModule,
+    onFocused: () -> Unit,
+    content: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxSize()
+            .focusGroup()
+            .onFocusChanged { if (it.hasFocus) onFocused() },
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        FocusScrollMargin {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(30.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.control_back),
+                            )
+                        }
+                        Spacer(Modifier.size(4.dp))
+                    }
+                    PageTitle(stringResource(module.label))
+                }
+                Spacer(Modifier.size(18.dp))
+                content()
             }
         }
     }

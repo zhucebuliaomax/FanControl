@@ -20,9 +20,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
@@ -42,6 +45,8 @@ import com.mmax.retrocontrol.MainActivity
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.RootAccessManager
 import com.mmax.retrocontrol.data.FanCurvePreferences
+import com.mmax.retrocontrol.data.FanSelectionPreferences
+import com.mmax.retrocontrol.data.FanSelectionSource
 import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.data.displayName
 import com.mmax.retrocontrol.service.SystemControlService
@@ -79,6 +84,7 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
         setContent {
             FanControlTheme {
                 val config by remember { mutableStateOf(currentConfig()) }
+                val selection by remember { mutableStateOf(currentSelection(config)) }
                 Surface(
                     modifier = Modifier.width(300.dp),
                     shape = MaterialTheme.shapes.extraLarge,
@@ -92,33 +98,25 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
                             fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(Modifier.height(8.dp))
-                        config.catalog.profiles.forEach { profile ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp)
-                                    .clickable { select(profile.id) }
-                                    .padding(horizontal = 20.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    imageVector = if (profile.id == config.activeProfileId) {
-                                        Icons.Default.RadioButtonChecked
-                                    } else {
-                                        Icons.Default.RadioButtonUnchecked
-                                    },
-                                    contentDescription = null,
-                                    tint = if (profile.id == config.activeProfileId) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                    modifier = Modifier.size(21.dp),
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    text = profile.displayName(this@FanCurveTilePreferencesActivity),
-                                    style = MaterialTheme.typography.bodyLarge,
+                        Column(
+                            modifier = Modifier
+                                .heightIn(max = 360.dp)
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            FanSourceRow(
+                                name = stringResource(R.string.follow_preset),
+                                selected = selection.source is FanSelectionSource.FollowPreset,
+                                onClick = ::selectFollowPreset,
+                            )
+                            config.catalog.profiles.forEach { profile ->
+                                FanSourceRow(
+                                    name = profile.displayName(
+                                        this@FanCurveTilePreferencesActivity
+                                    ),
+                                    selected = (
+                                        selection.source as? FanSelectionSource.DirectCurve
+                                    )?.profileId == profile.id,
+                                    onClick = { select(profile.id) },
                                 )
                             }
                         }
@@ -166,13 +164,31 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
         }
 
     private fun currentConfig() =
-        FanCurvePreferences.load(getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE))
+        getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE).let { prefs ->
+            FanSelectionPreferences.apply(prefs, FanCurvePreferences.load(prefs))
+        }
+
+    private fun currentSelection(config: com.mmax.retrocontrol.data.FanControlConfig) =
+        FanSelectionPreferences.load(
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE),
+            config,
+        )
 
     private fun select(profileId: String) {
-        FanCurvePreferences.select(
-            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE),
-            profileId,
+        FanSelectionPreferences.selectDirectCurve(
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE), profileId
         )
+        finishSelection()
+    }
+
+    private fun selectFollowPreset() {
+        FanSelectionPreferences.selectFollowPreset(
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+        )
+        finishSelection()
+    }
+
+    private fun finishSelection() {
         FanQuickSettingsTile.requestRefresh(this)
         RootAccessManager.ensureRoot {
             SystemControlService.startOrUpdate(applicationContext)
@@ -196,5 +212,42 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
             .apply()
         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         return true
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun FanSourceRow(
+    name: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = if (selected) {
+                Icons.Default.RadioButtonChecked
+            } else {
+                Icons.Default.RadioButtonUnchecked
+            },
+            contentDescription = null,
+            tint = if (selected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.size(21.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+        )
     }
 }
