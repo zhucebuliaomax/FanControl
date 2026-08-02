@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.mmax.fancontrol.feature.fan"
+    namespace = "com.mmax.retrocontrol.feature.fan"
     compileSdk = 36
 
     defaultConfig {
@@ -31,4 +31,5 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
 }

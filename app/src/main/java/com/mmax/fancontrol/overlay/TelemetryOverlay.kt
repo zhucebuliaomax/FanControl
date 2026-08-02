@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.overlay
+package com.mmax.retrocontrol.overlay
 
 import android.content.Context
 import android.graphics.PixelFormat
@@ -52,12 +52,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mmax.fancontrol.R
-import com.mmax.fancontrol.data.Prefs
-import com.mmax.fancontrol.data.FanCurvePoint
-import com.mmax.fancontrol.hardware.TelemetryRepository
-import com.mmax.fancontrol.hardware.TemperatureSummary
-import com.mmax.fancontrol.util.formatTemperature
+import com.mmax.retrocontrol.R
+import com.mmax.retrocontrol.data.Prefs
+import com.mmax.retrocontrol.data.FanCurvePoint
+import com.mmax.retrocontrol.hardware.TelemetryRepository
+import com.mmax.retrocontrol.hardware.TemperatureSummary
+import com.mmax.retrocontrol.util.formatTemperature
 import kotlin.math.roundToInt
 
 class TelemetryOverlay(

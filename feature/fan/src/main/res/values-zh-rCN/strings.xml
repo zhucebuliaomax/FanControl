@@ -4,6 +4,13 @@
     <string name="fanfeature_curve">风扇曲线</string>
     <string name="fanfeature_off">风扇控制已关闭</string>
     <string name="fanfeature_edit_curve">编辑风扇曲线</string>
+    <string name="fanfeature_off_title">关闭</string>
+    <string name="fanfeature_add_curve">添加曲线</string>
+    <string name="fanfeature_control_points">%1$d 个控制点</string>
+    <string name="fanfeature_delete_curve">删除曲线</string>
+    <string name="fanfeature_delete_curve_confirmation">确定删除“%1$s”吗？此操作无法撤销。</string>
+    <string name="fanfeature_delete">删除</string>
+    <string name="fanfeature_cancel">取消</string>
     <plurals name="fanfeature_curve_points">
         <item quantity="other">%1$s · %2$d 个控制点</item>
     </plurals>

@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.data
+package com.mmax.retrocontrol.data
 
 import org.json.JSONArray
 import org.json.JSONObject

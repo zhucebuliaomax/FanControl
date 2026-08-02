@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.data
+package com.mmax.retrocontrol.data
 
 object Prefs {
     const val FILE = "fan_control"

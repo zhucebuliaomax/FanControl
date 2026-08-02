@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.util
+package com.mmax.retrocontrol.util
 
 import java.text.NumberFormat
 import java.util.Locale

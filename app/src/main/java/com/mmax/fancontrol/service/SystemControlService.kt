@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.service
+package com.mmax.retrocontrol.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -14,22 +14,22 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.mmax.fancontrol.MainActivity
-import com.mmax.fancontrol.R
-import com.mmax.fancontrol.data.FanCurvePreferences
-import com.mmax.fancontrol.data.FanControlConfig
-import com.mmax.fancontrol.data.FanCurveSerializer
-import com.mmax.fancontrol.data.Prefs
-import com.mmax.fancontrol.data.displayName
-import com.mmax.fancontrol.hardware.FanController
-import com.mmax.fancontrol.hardware.FanResponseController
-import com.mmax.fancontrol.hardware.TelemetryRepository
-import com.mmax.fancontrol.hardware.ThermalSensorReader
-import com.mmax.fancontrol.hardware.ThermalSnapshot
-import com.mmax.fancontrol.overlay.TelemetryOverlay
-import com.mmax.fancontrol.tile.FanQuickSettingsTile
-import com.mmax.fancontrol.tile.OverlayTileService
-import com.mmax.fancontrol.util.formatTemperature
+import com.mmax.retrocontrol.MainActivity
+import com.mmax.retrocontrol.R
+import com.mmax.retrocontrol.data.FanCurvePreferences
+import com.mmax.retrocontrol.data.FanControlConfig
+import com.mmax.retrocontrol.data.FanCurveSerializer
+import com.mmax.retrocontrol.data.Prefs
+import com.mmax.retrocontrol.data.displayName
+import com.mmax.retrocontrol.hardware.FanController
+import com.mmax.retrocontrol.hardware.FanResponseController
+import com.mmax.retrocontrol.hardware.TelemetryRepository
+import com.mmax.retrocontrol.hardware.ThermalSensorReader
+import com.mmax.retrocontrol.hardware.ThermalSnapshot
+import com.mmax.retrocontrol.overlay.TelemetryOverlay
+import com.mmax.retrocontrol.tile.FanQuickSettingsTile
+import com.mmax.retrocontrol.tile.OverlayTileService
+import com.mmax.retrocontrol.util.formatTemperature
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,7 +52,7 @@ class SystemControlService : Service() {
     companion object {
         const val CHANNEL_ID = "fan_control"
         private const val NOTIFICATION_ID = 1
-        const val ACTION_UPDATE = "com.mmax.fancontrol.UPDATE"
+        const val ACTION_UPDATE = "com.mmax.retrocontrol.UPDATE"
 
         fun startOrUpdate(context: Context) {
             context.startForegroundService(
@@ -243,7 +243,7 @@ class SystemControlService : Service() {
     }
 
     private fun curvePercent(
-        points: List<com.mmax.fancontrol.data.FanCurvePoint>,
+        points: List<com.mmax.retrocontrol.data.FanCurvePoint>,
         tempC: Double,
     ): Double {
         return FanCurveSerializer.interpolate(tempC, points)

@@ -1,6 +1,6 @@
-package com.mmax.fancontrol.hardware
+package com.mmax.retrocontrol.hardware
 
-import com.mmax.fancontrol.data.FanCurvePoint
+import com.mmax.retrocontrol.data.FanCurvePoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

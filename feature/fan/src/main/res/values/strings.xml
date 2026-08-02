@@ -4,6 +4,13 @@
     <string name="fanfeature_curve">Fan curve</string>
     <string name="fanfeature_off">Fan control is off</string>
     <string name="fanfeature_edit_curve">Edit fan curve</string>
+    <string name="fanfeature_off_title">Off</string>
+    <string name="fanfeature_add_curve">Add curve</string>
+    <string name="fanfeature_control_points">%1$d control points</string>
+    <string name="fanfeature_delete_curve">Delete curve</string>
+    <string name="fanfeature_delete_curve_confirmation">Delete %1$s? This cannot be undone.</string>
+    <string name="fanfeature_delete">Delete</string>
+    <string name="fanfeature_cancel">Cancel</string>
     <plurals name="fanfeature_curve_points">
         <item quantity="one">%1$s • %2$d control point</item>
         <item quantity="other">%1$s • %2$d control points</item>

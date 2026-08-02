@@ -1,17 +1,17 @@
-package com.mmax.fancontrol.ui
+package com.mmax.retrocontrol.ui
 
 import android.app.Application
 import android.content.SharedPreferences
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.mmax.fancontrol.data.BuiltInFanCurve
-import com.mmax.fancontrol.data.FanControlConfig
-import com.mmax.fancontrol.data.FanCurvePoint
-import com.mmax.fancontrol.data.FanCurvePreferences
-import com.mmax.fancontrol.data.Prefs
-import com.mmax.fancontrol.hardware.TelemetryRepository
-import com.mmax.fancontrol.hardware.TelemetrySnapshot
-import com.mmax.fancontrol.service.SystemControlService
+import com.mmax.retrocontrol.data.BuiltInFanCurve
+import com.mmax.retrocontrol.data.FanControlConfig
+import com.mmax.retrocontrol.data.FanCurvePoint
+import com.mmax.retrocontrol.data.FanCurvePreferences
+import com.mmax.retrocontrol.data.Prefs
+import com.mmax.retrocontrol.hardware.TelemetryRepository
+import com.mmax.retrocontrol.hardware.TelemetrySnapshot
+import com.mmax.retrocontrol.service.SystemControlService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

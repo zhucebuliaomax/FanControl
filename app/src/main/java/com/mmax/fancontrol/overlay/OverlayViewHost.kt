@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.overlay
+package com.mmax.retrocontrol.overlay
 
 import android.content.Context
 import androidx.compose.runtime.Composable

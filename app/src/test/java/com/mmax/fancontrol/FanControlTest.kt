@@ -1,15 +1,15 @@
-package com.mmax.fancontrol
+package com.mmax.retrocontrol
 
-import com.mmax.fancontrol.data.BuiltInFanCurve
-import com.mmax.fancontrol.data.FanCurveCatalog
-import com.mmax.fancontrol.data.FanCurvePoint
-import com.mmax.fancontrol.data.FanCurveProfile
-import com.mmax.fancontrol.data.FanCurveSerializer
-import com.mmax.fancontrol.hardware.FanResponseController
-import com.mmax.fancontrol.hardware.ThermalReading
-import com.mmax.fancontrol.hardware.ThermalSnapshot
-import com.mmax.fancontrol.hardware.ThermalKind
-import com.mmax.fancontrol.hardware.ThermalSensorReader
+import com.mmax.retrocontrol.data.BuiltInFanCurve
+import com.mmax.retrocontrol.data.FanCurveCatalog
+import com.mmax.retrocontrol.data.FanCurvePoint
+import com.mmax.retrocontrol.data.FanCurveProfile
+import com.mmax.retrocontrol.data.FanCurveSerializer
+import com.mmax.retrocontrol.hardware.FanResponseController
+import com.mmax.retrocontrol.hardware.ThermalReading
+import com.mmax.retrocontrol.hardware.ThermalSnapshot
+import com.mmax.retrocontrol.hardware.ThermalKind
+import com.mmax.retrocontrol.hardware.ThermalSensorReader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

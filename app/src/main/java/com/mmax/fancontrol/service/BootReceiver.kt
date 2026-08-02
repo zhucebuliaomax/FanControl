@@ -1,14 +1,14 @@
-package com.mmax.fancontrol.service
+package com.mmax.retrocontrol.service
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.mmax.fancontrol.RootAccessManager
-import com.mmax.fancontrol.data.FanCurvePreferences
-import com.mmax.fancontrol.data.Prefs
-import com.mmax.fancontrol.tile.FanQuickSettingsTile
-import com.mmax.fancontrol.tile.OverlayTileService
+import com.mmax.retrocontrol.RootAccessManager
+import com.mmax.retrocontrol.data.FanCurvePreferences
+import com.mmax.retrocontrol.data.Prefs
+import com.mmax.retrocontrol.tile.FanQuickSettingsTile
+import com.mmax.retrocontrol.tile.OverlayTileService
 
 /**
  * Restores fan control after boot only when the user opted in.

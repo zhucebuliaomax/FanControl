@@ -1,8 +1,8 @@
-package com.mmax.fancontrol.data
+package com.mmax.retrocontrol.data
 
 import android.content.Context
 import androidx.annotation.StringRes
-import com.mmax.fancontrol.R
+import com.mmax.retrocontrol.R
 
 @get:StringRes
 val BuiltInFanCurve.labelRes: Int

@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.theme
+package com.mmax.retrocontrol.theme
 
 import androidx.compose.ui.graphics.Color
 

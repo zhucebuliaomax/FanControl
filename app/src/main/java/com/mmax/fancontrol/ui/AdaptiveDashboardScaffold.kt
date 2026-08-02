@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 
-package com.mmax.fancontrol.ui
+package com.mmax.retrocontrol.ui
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -55,8 +55,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
-import com.mmax.fancontrol.R
-import com.mmax.fancontrol.designsystem.FocusScrollMargin
+import com.mmax.retrocontrol.R
+import com.mmax.retrocontrol.designsystem.FocusScrollMargin
 
 internal enum class DashboardDestination(
     @StringRes val label: Int,
@@ -86,8 +86,10 @@ internal enum class DashboardDestination(
 }
 
 internal enum class ControlModule(@StringRes val label: Int) {
+    PRESET(R.string.control_preset),
     FAN(R.string.control_fan),
     JOYSTICK(R.string.control_joystick),
+    BUTTON_LAYOUT(R.string.control_button_layout),
     CORE(R.string.control_core),
 }
 
@@ -109,6 +111,7 @@ internal fun AdaptiveDashboardScaffold(
     onDetailFocused: () -> Unit,
     telemetryContent: @Composable () -> Unit,
     fanContent: @Composable () -> Unit,
+    fanAction: @Composable () -> Unit,
     accessContent: @Composable () -> Unit,
     footer: @Composable () -> Unit,
 ) {
@@ -205,6 +208,7 @@ internal fun AdaptiveDashboardScaffold(
                     onContentFocused = onContentFocused,
                     onDetailFocused = onDetailFocused,
                     fanContent = fanContent,
+                    fanAction = fanAction,
                 )
 
                 DashboardDestination.APPS -> DashboardPage(
@@ -260,6 +264,7 @@ private fun ControlsPage(
     onContentFocused: () -> Unit,
     onDetailFocused: () -> Unit,
     fanContent: @Composable () -> Unit,
+    fanAction: @Composable () -> Unit,
 ) {
     if (showTwoPanes) {
         Row(
@@ -285,6 +290,7 @@ private fun ControlsPage(
                     ControlDetailPane(
                         control = control,
                         fanContent = fanContent,
+                        fanAction = fanAction,
                         emptyDetailFocusRequester = emptyDetailFocusRequester,
                         onFocused = onDetailFocused,
                     )
@@ -305,6 +311,7 @@ private fun ControlsPage(
         ControlDetailPane(
             control = selectedControl,
             fanContent = fanContent,
+            fanAction = fanAction,
             emptyDetailFocusRequester = emptyDetailFocusRequester,
             onFocused = onDetailFocused,
             onBack = { onControlSelected(null) },
@@ -333,25 +340,47 @@ private fun ControlListPane(
             modifier = Modifier.padding(horizontal = 8.dp),
         )
         Spacer(Modifier.size(16.dp))
+        ControlModuleRow(
+            control = ControlModule.PRESET,
+            index = 0,
+            count = 1,
+            selected = selectedControl == ControlModule.PRESET,
+            modifier = Modifier
+                .focusRequester(focusRequesters[ControlModule.PRESET.ordinal])
+                .focusProperties {
+                    up = FocusRequester.Cancel
+                    down = focusRequesters[ControlModule.FAN.ordinal]
+                    left = FocusRequester.Cancel
+                    right = FocusRequester.Cancel
+                },
+            onClick = { onControlSelected(ControlModule.PRESET) },
+        )
+        Spacer(Modifier.size(12.dp))
+        val standardControls = listOf(
+            ControlModule.FAN,
+            ControlModule.JOYSTICK,
+            ControlModule.BUTTON_LAYOUT,
+            ControlModule.CORE,
+        )
         Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
-            ControlModule.entries.forEachIndexed { index, control ->
+            standardControls.forEachIndexed { index, control ->
                 ControlModuleRow(
                     control = control,
                     index = index,
-                    count = ControlModule.entries.size,
+                    count = standardControls.size,
                     selected = control == selectedControl,
                     modifier = Modifier
-                        .focusRequester(focusRequesters[index])
+                        .focusRequester(focusRequesters[control.ordinal])
                         .focusProperties {
                             up = if (index == 0) {
-                                FocusRequester.Cancel
+                                focusRequesters[ControlModule.PRESET.ordinal]
                             } else {
-                                focusRequesters[index - 1]
+                                focusRequesters[standardControls[index - 1].ordinal]
                             }
-                            down = if (index == ControlModule.entries.lastIndex) {
+                            down = if (index == standardControls.lastIndex) {
                                 FocusRequester.Cancel
                             } else {
-                                focusRequesters[index + 1]
+                                focusRequesters[standardControls[index + 1].ordinal]
                             }
                             left = FocusRequester.Cancel
                             right = FocusRequester.Cancel
@@ -413,6 +442,7 @@ private fun ControlModuleRow(
 private fun ControlDetailPane(
     control: ControlModule,
     fanContent: @Composable () -> Unit,
+    fanAction: @Composable () -> Unit,
     emptyDetailFocusRequester: FocusRequester,
     onFocused: () -> Unit,
     modifier: Modifier = Modifier,
@@ -427,40 +457,56 @@ private fun ControlDetailPane(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         FocusScrollMargin {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(30.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (onBack != null) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.control_back),
-                            )
+            Box(Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            start = 30.dp,
+                            top = 30.dp,
+                            end = 30.dp,
+                            bottom = if (control == ControlModule.FAN) 112.dp else 30.dp,
+                        ),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (onBack != null) {
+                            IconButton(onClick = onBack) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = stringResource(R.string.control_back),
+                                )
+                            }
+                            Spacer(Modifier.size(4.dp))
                         }
-                        Spacer(Modifier.size(4.dp))
+                        PageTitle(stringResource(control.label))
                     }
-                    PageTitle(stringResource(control.label))
+                    if (control == ControlModule.FAN) {
+                        Spacer(Modifier.size(18.dp))
+                        fanContent()
+                    } else {
+                        Spacer(
+                            Modifier
+                                .size(1.dp)
+                                .focusRequester(emptyDetailFocusRequester)
+                                .focusProperties {
+                                    up = FocusRequester.Cancel
+                                    down = FocusRequester.Cancel
+                                    left = FocusRequester.Cancel
+                                    right = FocusRequester.Cancel
+                                }
+                                .focusable()
+                        )
+                    }
                 }
                 if (control == ControlModule.FAN) {
-                    Spacer(Modifier.size(18.dp))
-                    fanContent()
-                } else {
-                    Spacer(
-                        Modifier
-                            .size(1.dp)
-                            .focusRequester(emptyDetailFocusRequester)
-                            .focusProperties {
-                                up = FocusRequester.Cancel
-                                down = FocusRequester.Cancel
-                                left = FocusRequester.Cancel
-                                right = FocusRequester.Cancel
-                            }
-                            .focusable()
-                    )
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(30.dp),
+                    ) {
+                        fanAction()
+                    }
                 }
             }
         }

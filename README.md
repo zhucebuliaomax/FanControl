@@ -1,12 +1,12 @@
-# ![Icon](./assets/icon.svg) RetroFanControl
+# ![Icon](./assets/icon.svg) RetroControl
 
-RetroFanControl is an app for the **rooted** Retroid Pocket 6 that gives you full control over the cooling fan.
+RetroControl is an app for the **rooted** Retroid Pocket 6 that gives you full control over the cooling fan.
 
 **Note:** Although it should work on other similar devices, it has only been tested on the RP6 running LineageOS 23.
 
 ### What can it do?
 
-RetroFanControl comes with three default fan profiles: Quiet, Normal, and Performance. Every profile can be fully customized, saved, or deleted, and you can create as many custom fan curves as you like. 
+RetroControl comes with three default fan profiles: Quiet, Normal, and Performance. Every profile can be fully customized, saved, or deleted, and you can create as many custom fan curves as you like.
 
 ![Fan profiles](./assets/fan%20profiles.png)
 

@@ -4,6 +4,13 @@
     <string name="fanfeature_curve">ファンカーブ</string>
     <string name="fanfeature_off">ファン制御はオフです</string>
     <string name="fanfeature_edit_curve">ファンカーブを編集</string>
+    <string name="fanfeature_off_title">オフ</string>
+    <string name="fanfeature_add_curve">カーブを追加</string>
+    <string name="fanfeature_control_points">制御ポイント %1$d 個</string>
+    <string name="fanfeature_delete_curve">カーブを削除</string>
+    <string name="fanfeature_delete_curve_confirmation">%1$s を削除しますか？この操作は元に戻せません。</string>
+    <string name="fanfeature_delete">削除</string>
+    <string name="fanfeature_cancel">キャンセル</string>
     <plurals name="fanfeature_curve_points">
         <item quantity="other">%1$s • 制御ポイント %2$d 個</item>
     </plurals>

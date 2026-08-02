@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.hardware
+package com.mmax.retrocontrol.hardware
 
 /**
  * Classifies the semantic names exported by each thermal zone's `type` file.

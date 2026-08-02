@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Fan Control</string>
+    <string name="app_name">RetroControl</string>
     <string name="settings_summary">温度連動のファンカーブとテレメトリー</string>
 
     <string name="notification_channel_name">ファン制御</string>
@@ -91,6 +91,6 @@
     <string name="delete">削除</string>
 
     <string name="github">GitHub</string>
-    <string name="github_url">https://github.com/zhucebuliaomax/RetroFanControl</string>
+    <string name="github_url">https://github.com/zhucebuliaomax/RetroControl</string>
     <string name="open_github">GitHub リポジトリを開く</string>
 </resources>

@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.tile
+package com.mmax.retrocontrol.tile
 
 import android.Manifest
 import android.content.ComponentName
@@ -38,14 +38,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.mmax.fancontrol.MainActivity
-import com.mmax.fancontrol.R
-import com.mmax.fancontrol.RootAccessManager
-import com.mmax.fancontrol.data.FanCurvePreferences
-import com.mmax.fancontrol.data.Prefs
-import com.mmax.fancontrol.data.displayName
-import com.mmax.fancontrol.service.SystemControlService
-import com.mmax.fancontrol.theme.FanControlTheme
+import com.mmax.retrocontrol.MainActivity
+import com.mmax.retrocontrol.R
+import com.mmax.retrocontrol.RootAccessManager
+import com.mmax.retrocontrol.data.FanCurvePreferences
+import com.mmax.retrocontrol.data.Prefs
+import com.mmax.retrocontrol.data.displayName
+import com.mmax.retrocontrol.service.SystemControlService
+import com.mmax.retrocontrol.theme.FanControlTheme
 import androidx.core.content.ContextCompat
 
 /** Routes Quick Settings long presses and renders the fan chooser as a real dialog window. */

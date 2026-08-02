@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Fan Control</string>
+    <string name="app_name">RetroControl</string>
     <string name="settings_summary">Temperature-based fan curves and telemetry</string>
 
     <string name="nav_telemetry">Telemetry</string>
@@ -8,8 +8,10 @@
     <string name="nav_apps">Apps</string>
     <string name="nav_access">Access</string>
     <string name="control_title">Control</string>
+    <string name="control_preset">Preset</string>
     <string name="control_fan">Fan profiles</string>
     <string name="control_joystick">Joysticks</string>
+    <string name="control_button_layout">Button layout</string>
     <string name="control_core">Performance profiles</string>
     <string name="control_back">Back to control modules</string>
 
@@ -102,6 +104,6 @@
     <string name="delete">Delete</string>
 
     <string name="github">GitHub</string>
-    <string name="github_url">https://github.com/zhucebuliaomax/RetroFanControl</string>
+    <string name="github_url">https://github.com/zhucebuliaomax/RetroControl</string>
     <string name="open_github">Open GitHub repository</string>
 </resources>

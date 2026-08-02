@@ -2,7 +2,7 @@
 
 ## Purpose
 
-RetroFanControl is a fan-control application for rooted Android handhelds. It reads CPU, GPU, memory, and battery temperatures from sysfs, calculates a target speed from the fan curve selected by the user, and writes the resulting output through a `pwm-fan` PWM node or thermal cooling device.
+RetroControl is a fan-control application for rooted Android handhelds. It reads CPU, GPU, memory, and battery temperatures from sysfs, calculates a target speed from the fan curve selected by the user, and writes the resulting output through a `pwm-fan` PWM node or thermal cooling device.
 
 The application does not disable kernel thermal control, change CPU or GPU limits, or modify thermal-zone modes. Hardware writes are isolated in the fan-control layer so that they remain easy to review and adapt.
 

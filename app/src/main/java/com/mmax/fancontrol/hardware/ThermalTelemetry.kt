@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.hardware
+package com.mmax.retrocontrol.hardware
 
 import java.io.File
 

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.mmax.fancontrol.designsystem"
+    namespace = "com.mmax.retrocontrol.designsystem"
     compileSdk = 36
 
     defaultConfig {

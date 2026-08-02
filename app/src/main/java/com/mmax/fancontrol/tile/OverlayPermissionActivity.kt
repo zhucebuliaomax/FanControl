@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.tile
+package com.mmax.retrocontrol.tile
 
 import android.content.Context
 import android.content.Intent
@@ -7,8 +7,8 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
-import com.mmax.fancontrol.data.Prefs
-import com.mmax.fancontrol.service.SystemControlService
+import com.mmax.retrocontrol.data.Prefs
+import com.mmax.retrocontrol.service.SystemControlService
 
 /**
  * Visible launch trampoline for overlay permission. TileService cannot safely

@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.feature.authorization
+package com.mmax.retrocontrol.feature.authorization
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -10,10 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.res.stringResource
-import com.mmax.fancontrol.designsystem.SettingsPreferenceRow
-import com.mmax.fancontrol.designsystem.SettingsSectionTitle
-import com.mmax.fancontrol.designsystem.SettingsSegmentGroup
-import com.mmax.fancontrol.designsystem.SettingsTokens
+import com.mmax.retrocontrol.designsystem.SettingsPreferenceRow
+import com.mmax.retrocontrol.designsystem.SettingsSectionTitle
+import com.mmax.retrocontrol.designsystem.SettingsSegmentGroup
+import com.mmax.retrocontrol.designsystem.SettingsTokens
 
 data class AuthorizationUiState(
     val autoStartEnabled: Boolean,

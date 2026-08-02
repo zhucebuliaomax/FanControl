@@ -30,7 +30,7 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-rootProject.name = "Fan Control"
+rootProject.name = "RetroControl"
 include(":app")
 include(":core:designsystem")
 include(":feature:authorization")

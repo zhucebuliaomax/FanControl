@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 
-package com.mmax.fancontrol.ui
+package com.mmax.retrocontrol.ui
 
 import android.app.Activity
 import android.app.NotificationManager
@@ -47,8 +47,6 @@ import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.FileOpen
-import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SaveAlt
@@ -74,6 +72,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -106,28 +105,30 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.mmax.fancontrol.R
-import com.mmax.fancontrol.BuildConfig
-import com.mmax.fancontrol.RootAccessManager
-import com.mmax.fancontrol.data.FanCurveJson
-import com.mmax.fancontrol.data.FanCurvePoint
-import com.mmax.fancontrol.data.displayName
-import com.mmax.fancontrol.designsystem.FocusScrollMargin
-import com.mmax.fancontrol.designsystem.bringIntoViewOnFocus
-import com.mmax.fancontrol.feature.authorization.AuthorizationManagementSection
-import com.mmax.fancontrol.feature.authorization.AuthorizationUiState
-import com.mmax.fancontrol.feature.fan.FanProfileSectionState
-import com.mmax.fancontrol.feature.fan.FanProfilesSection
-import com.mmax.fancontrol.feature.fan.FanTelemetrySection
-import com.mmax.fancontrol.feature.fan.FanTelemetrySectionState
-import com.mmax.fancontrol.feature.fan.TemperatureTileUiState
-import com.mmax.fancontrol.hardware.TemperatureSummary
-import com.mmax.fancontrol.hardware.ThermalKind
-import com.mmax.fancontrol.hardware.ThermalReading
-import com.mmax.fancontrol.service.SystemControlService
-import com.mmax.fancontrol.tile.OverlayPermissionActivity
-import com.mmax.fancontrol.util.formatFanPercent
-import com.mmax.fancontrol.util.formatTemperature
+import com.mmax.retrocontrol.R
+import com.mmax.retrocontrol.BuildConfig
+import com.mmax.retrocontrol.RootAccessManager
+import com.mmax.retrocontrol.data.FanCurveJson
+import com.mmax.retrocontrol.data.FanCurvePoint
+import com.mmax.retrocontrol.data.displayName
+import com.mmax.retrocontrol.designsystem.FocusScrollMargin
+import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
+import com.mmax.retrocontrol.feature.authorization.AuthorizationManagementSection
+import com.mmax.retrocontrol.feature.authorization.AuthorizationUiState
+import com.mmax.retrocontrol.feature.fan.FanProfilesAddCurveButton
+import com.mmax.retrocontrol.feature.fan.FanProfileItemUiState
+import com.mmax.retrocontrol.feature.fan.FanProfileSectionState
+import com.mmax.retrocontrol.feature.fan.FanProfilesSection
+import com.mmax.retrocontrol.feature.fan.FanTelemetrySection
+import com.mmax.retrocontrol.feature.fan.FanTelemetrySectionState
+import com.mmax.retrocontrol.feature.fan.TemperatureTileUiState
+import com.mmax.retrocontrol.hardware.TemperatureSummary
+import com.mmax.retrocontrol.hardware.ThermalKind
+import com.mmax.retrocontrol.hardware.ThermalReading
+import com.mmax.retrocontrol.service.SystemControlService
+import com.mmax.retrocontrol.tile.OverlayPermissionActivity
+import com.mmax.retrocontrol.util.formatFanPercent
+import com.mmax.retrocontrol.util.formatTemperature
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -148,8 +149,8 @@ fun DashboardScreen(
     val hasRoot by RootAccessManager.hasRoot.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var showModeDialog by remember { mutableStateOf(false) }
     var editingProfileId by remember { mutableStateOf<String?>(null) }
+    var restoreFanProfileFocus by remember { mutableStateOf(false) }
     var detailKind by remember { mutableStateOf<ThermalKind?>(null) }
     var selectedDestination by rememberSaveable {
         mutableStateOf(DashboardDestination.TELEMETRY)
@@ -165,8 +166,11 @@ fun DashboardScreen(
     var overlayPermissionGranted by remember {
         mutableStateOf(Settings.canDrawOverlays(context))
     }
-    val curveFocusRequester = remember { FocusRequester() }
-    val editCurveFocusRequester = remember { FocusRequester() }
+    val fanProfileIds = state.fanConfig.catalog.profiles.map { it.id }
+    val fanProfileFocusRequesters = remember(fanProfileIds) {
+        List(fanProfileIds.size + 1) { FocusRequester() }
+    }
+    val addCurveFocusRequester = remember { FocusRequester() }
     val overlayFocusRequester = remember { FocusRequester() }
     val telemetryFocusRequester = remember { FocusRequester() }
     val authorizationFocusRequesters = remember { List(5) { FocusRequester() } }
@@ -191,10 +195,15 @@ fun DashboardScreen(
     }
 
     val thermal = state.telemetry.thermal
-    val activeProfile = state.fanConfig.activeProfile
     val unavailable = stringResource(R.string.not_available)
 
-    LaunchedEffect(selectedDestination, selectedControl, navigationLayer) {
+    LaunchedEffect(
+        selectedDestination,
+        selectedControl,
+        navigationLayer,
+        fanProfileIds,
+        state.fanConfig.activeProfileId,
+    ) {
         when (navigationLayer) {
             DashboardNavigationLayer.TOP_LEVEL -> {
                 navigationFocusRequesters[selectedDestination.ordinal].requestFocus()
@@ -212,11 +221,39 @@ fun DashboardScreen(
                 }
             }
             DashboardNavigationLayer.DETAIL -> when (selectedControl) {
-                ControlModule.FAN -> curveFocusRequester.requestFocus()
+                ControlModule.FAN -> {
+                    val selectedIndex = fanProfileIds
+                        .indexOf(state.fanConfig.activeProfileId)
+                        .takeIf { it >= 0 }
+                        ?.plus(1)
+                        ?: 0
+                    fanProfileFocusRequesters[selectedIndex].requestFocus()
+                }
+                ControlModule.PRESET,
                 ControlModule.JOYSTICK,
+                ControlModule.BUTTON_LAYOUT,
                 ControlModule.CORE -> emptyDetailFocusRequester.requestFocus()
                 null -> navigationLayer = DashboardNavigationLayer.CONTENT
             }
+        }
+    }
+
+    LaunchedEffect(
+        editingProfileId,
+        restoreFanProfileFocus,
+        fanProfileIds,
+        state.fanConfig.activeProfileId,
+    ) {
+        if (editingProfileId == null && restoreFanProfileFocus) {
+            navigationLayer = DashboardNavigationLayer.DETAIL
+            withFrameNanos { }
+            val selectedIndex = fanProfileIds
+                .indexOf(state.fanConfig.activeProfileId)
+                .takeIf { it >= 0 }
+                ?.plus(1)
+                ?: 0
+            fanProfileFocusRequesters[selectedIndex].requestFocus()
+            restoreFanProfileFocus = false
         }
     }
 
@@ -333,26 +370,67 @@ fun DashboardScreen(
         fanContent = {
             FanProfilesSection(
                 state = FanProfileSectionState(
-                    enabled = activeProfile != null,
-                    activeCurveName = activeProfile?.displayName(context).orEmpty(),
-                    controlPointCount = activeProfile?.points?.size ?: 0,
+                    activeProfileId = state.fanConfig.activeProfileId,
+                    profiles = state.fanConfig.catalog.profiles.map { profile ->
+                        FanProfileItemUiState(
+                            id = profile.id,
+                            name = profile.displayName(context),
+                            controlPointCount = profile.points.size,
+                        )
+                    },
                 ),
-                onSelectCurve = { showModeDialog = true },
-                onEditCurve = { editingProfileId = activeProfile?.id },
+                onOffSelected = {
+                    vm.selectFanProfile(null)
+                    onFanCurveSelected(false)
+                },
+                onProfileSelected = { profileId ->
+                    vm.selectFanProfile(profileId)
+                    onFanCurveSelected(true)
+                    editingProfileId = profileId
+                },
+                onDeleteProfile = vm::deleteFanCurve,
                 showTitle = false,
-                selectCurveModifier = Modifier
-                    .focusRequester(curveFocusRequester)
+                offModifier = Modifier
+                    .focusRequester(fanProfileFocusRequesters[0])
                     .focusProperties {
                         up = FocusRequester.Cancel
-                        if (activeProfile != null) down = editCurveFocusRequester
-                        else down = FocusRequester.Cancel
+                        down = if (fanProfileIds.isEmpty()) {
+                            addCurveFocusRequester
+                        } else {
+                            fanProfileFocusRequesters[1]
+                        }
                         left = FocusRequester.Cancel
                         right = FocusRequester.Cancel
                     },
-                editCurveModifier = Modifier
-                    .focusRequester(editCurveFocusRequester)
+                profileModifier = { index ->
+                    val focusIndex = index + 1
+                    Modifier
+                        .focusRequester(fanProfileFocusRequesters[focusIndex])
+                        .focusProperties {
+                            up = fanProfileFocusRequesters[focusIndex - 1]
+                            down = if (index == fanProfileIds.lastIndex) {
+                                addCurveFocusRequester
+                            } else {
+                                fanProfileFocusRequesters[focusIndex + 1]
+                            }
+                            left = FocusRequester.Cancel
+                            right = FocusRequester.Cancel
+                        }
+                },
+            )
+        },
+        fanAction = {
+            FanProfilesAddCurveButton(
+                onClick = {
+                    editingProfileId = vm.addFanCurve(
+                        context.getString(R.string.new_fan_curve)
+                    )
+                    onFanCurveSelected(true)
+                },
+                modifier = Modifier
+                    .focusRequester(addCurveFocusRequester)
                     .focusProperties {
-                        up = curveFocusRequester
+                        up = fanProfileFocusRequesters.last()
                         down = FocusRequester.Cancel
                         left = FocusRequester.Cancel
                         right = FocusRequester.Cancel
@@ -427,28 +505,6 @@ fun DashboardScreen(
         },
     )
 
-    if (showModeDialog) {
-        FanProfileDialog(
-            choices = state.fanConfig.catalog.profiles.map {
-                FanCurveChoice(id = it.id, name = it.displayName(context))
-            },
-            selectedId = state.fanConfig.activeProfileId,
-            onSelected = { profileId ->
-                vm.selectFanProfile(profileId)
-                onFanCurveSelected(profileId != null)
-                showModeDialog = false
-            },
-            onAdd = {
-                editingProfileId = vm.addFanCurve(
-                    context.getString(R.string.new_fan_curve)
-                )
-                onFanCurveSelected(true)
-                showModeDialog = false
-            },
-            onDismiss = { showModeDialog = false },
-        )
-    }
-
     editingProfileId?.let { profileId ->
         val profile = state.fanConfig.catalog.profile(profileId) ?: return@let
         FanCurveEditorDialog(
@@ -463,9 +519,13 @@ fun DashboardScreen(
             onRename = { vm.renameFanCurve(profile.id, it) },
             onDelete = {
                 vm.deleteFanCurve(profile.id)
+                restoreFanProfileFocus = true
                 editingProfileId = null
             },
-            onDismiss = { editingProfileId = null },
+            onDismiss = {
+                restoreFanProfileFocus = true
+                editingProfileId = null
+            },
         )
     }
 
@@ -561,182 +621,6 @@ private fun DetailRow(label: String, value: String) {
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-        )
-    }
-}
-
-@Composable
-private fun FanProfileDialog(
-    choices: List<FanCurveChoice>,
-    selectedId: String?,
-    onSelected: (String?) -> Unit,
-    onAdd: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val choiceFocusRequesters = remember(choices.map { it.id }) {
-        List(choices.size + 1) { FocusRequester() }
-    }
-    val addFocusRequester = remember { FocusRequester() }
-    val cancelFocusRequester = remember { FocusRequester() }
-    val selectedIndex = choices.indexOfFirst { it.id == selectedId }
-        .takeIf { it >= 0 }
-        ?.plus(1)
-        ?: 0
-
-    LaunchedEffect(selectedIndex) {
-        choiceFocusRequesters[selectedIndex].requestFocus()
-    }
-
-    FocusScrollMargin {
-        Dialog(onDismissRequest = onDismiss) {
-            Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ) {
-                Column(
-                Modifier
-                    .width(310.dp)
-                    .heightIn(max = 560.dp)
-                    .padding(top = 18.dp, bottom = 8.dp)
-                ) {
-                Text(
-                    text = stringResource(R.string.select_fan_curve),
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(Modifier.height(8.dp))
-                Column(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    FanProfileRow(
-                        name = stringResource(R.string.fan_mode_off),
-                        selected = selectedId == null,
-                        onClick = { onSelected(null) },
-                        modifier = Modifier
-                            .focusRequester(choiceFocusRequesters[0])
-                            .focusProperties {
-                                down = if (choices.isEmpty()) {
-                                    addFocusRequester
-                                } else {
-                                    choiceFocusRequesters[1]
-                                }
-                            },
-                    )
-                    choices.forEachIndexed { index, choice ->
-                        val focusIndex = index + 1
-                        FanProfileRow(
-                            name = choice.name,
-                            selected = choice.id == selectedId,
-                            onClick = { onSelected(choice.id) },
-                            modifier = Modifier
-                                .focusRequester(choiceFocusRequesters[focusIndex])
-                                .focusProperties {
-                                    up = choiceFocusRequesters[focusIndex - 1]
-                                    down = if (focusIndex == choices.lastIndex + 1) {
-                                        addFocusRequester
-                                    } else {
-                                        choiceFocusRequesters[focusIndex + 1]
-                                    }
-                                },
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .focusRequester(addFocusRequester)
-                        .focusProperties {
-                            up = choiceFocusRequesters.last()
-                            down = cancelFocusRequester
-                        }
-                        .bringIntoViewOnFocus()
-                        .clickable(onClick = onAdd)
-                        .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(23.dp),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = stringResource(R.string.add_fan_curve),
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                        .focusRequester(cancelFocusRequester)
-                        .focusProperties { up = addFocusRequester }
-                        .bringIntoViewOnFocus()
-                        .clickable(onClick = onDismiss)
-                        .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        text = stringResource(R.string.cancel),
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-                }
-            }
-        }
-    }
-}
-
-private data class FanCurveChoice(
-    val id: String,
-    val name: String,
-)
-
-@Composable
-private fun FanProfileRow(
-    name: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(44.dp)
-            .bringIntoViewOnFocus()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = if (selected) {
-                Icons.Default.RadioButtonChecked
-            } else {
-                Icons.Default.RadioButtonUnchecked
-            },
-            contentDescription = null,
-            tint = if (selected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            modifier = Modifier.size(21.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = name,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -1128,7 +1012,7 @@ private fun AppFooter(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "RetroFanControl v${BuildConfig.VERSION_NAME}",
+            text = "RetroControl v${BuildConfig.VERSION_NAME}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

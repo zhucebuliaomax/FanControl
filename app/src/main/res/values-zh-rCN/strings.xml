@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">风扇控制</string>
+    <string name="app_name">RetroControl</string>
     <string name="settings_summary">基于温度的风扇曲线与实时监控</string>
 
     <string name="nav_telemetry">遥测</string>
@@ -8,8 +8,10 @@
     <string name="nav_apps">应用</string>
     <string name="nav_access">授权</string>
     <string name="control_title">控制</string>
+    <string name="control_preset">预设</string>
     <string name="control_fan">风扇方案</string>
     <string name="control_joystick">摇杆</string>
+    <string name="control_button_layout">按键布局</string>
     <string name="control_core">性能方案</string>
     <string name="control_back">返回控制模块</string>
 
@@ -101,6 +103,6 @@
     <string name="delete">删除</string>
 
     <string name="github">GitHub</string>
-    <string name="github_url">https://github.com/zhucebuliaomax/RetroFanControl</string>
+    <string name="github_url">https://github.com/zhucebuliaomax/RetroControl</string>
     <string name="open_github">打开 GitHub 仓库</string>
 </resources>

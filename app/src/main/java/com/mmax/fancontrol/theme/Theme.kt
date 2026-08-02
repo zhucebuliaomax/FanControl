@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.theme
+package com.mmax.retrocontrol.theme
 
 import android.app.Activity
 import android.os.Build

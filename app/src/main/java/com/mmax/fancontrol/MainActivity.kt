@@ -1,4 +1,4 @@
-package com.mmax.fancontrol
+package com.mmax.retrocontrol
 
 import android.Manifest
 import android.content.Context
@@ -16,10 +16,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
-import com.mmax.fancontrol.data.Prefs
-import com.mmax.fancontrol.service.SystemControlService
-import com.mmax.fancontrol.theme.FanControlTheme
-import com.mmax.fancontrol.ui.DashboardScreen
+import com.mmax.retrocontrol.data.Prefs
+import com.mmax.retrocontrol.service.SystemControlService
+import com.mmax.retrocontrol.theme.FanControlTheme
+import com.mmax.retrocontrol.ui.DashboardScreen
 
 class MainActivity : ComponentActivity() {
     private val notificationPermission = registerForActivityResult(

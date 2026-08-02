@@ -1,4 +1,4 @@
-package com.mmax.fancontrol
+package com.mmax.retrocontrol
 
 import android.app.Application
 import com.topjohnwu.superuser.Shell

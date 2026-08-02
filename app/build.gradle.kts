@@ -13,7 +13,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.mmax.fancontrol"
+    namespace = "com.mmax.retrocontrol"
     compileSdk = 36
 
     signingConfigs {
@@ -28,11 +28,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.mmax.fancontrol"
+        applicationId = "com.mmax.retrocontrol"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.1.0"
+        versionCode = 20002
+        versionName = "2.0.0 beta 2"
     }
 
     buildTypes {

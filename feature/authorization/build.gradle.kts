@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.mmax.fancontrol.feature.authorization"
+    namespace = "com.mmax.retrocontrol.feature.authorization"
     compileSdk = 36
 
     defaultConfig {

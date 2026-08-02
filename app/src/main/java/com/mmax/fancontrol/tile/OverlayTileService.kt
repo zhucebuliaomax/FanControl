@@ -1,4 +1,4 @@
-package com.mmax.fancontrol.tile
+package com.mmax.retrocontrol.tile
 
 import android.annotation.SuppressLint
 import android.content.ComponentName
@@ -10,9 +10,9 @@ import android.graphics.drawable.Icon
 import android.provider.Settings
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import com.mmax.fancontrol.R
-import com.mmax.fancontrol.data.Prefs
-import com.mmax.fancontrol.service.SystemControlService
+import com.mmax.retrocontrol.R
+import com.mmax.retrocontrol.data.Prefs
+import com.mmax.retrocontrol.service.SystemControlService
 
 class OverlayTileService : TileService() {
     override fun onStartListening() {
