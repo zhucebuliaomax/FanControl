@@ -41,7 +41,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Delete
@@ -54,7 +53,6 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -80,6 +78,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -114,6 +115,8 @@ import com.mmax.fancontrol.data.FanCurveJson
 import com.mmax.fancontrol.data.FanCurvePoint
 import com.mmax.fancontrol.data.displayName
 import com.mmax.fancontrol.designsystem.SettingsTokens
+import com.mmax.fancontrol.designsystem.FocusScrollMargin
+import com.mmax.fancontrol.designsystem.bringIntoViewOnFocus
 import com.mmax.fancontrol.feature.authorization.AuthorizationManagementSection
 import com.mmax.fancontrol.feature.authorization.AuthorizationUiState
 import com.mmax.fancontrol.feature.fan.FanProfileSectionState
@@ -142,7 +145,6 @@ fun DashboardScreen(
     val hasRoot by RootAccessManager.hasRoot.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val activity = context as? Activity
     var showModeDialog by remember { mutableStateOf(false) }
     var editingProfileId by remember { mutableStateOf<String?>(null) }
     var detailKind by remember { mutableStateOf<ThermalKind?>(null) }
@@ -152,6 +154,12 @@ fun DashboardScreen(
     var overlayPermissionGranted by remember {
         mutableStateOf(Settings.canDrawOverlays(context))
     }
+    val curveFocusRequester = remember { FocusRequester() }
+    val editCurveFocusRequester = remember { FocusRequester() }
+    val overlayFocusRequester = remember { FocusRequester() }
+    val telemetryFocusRequester = remember { FocusRequester() }
+    val authorizationFocusRequesters = remember { List(5) { FocusRequester() } }
+    val githubFocusRequester = remember { FocusRequester() }
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
@@ -169,6 +177,10 @@ fun DashboardScreen(
     val activeProfile = state.fanConfig.activeProfile
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val unavailable = stringResource(R.string.not_available)
+
+    LaunchedEffect(Unit) {
+        curveFocusRequester.requestFocus()
+    }
 
     fun temperatureUi(summary: TemperatureSummary): TemperatureTileUiState =
         TemperatureTileUiState(
@@ -196,19 +208,6 @@ fun DashboardScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = { activity?.finish() },
-                        modifier = Modifier
-                            .padding(start = 12.dp, end = 8.dp)
-                            .size(40.dp),
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back),
-                        )
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = surface,
                     scrolledContainerColor = surface,
@@ -218,14 +217,15 @@ fun DashboardScreen(
         },
         containerColor = surface,
     ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(padding)
-                .padding(horizontal = SettingsTokens.pageHorizontalPadding)
-                .padding(bottom = SettingsTokens.pageBottomPadding)
-        ) {
+        FocusScrollMargin {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = SettingsTokens.pageHorizontalPadding)
+                    .padding(bottom = SettingsTokens.pageBottomPadding)
+            ) {
             FanProfilesSection(
                 state = FanProfileSectionState(
                     enabled = activeProfile != null,
@@ -234,6 +234,21 @@ fun DashboardScreen(
                 ),
                 onSelectCurve = { showModeDialog = true },
                 onEditCurve = { editingProfileId = activeProfile?.id },
+                selectCurveModifier = Modifier
+                    .focusRequester(curveFocusRequester)
+                    .focusProperties {
+                        down = if (activeProfile != null) {
+                            editCurveFocusRequester
+                        } else {
+                            overlayFocusRequester
+                        }
+                    },
+                editCurveModifier = Modifier
+                    .focusRequester(editCurveFocusRequester)
+                    .focusProperties {
+                        up = curveFocusRequester
+                        down = overlayFocusRequester
+                    },
             )
             Spacer(Modifier.height(SettingsTokens.sectionGap))
             FanTelemetrySection(
@@ -267,6 +282,22 @@ fun DashboardScreen(
                 },
                 onCpuClick = { detailKind = ThermalKind.CPU },
                 onGpuClick = { detailKind = ThermalKind.GPU },
+                overlayModifier = Modifier
+                    .focusRequester(overlayFocusRequester)
+                    .focusProperties {
+                        up = if (activeProfile != null) {
+                            editCurveFocusRequester
+                        } else {
+                            curveFocusRequester
+                        }
+                        down = telemetryFocusRequester
+                    },
+                telemetryPanelModifier = Modifier
+                    .focusRequester(telemetryFocusRequester)
+                    .focusProperties {
+                        up = overlayFocusRequester
+                        down = authorizationFocusRequesters[0]
+                    },
             )
             Spacer(Modifier.height(SettingsTokens.sectionGap))
             AuthorizationManagementSection(
@@ -280,9 +311,44 @@ fun DashboardScreen(
                 onOpenKernelSu = { context.openKernelSu() },
                 onOpenAppInfo = { context.openAppInfo() },
                 onOpenNotificationSettings = { context.openFanNotificationSettings() },
+                autoStartModifier = Modifier
+                    .focusRequester(authorizationFocusRequesters[0])
+                    .focusProperties {
+                        up = telemetryFocusRequester
+                        down = authorizationFocusRequesters[1]
+                    },
+                rootModifier = Modifier
+                    .focusRequester(authorizationFocusRequesters[1])
+                    .focusProperties {
+                        up = authorizationFocusRequesters[0]
+                        down = authorizationFocusRequesters[2]
+                    },
+                kernelSuModifier = Modifier
+                    .focusRequester(authorizationFocusRequesters[2])
+                    .focusProperties {
+                        up = authorizationFocusRequesters[1]
+                        down = authorizationFocusRequesters[3]
+                    },
+                appInfoModifier = Modifier
+                    .focusRequester(authorizationFocusRequesters[3])
+                    .focusProperties {
+                        up = authorizationFocusRequesters[2]
+                        down = authorizationFocusRequesters[4]
+                    },
+                notificationsModifier = Modifier
+                    .focusRequester(authorizationFocusRequesters[4])
+                    .focusProperties {
+                        up = authorizationFocusRequesters[3]
+                        down = githubFocusRequester
+                    },
             )
             Spacer(Modifier.height(48.dp))
-            AppFooter()
+                AppFooter(
+                    linkModifier = Modifier
+                        .focusRequester(githubFocusRequester)
+                        .focusProperties { up = authorizationFocusRequesters[4] },
+                )
+            }
         }
     }
 
@@ -432,17 +498,32 @@ private fun FanProfileDialog(
     onAdd: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
+    val choiceFocusRequesters = remember(choices.map { it.id }) {
+        List(choices.size + 1) { FocusRequester() }
+    }
+    val addFocusRequester = remember { FocusRequester() }
+    val cancelFocusRequester = remember { FocusRequester() }
+    val selectedIndex = choices.indexOfFirst { it.id == selectedId }
+        .takeIf { it >= 0 }
+        ?.plus(1)
+        ?: 0
+
+    LaunchedEffect(selectedIndex) {
+        choiceFocusRequesters[selectedIndex].requestFocus()
+    }
+
+    FocusScrollMargin {
+        Dialog(onDismissRequest = onDismiss) {
+            Surface(
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ) {
-            Column(
+            ) {
+                Column(
                 Modifier
                     .width(310.dp)
                     .heightIn(max = 560.dp)
                     .padding(top = 18.dp, bottom = 8.dp)
-            ) {
+                ) {
                 Text(
                     text = stringResource(R.string.select_fan_curve),
                     modifier = Modifier.padding(horizontal = 20.dp),
@@ -459,12 +540,32 @@ private fun FanProfileDialog(
                         name = stringResource(R.string.fan_mode_off),
                         selected = selectedId == null,
                         onClick = { onSelected(null) },
+                        modifier = Modifier
+                            .focusRequester(choiceFocusRequesters[0])
+                            .focusProperties {
+                                down = if (choices.isEmpty()) {
+                                    addFocusRequester
+                                } else {
+                                    choiceFocusRequesters[1]
+                                }
+                            },
                     )
-                    choices.forEach { choice ->
+                    choices.forEachIndexed { index, choice ->
+                        val focusIndex = index + 1
                         FanProfileRow(
                             name = choice.name,
                             selected = choice.id == selectedId,
                             onClick = { onSelected(choice.id) },
+                            modifier = Modifier
+                                .focusRequester(choiceFocusRequesters[focusIndex])
+                                .focusProperties {
+                                    up = choiceFocusRequesters[focusIndex - 1]
+                                    down = if (focusIndex == choices.lastIndex + 1) {
+                                        addFocusRequester
+                                    } else {
+                                        choiceFocusRequesters[focusIndex + 1]
+                                    }
+                                },
                         )
                     }
                 }
@@ -472,6 +573,12 @@ private fun FanProfileDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
+                        .focusRequester(addFocusRequester)
+                        .focusProperties {
+                            up = choiceFocusRequesters.last()
+                            down = cancelFocusRequester
+                        }
+                        .bringIntoViewOnFocus()
                         .clickable(onClick = onAdd)
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -494,6 +601,9 @@ private fun FanProfileDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(44.dp)
+                        .focusRequester(cancelFocusRequester)
+                        .focusProperties { up = addFocusRequester }
+                        .bringIntoViewOnFocus()
                         .clickable(onClick = onDismiss)
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -504,6 +614,7 @@ private fun FanProfileDialog(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium,
                     )
+                }
                 }
             }
         }
@@ -520,11 +631,13 @@ private fun FanProfileRow(
     name: String,
     selected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(44.dp)
+            .bringIntoViewOnFocus()
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -930,6 +1043,7 @@ private fun Context.openKernelSu() {
 @Composable
 private fun AppFooter(
     modifier: Modifier = Modifier,
+    linkModifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val githubUrl = stringResource(R.string.github_url)
@@ -945,8 +1059,9 @@ private fun AppFooter(
         )
         Spacer(Modifier.height(4.dp))
         Row(
-            modifier = Modifier
+            modifier = linkModifier
                 .clip(RoundedCornerShape(8.dp))
+                .bringIntoViewOnFocus()
                 .clickable {
                     context.startActivity(
                         Intent(Intent.ACTION_VIEW, Uri.parse(githubUrl))

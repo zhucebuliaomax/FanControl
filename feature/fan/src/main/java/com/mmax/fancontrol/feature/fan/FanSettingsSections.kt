@@ -3,6 +3,10 @@
 package com.mmax.fancontrol.feature.fan
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,8 +21,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +34,7 @@ import com.mmax.fancontrol.designsystem.SettingsPreferenceRow
 import com.mmax.fancontrol.designsystem.SettingsSectionTitle
 import com.mmax.fancontrol.designsystem.SettingsSegmentGroup
 import com.mmax.fancontrol.designsystem.SettingsTokens
+import com.mmax.fancontrol.designsystem.bringIntoViewOnFocus
 
 data class FanProfileSectionState(
     val enabled: Boolean,
@@ -59,6 +66,8 @@ fun FanProfilesSection(
     onSelectCurve: () -> Unit,
     onEditCurve: () -> Unit,
     modifier: Modifier = Modifier,
+    selectCurveModifier: Modifier = Modifier,
+    editCurveModifier: Modifier = Modifier,
 ) {
     SettingsSectionTitle(
         text = stringResource(R.string.fanfeature_profiles),
@@ -76,6 +85,7 @@ fun FanProfilesSection(
                 stringResource(R.string.fanfeature_off)
             },
             onClick = onSelectCurve,
+            modifier = selectCurveModifier,
         )
         if (state.enabled) {
             SettingsPreferenceRow(
@@ -89,6 +99,7 @@ fun FanProfilesSection(
                     state.controlPointCount,
                 ),
                 onClick = onEditCurve,
+                modifier = editCurveModifier,
             )
         }
     }
@@ -106,6 +117,8 @@ fun FanTelemetrySection(
     onCpuClick: () -> Unit,
     onGpuClick: () -> Unit,
     modifier: Modifier = Modifier,
+    overlayModifier: Modifier = Modifier,
+    telemetryPanelModifier: Modifier = Modifier,
 ) {
     SettingsSectionTitle(
         text = stringResource(R.string.fanfeature_live_telemetry),
@@ -124,10 +137,12 @@ fun FanTelemetrySection(
                 }
             ),
             onClick = onOverlayClick,
+            modifier = overlayModifier,
             trailingContent = {
                 Switch(
                     checked = state.overlayEnabled && state.overlayPermissionGranted,
                     onCheckedChange = onOverlayEnabledChange,
+                    modifier = Modifier.focusProperties { canFocus = false },
                 )
             },
         )
@@ -135,6 +150,7 @@ fun FanTelemetrySection(
             state = state,
             onCpuClick = onCpuClick,
             onGpuClick = onGpuClick,
+            modifier = telemetryPanelModifier,
         )
     }
 }
@@ -144,23 +160,33 @@ private fun TelemetryPanel(
     state: FanTelemetrySectionState,
     onCpuClick: () -> Unit,
     onGpuClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = ListItemDefaults.segmentedShapes(index = 1, count = 2).shape
+    val interactionSource = remember { MutableInteractionSource() }
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .bringIntoViewOnFocus()
+            .indication(interactionSource, LocalIndication.current)
+            .focusable(interactionSource = interactionSource),
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TemperatureTile(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusProperties { canFocus = false },
                     title = stringResource(R.string.fanfeature_cpu),
                     state = state.cpu,
                     onClick = onCpuClick,
                 )
                 TemperatureTile(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusProperties { canFocus = false },
                     title = stringResource(R.string.fanfeature_gpu),
                     state = state.gpu,
                     onClick = onGpuClick,
