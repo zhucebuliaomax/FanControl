@@ -65,14 +65,17 @@ fun FanProfilesSection(
     state: FanProfileSectionState,
     onSelectCurve: () -> Unit,
     onEditCurve: () -> Unit,
+    showTitle: Boolean = true,
     modifier: Modifier = Modifier,
     selectCurveModifier: Modifier = Modifier,
     editCurveModifier: Modifier = Modifier,
 ) {
-    SettingsSectionTitle(
-        text = stringResource(R.string.fanfeature_profiles),
-        modifier = modifier.padding(bottom = SettingsTokens.sectionTitleBottomPadding),
-    )
+    if (showTitle) {
+        SettingsSectionTitle(
+            text = stringResource(R.string.fanfeature_profiles),
+            modifier = modifier.padding(bottom = SettingsTokens.sectionTitleBottomPadding),
+        )
+    }
     val count = if (state.enabled) 2 else 1
     SettingsSegmentGroup {
         SettingsPreferenceRow(

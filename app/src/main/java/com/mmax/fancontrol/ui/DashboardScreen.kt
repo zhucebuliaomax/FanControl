@@ -12,6 +12,7 @@ import android.os.Build
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -55,17 +56,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -74,6 +72,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,7 +88,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -114,7 +112,6 @@ import com.mmax.fancontrol.RootAccessManager
 import com.mmax.fancontrol.data.FanCurveJson
 import com.mmax.fancontrol.data.FanCurvePoint
 import com.mmax.fancontrol.data.displayName
-import com.mmax.fancontrol.designsystem.SettingsTokens
 import com.mmax.fancontrol.designsystem.FocusScrollMargin
 import com.mmax.fancontrol.designsystem.bringIntoViewOnFocus
 import com.mmax.fancontrol.feature.authorization.AuthorizationManagementSection
@@ -134,6 +131,12 @@ import com.mmax.fancontrol.util.formatTemperature
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
+private enum class DashboardNavigationLayer {
+    TOP_LEVEL,
+    CONTENT,
+    DETAIL,
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -148,6 +151,14 @@ fun DashboardScreen(
     var showModeDialog by remember { mutableStateOf(false) }
     var editingProfileId by remember { mutableStateOf<String?>(null) }
     var detailKind by remember { mutableStateOf<ThermalKind?>(null) }
+    var selectedDestination by rememberSaveable {
+        mutableStateOf(DashboardDestination.TELEMETRY)
+    }
+    var selectedControl by rememberSaveable { mutableStateOf<ControlModule?>(null) }
+    var lastControl by rememberSaveable { mutableStateOf(ControlModule.FAN) }
+    var navigationLayer by rememberSaveable {
+        mutableStateOf(DashboardNavigationLayer.CONTENT)
+    }
     var notificationsEnabled by remember {
         mutableStateOf(context.areFanNotificationsEnabled())
     }
@@ -160,6 +171,13 @@ fun DashboardScreen(
     val telemetryFocusRequester = remember { FocusRequester() }
     val authorizationFocusRequesters = remember { List(5) { FocusRequester() } }
     val githubFocusRequester = remember { FocusRequester() }
+    val navigationFocusRequesters = remember {
+        List(DashboardDestination.entries.size) { FocusRequester() }
+    }
+    val controlFocusRequesters = remember {
+        List(ControlModule.entries.size) { FocusRequester() }
+    }
+    val emptyDetailFocusRequester = remember { FocusRequester() }
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
@@ -173,13 +191,46 @@ fun DashboardScreen(
     }
 
     val thermal = state.telemetry.thermal
-    val surface = MaterialTheme.colorScheme.surfaceContainer
     val activeProfile = state.fanConfig.activeProfile
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val unavailable = stringResource(R.string.not_available)
 
-    LaunchedEffect(Unit) {
-        curveFocusRequester.requestFocus()
+    LaunchedEffect(selectedDestination, selectedControl, navigationLayer) {
+        when (navigationLayer) {
+            DashboardNavigationLayer.TOP_LEVEL -> {
+                navigationFocusRequesters[selectedDestination.ordinal].requestFocus()
+            }
+            DashboardNavigationLayer.CONTENT -> when (selectedDestination) {
+                DashboardDestination.TELEMETRY -> overlayFocusRequester.requestFocus()
+                DashboardDestination.CONTROLS -> {
+                    controlFocusRequesters[lastControl.ordinal].requestFocus()
+                }
+                DashboardDestination.ACCESS -> {
+                    authorizationFocusRequesters.first().requestFocus()
+                }
+                DashboardDestination.APPS -> {
+                    navigationLayer = DashboardNavigationLayer.TOP_LEVEL
+                }
+            }
+            DashboardNavigationLayer.DETAIL -> when (selectedControl) {
+                ControlModule.FAN -> curveFocusRequester.requestFocus()
+                ControlModule.JOYSTICK,
+                ControlModule.CORE -> emptyDetailFocusRequester.requestFocus()
+                null -> navigationLayer = DashboardNavigationLayer.CONTENT
+            }
+        }
+    }
+
+    BackHandler(enabled = navigationLayer != DashboardNavigationLayer.TOP_LEVEL) {
+        when (navigationLayer) {
+            DashboardNavigationLayer.DETAIL -> {
+                selectedControl = null
+                navigationLayer = DashboardNavigationLayer.CONTENT
+            }
+            DashboardNavigationLayer.CONTENT -> {
+                navigationLayer = DashboardNavigationLayer.TOP_LEVEL
+            }
+            DashboardNavigationLayer.TOP_LEVEL -> Unit
+        }
     }
 
     fun temperatureUi(summary: TemperatureSummary): TemperatureTileUiState =
@@ -196,61 +247,40 @@ fun DashboardScreen(
             },
         )
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            LargeTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = surface,
-                    scrolledContainerColor = surface,
-                ),
-                scrollBehavior = scrollBehavior,
-            )
+    AdaptiveDashboardScaffold(
+        selectedDestination = selectedDestination,
+        onDestinationSelected = {
+            selectedDestination = it
+            selectedControl = null
+            navigationLayer = if (it == DashboardDestination.APPS) {
+                DashboardNavigationLayer.TOP_LEVEL
+            } else {
+                DashboardNavigationLayer.CONTENT
+            }
         },
-        containerColor = surface,
-    ) { padding ->
-        FocusScrollMargin {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = SettingsTokens.pageHorizontalPadding)
-                    .padding(bottom = SettingsTokens.pageBottomPadding)
-            ) {
-            FanProfilesSection(
-                state = FanProfileSectionState(
-                    enabled = activeProfile != null,
-                    activeCurveName = activeProfile?.displayName(context).orEmpty(),
-                    controlPointCount = activeProfile?.points?.size ?: 0,
-                ),
-                onSelectCurve = { showModeDialog = true },
-                onEditCurve = { editingProfileId = activeProfile?.id },
-                selectCurveModifier = Modifier
-                    .focusRequester(curveFocusRequester)
-                    .focusProperties {
-                        down = if (activeProfile != null) {
-                            editCurveFocusRequester
-                        } else {
-                            overlayFocusRequester
-                        }
-                    },
-                editCurveModifier = Modifier
-                    .focusRequester(editCurveFocusRequester)
-                    .focusProperties {
-                        up = curveFocusRequester
-                        down = overlayFocusRequester
-                    },
-            )
-            Spacer(Modifier.height(SettingsTokens.sectionGap))
+        selectedControl = selectedControl,
+        onControlSelected = { control ->
+            selectedControl = control
+            navigationLayer = if (control == null) {
+                DashboardNavigationLayer.CONTENT
+            } else {
+                lastControl = control
+                DashboardNavigationLayer.DETAIL
+            }
+        },
+        navigationFocusRequesters = navigationFocusRequesters,
+        controlFocusRequesters = controlFocusRequesters,
+        emptyDetailFocusRequester = emptyDetailFocusRequester,
+        onNavigationFocused = {
+            navigationLayer = DashboardNavigationLayer.TOP_LEVEL
+        },
+        onContentFocused = {
+            navigationLayer = DashboardNavigationLayer.CONTENT
+        },
+        onDetailFocused = {
+            navigationLayer = DashboardNavigationLayer.DETAIL
+        },
+        telemetryContent = {
             FanTelemetrySection(
                 state = FanTelemetrySectionState(
                     overlayEnabled = state.overlayEnabled,
@@ -285,21 +315,51 @@ fun DashboardScreen(
                 overlayModifier = Modifier
                     .focusRequester(overlayFocusRequester)
                     .focusProperties {
-                        up = if (activeProfile != null) {
-                            editCurveFocusRequester
-                        } else {
-                            curveFocusRequester
-                        }
+                        up = FocusRequester.Cancel
                         down = telemetryFocusRequester
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
                     },
                 telemetryPanelModifier = Modifier
                     .focusRequester(telemetryFocusRequester)
                     .focusProperties {
                         up = overlayFocusRequester
-                        down = authorizationFocusRequesters[0]
+                        down = FocusRequester.Cancel
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
                     },
             )
-            Spacer(Modifier.height(SettingsTokens.sectionGap))
+        },
+        fanContent = {
+            FanProfilesSection(
+                state = FanProfileSectionState(
+                    enabled = activeProfile != null,
+                    activeCurveName = activeProfile?.displayName(context).orEmpty(),
+                    controlPointCount = activeProfile?.points?.size ?: 0,
+                ),
+                onSelectCurve = { showModeDialog = true },
+                onEditCurve = { editingProfileId = activeProfile?.id },
+                showTitle = false,
+                selectCurveModifier = Modifier
+                    .focusRequester(curveFocusRequester)
+                    .focusProperties {
+                        up = FocusRequester.Cancel
+                        if (activeProfile != null) down = editCurveFocusRequester
+                        else down = FocusRequester.Cancel
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
+                    },
+                editCurveModifier = Modifier
+                    .focusRequester(editCurveFocusRequester)
+                    .focusProperties {
+                        up = curveFocusRequester
+                        down = FocusRequester.Cancel
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
+                    },
+            )
+        },
+        accessContent = {
             AuthorizationManagementSection(
                 state = AuthorizationUiState(
                     autoStartEnabled = state.autoStartEnabled,
@@ -314,43 +374,58 @@ fun DashboardScreen(
                 autoStartModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[0])
                     .focusProperties {
-                        up = telemetryFocusRequester
+                        up = FocusRequester.Cancel
                         down = authorizationFocusRequesters[1]
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
                     },
                 rootModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[1])
                     .focusProperties {
                         up = authorizationFocusRequesters[0]
                         down = authorizationFocusRequesters[2]
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
                     },
                 kernelSuModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[2])
                     .focusProperties {
                         up = authorizationFocusRequesters[1]
                         down = authorizationFocusRequesters[3]
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
                     },
                 appInfoModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[3])
                     .focusProperties {
                         up = authorizationFocusRequesters[2]
                         down = authorizationFocusRequesters[4]
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
                     },
                 notificationsModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[4])
                     .focusProperties {
                         up = authorizationFocusRequesters[3]
                         down = githubFocusRequester
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
                     },
             )
-            Spacer(Modifier.height(48.dp))
-                AppFooter(
-                    linkModifier = Modifier
-                        .focusRequester(githubFocusRequester)
-                        .focusProperties { up = authorizationFocusRequesters[4] },
-                )
-            }
-        }
-    }
+        },
+        footer = {
+            AppFooter(
+                linkModifier = Modifier
+                    .focusRequester(githubFocusRequester)
+                    .focusProperties {
+                        up = authorizationFocusRequesters[4]
+                        down = FocusRequester.Cancel
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
+                    },
+            )
+        },
+    )
 
     if (showModeDialog) {
         FanProfileDialog(
