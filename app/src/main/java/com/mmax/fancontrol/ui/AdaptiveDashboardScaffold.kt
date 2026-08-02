@@ -1,14 +1,24 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class,
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+)
 
 package com.mmax.retrocontrol.ui
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,51 +27,78 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItem
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.lerp as lerpTextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp as lerpDp
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.designsystem.FocusScrollMargin
+import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
 
 internal enum class DashboardDestination(
-    @StringRes val label: Int,
-    @DrawableRes val outlinedIcon: Int,
-    @DrawableRes val filledIcon: Int,
+    @param:StringRes val label: Int,
+    @param:DrawableRes val outlinedIcon: Int,
+    @param:DrawableRes val filledIcon: Int,
 ) {
     TELEMETRY(
         R.string.nav_telemetry,
@@ -85,7 +122,7 @@ internal enum class DashboardDestination(
     ),
 }
 
-internal enum class ControlModule(@StringRes val label: Int) {
+internal enum class ControlModule(@param:StringRes val label: Int) {
     PRESET(R.string.control_preset),
     FAN(R.string.control_fan),
     JOYSTICK(R.string.control_joystick),
@@ -93,9 +130,8 @@ internal enum class ControlModule(@StringRes val label: Int) {
     CORE(R.string.control_core),
 }
 
-internal enum class AppModule(@StringRes val label: Int) {
-    DEFAULT_PRESET(R.string.app_default_preset),
-}
+internal const val DEFAULT_PRESET_APP_KEY = "@default-preset"
+private val emphasizedEasing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
 
 /**
  * Landscape-first Material layout. Window size classes keep the list/detail
@@ -107,21 +143,20 @@ internal fun AdaptiveDashboardScaffold(
     onDestinationSelected: (DashboardDestination) -> Unit,
     selectedControl: ControlModule?,
     onControlSelected: (ControlModule?) -> Unit,
-    selectedApp: AppModule?,
-    onAppSelected: (AppModule?) -> Unit,
+    selectedApp: String?,
+    onAppSelected: (String?) -> Unit,
+    installedApps: List<InstalledAppInfo>,
     navigationFocusRequesters: List<FocusRequester>,
     controlFocusRequesters: List<FocusRequester>,
     appFocusRequester: FocusRequester,
     emptyDetailFocusRequester: FocusRequester,
-    onNavigationFocused: () -> Unit,
-    onContentFocused: () -> Unit,
-    onDetailFocused: () -> Unit,
     telemetryContent: @Composable () -> Unit,
     fanContent: @Composable () -> Unit,
     fanAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
     globalPresetContent: @Composable () -> Unit,
+    appProfileContent: @Composable (String) -> Unit,
     accessContent: @Composable () -> Unit,
     footer: @Composable () -> Unit,
 ) {
@@ -159,34 +194,29 @@ internal fun AdaptiveDashboardScaffold(
                     },
                     modifier = Modifier
                         .focusRequester(navigationFocusRequesters[index])
-                        .onFocusChanged { if (it.isFocused) onNavigationFocused() }
                         .focusProperties {
                             if (isNavigationBar) {
                                 left = if (index == 0) {
-                                    FocusRequester.Cancel
+                                    FocusRequester.Default
                                 } else {
                                     navigationFocusRequesters[index - 1]
                                 }
                                 right = if (index == DashboardDestination.entries.lastIndex) {
-                                    FocusRequester.Cancel
+                                    FocusRequester.Default
                                 } else {
                                     navigationFocusRequesters[index + 1]
                                 }
-                                up = FocusRequester.Cancel
-                                down = FocusRequester.Cancel
                             } else {
                                 up = if (index == 0) {
-                                    FocusRequester.Cancel
+                                    FocusRequester.Default
                                 } else {
                                     navigationFocusRequesters[index - 1]
                                 }
                                 down = if (index == DashboardDestination.entries.lastIndex) {
-                                    FocusRequester.Cancel
+                                    FocusRequester.Default
                                 } else {
                                     navigationFocusRequesters[index + 1]
                                 }
-                                left = FocusRequester.Cancel
-                                right = FocusRequester.Cancel
                             }
                         },
                     navigationSuiteType = navigationSuiteType,
@@ -200,12 +230,11 @@ internal fun AdaptiveDashboardScaffold(
         Box(
             Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
         ) {
             when (selectedDestination) {
                 DashboardDestination.TELEMETRY -> DashboardPage(
                     title = stringResource(R.string.nav_telemetry),
-                    onFocused = onContentFocused,
                     content = telemetryContent,
                 )
 
@@ -215,8 +244,6 @@ internal fun AdaptiveDashboardScaffold(
                     showTwoPanes = showTwoControlPanes,
                     controlFocusRequesters = controlFocusRequesters,
                     emptyDetailFocusRequester = emptyDetailFocusRequester,
-                    onContentFocused = onContentFocused,
-                    onDetailFocused = onDetailFocused,
                     fanContent = fanContent,
                     fanAction = fanAction,
                     presetContent = presetContent,
@@ -226,16 +253,15 @@ internal fun AdaptiveDashboardScaffold(
                 DashboardDestination.APPS -> AppsPage(
                     selectedApp = selectedApp,
                     onAppSelected = onAppSelected,
+                    installedApps = installedApps,
                     showTwoPanes = showTwoControlPanes,
                     appFocusRequester = appFocusRequester,
-                    onContentFocused = onContentFocused,
-                    onDetailFocused = onDetailFocused,
                     globalPresetContent = globalPresetContent,
+                    appProfileContent = appProfileContent,
                 )
 
                 DashboardDestination.ACCESS -> DashboardPage(
                     title = stringResource(R.string.nav_access),
-                    onFocused = onContentFocused,
                 ) {
                     accessContent()
                     Spacer(Modifier.size(32.dp))
@@ -249,24 +275,34 @@ internal fun AdaptiveDashboardScaffold(
 @Composable
 private fun DashboardPage(
     title: String,
-    onFocused: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     FocusScrollMargin {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .focusGroup()
-                .onFocusChanged { if (it.hasFocus) onFocused() }
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 30.dp, vertical = 30.dp),
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
         ) {
-            PageTitle(title)
-            Spacer(Modifier.size(18.dp))
-            Box(Modifier.widthIn(max = 720.dp)) {
-                Column { content() }
+            CollapsingTopBar(
+                title = title,
+                scrollBehavior = scrollBehavior,
+                horizontalPadding = 30.dp,
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 30.dp),
+            ) {
+                Spacer(Modifier.size(10.dp))
+                Box(Modifier.widthIn(max = 720.dp)) {
+                    Column { content() }
+                }
+                Spacer(Modifier.size(30.dp))
+                Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
             }
-            Spacer(Modifier.size(30.dp))
         }
     }
 }
@@ -278,32 +314,49 @@ private fun ControlsPage(
     showTwoPanes: Boolean,
     controlFocusRequesters: List<FocusRequester>,
     emptyDetailFocusRequester: FocusRequester,
-    onContentFocused: () -> Unit,
-    onDetailFocused: () -> Unit,
     fanContent: @Composable () -> Unit,
     fanAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
 ) {
+    BackHandler(enabled = !showTwoPanes && selectedControl != null) {
+        onControlSelected(null)
+    }
     if (showTwoPanes) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             ControlListPane(
                 selectedControl = selectedControl,
                 onControlSelected = onControlSelected,
                 focusRequesters = controlFocusRequesters,
-                onFocused = onContentFocused,
-                modifier = Modifier.width(264.dp),
+                modifier = Modifier.width(360.dp),
             )
             AnimatedVisibility(
                 visible = selectedControl != null,
                 modifier = Modifier.weight(1f),
-                enter = expandHorizontally(expandFrom = Alignment.Start),
-                exit = shrinkHorizontally(shrinkTowards = Alignment.Start),
+                enter = expandHorizontally(
+                    animationSpec = tween(
+                        durationMillis = 500,
+                        easing = emphasizedEasing,
+                    ),
+                    expandFrom = Alignment.Start,
+                ) + fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 500,
+                        easing = emphasizedEasing,
+                    ),
+                ),
+                exit = shrinkHorizontally(
+                    animationSpec = tween(
+                        durationMillis = 400,
+                        easing = emphasizedEasing,
+                    ),
+                    shrinkTowards = Alignment.Start,
+                ) + fadeOut(animationSpec = tween(durationMillis = 200)),
             ) {
                 selectedControl?.let { control ->
                     ControlDetailPane(
@@ -313,7 +366,14 @@ private fun ControlsPage(
                         presetContent = presetContent,
                         presetAction = presetAction,
                         emptyDetailFocusRequester = emptyDetailFocusRequester,
-                        onFocused = onDetailFocused,
+                        modifier = Modifier
+                            .windowInsetsPadding(
+                                WindowInsets.statusBars.only(WindowInsetsSides.Top)
+                            )
+                            .windowInsetsPadding(
+                                WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
+                            )
+                            .padding(vertical = 16.dp),
                     )
                 }
             }
@@ -323,10 +383,9 @@ private fun ControlsPage(
             selectedControl = null,
             onControlSelected = onControlSelected,
             focusRequesters = controlFocusRequesters,
-            onFocused = onContentFocused,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
         )
     } else {
         ControlDetailPane(
@@ -336,9 +395,11 @@ private fun ControlsPage(
             presetContent = presetContent,
             presetAction = presetAction,
             emptyDetailFocusRequester = emptyDetailFocusRequester,
-            onFocused = onDetailFocused,
             onBack = { onControlSelected(null) },
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .padding(16.dp),
         )
     }
 }
@@ -348,68 +409,76 @@ private fun ControlListPane(
     selectedControl: ControlModule?,
     onControlSelected: (ControlModule) -> Unit,
     focusRequesters: List<FocusRequester>,
-    onFocused: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .focusGroup()
-            .onFocusChanged { if (it.hasFocus) onFocused() }
-            .padding(horizontal = 8.dp, vertical = 14.dp),
-    ) {
-        PageTitle(
-            title = stringResource(R.string.control_title),
-            modifier = Modifier.padding(horizontal = 8.dp),
-        )
-        Spacer(Modifier.size(16.dp))
-        ControlModuleRow(
-            control = ControlModule.PRESET,
-            index = 0,
-            count = 1,
-            selected = selectedControl == ControlModule.PRESET,
-            modifier = Modifier
-                .focusRequester(focusRequesters[ControlModule.PRESET.ordinal])
-                .focusProperties {
-                    up = FocusRequester.Cancel
-                    down = focusRequesters[ControlModule.FAN.ordinal]
-                    left = FocusRequester.Cancel
-                    right = FocusRequester.Cancel
-                },
-            onClick = { onControlSelected(ControlModule.PRESET) },
-        )
-        Spacer(Modifier.size(12.dp))
-        val standardControls = listOf(
-            ControlModule.FAN,
-            ControlModule.JOYSTICK,
-            ControlModule.BUTTON_LAYOUT,
-            ControlModule.CORE,
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
-            standardControls.forEachIndexed { index, control ->
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    FocusScrollMargin {
+        Column(
+            modifier = modifier
+                .fillMaxHeight()
+                .focusGroup()
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+        ) {
+            CollapsingTopBar(
+                title = stringResource(R.string.control_title),
+                scrollBehavior = scrollBehavior,
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 8.dp),
+            ) {
+                Spacer(Modifier.size(8.dp))
                 ControlModuleRow(
-                    control = control,
-                    index = index,
-                    count = standardControls.size,
-                    selected = control == selectedControl,
+                    control = ControlModule.PRESET,
+                    index = 0,
+                    count = 1,
+                    selected = selectedControl == ControlModule.PRESET,
                     modifier = Modifier
-                        .focusRequester(focusRequesters[control.ordinal])
+                        .focusRequester(focusRequesters[ControlModule.PRESET.ordinal])
                         .focusProperties {
-                            up = if (index == 0) {
-                                focusRequesters[ControlModule.PRESET.ordinal]
-                            } else {
-                                focusRequesters[standardControls[index - 1].ordinal]
-                            }
-                            down = if (index == standardControls.lastIndex) {
-                                FocusRequester.Cancel
-                            } else {
-                                focusRequesters[standardControls[index + 1].ordinal]
-                            }
-                            left = FocusRequester.Cancel
-                            right = FocusRequester.Cancel
+                            up = FocusRequester.Default
+                            down = focusRequesters[ControlModule.FAN.ordinal]
                         },
-                    onClick = { onControlSelected(control) },
+                    onClick = { onControlSelected(ControlModule.PRESET) },
                 )
+                Spacer(Modifier.size(12.dp))
+                val standardControls = listOf(
+                    ControlModule.FAN,
+                    ControlModule.JOYSTICK,
+                    ControlModule.BUTTON_LAYOUT,
+                    ControlModule.CORE,
+                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+                ) {
+                    standardControls.forEachIndexed { index, control ->
+                        ControlModuleRow(
+                            control = control,
+                            index = index,
+                            count = standardControls.size,
+                            selected = control == selectedControl,
+                            modifier = Modifier
+                                .focusRequester(focusRequesters[control.ordinal])
+                                .focusProperties {
+                                    up = if (index == 0) {
+                                        focusRequesters[ControlModule.PRESET.ordinal]
+                                    } else {
+                                        focusRequesters[standardControls[index - 1].ordinal]
+                                    }
+                                    down = if (index == standardControls.lastIndex) {
+                                        FocusRequester.Default
+                                    } else {
+                                        focusRequesters[standardControls[index + 1].ordinal]
+                                    }
+                                },
+                            onClick = { onControlSelected(control) },
+                        )
+                    }
+                }
+                Spacer(Modifier.size(14.dp))
+                Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
             }
         }
     }
@@ -426,7 +495,9 @@ private fun ControlModuleRow(
 ) {
     SegmentedListItem(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .bringIntoViewOnFocus(),
         shapes = ListItemDefaults.segmentedShapes(
             index = index,
             count = count,
@@ -477,15 +548,13 @@ private fun ControlDetailPane(
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
     emptyDetailFocusRequester: FocusRequester,
-    onFocused: () -> Unit,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier
             .fillMaxSize()
-            .focusGroup()
-            .onFocusChanged { if (it.hasFocus) onFocused() },
+            .focusGroup(),
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
@@ -527,12 +596,6 @@ private fun ControlDetailPane(
                             Modifier
                                 .size(1.dp)
                                 .focusRequester(emptyDetailFocusRequester)
-                                .focusProperties {
-                                    up = FocusRequester.Cancel
-                                    down = FocusRequester.Cancel
-                                    left = FocusRequester.Cancel
-                                    right = FocusRequester.Cancel
-                                }
                                 .focusable()
                         )
                     }
@@ -561,39 +624,77 @@ private fun ControlDetailPane(
 
 @Composable
 private fun AppsPage(
-    selectedApp: AppModule?,
-    onAppSelected: (AppModule?) -> Unit,
+    selectedApp: String?,
+    onAppSelected: (String?) -> Unit,
+    installedApps: List<InstalledAppInfo>,
     showTwoPanes: Boolean,
     appFocusRequester: FocusRequester,
-    onContentFocused: () -> Unit,
-    onDetailFocused: () -> Unit,
     globalPresetContent: @Composable () -> Unit,
+    appProfileContent: @Composable (String) -> Unit,
 ) {
+    BackHandler(enabled = !showTwoPanes && selectedApp != null) {
+        onAppSelected(null)
+    }
     if (showTwoPanes) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             AppListPane(
                 selectedApp = selectedApp,
+                installedApps = installedApps,
                 onAppSelected = { onAppSelected(it) },
                 focusRequester = appFocusRequester,
-                onFocused = onContentFocused,
-                modifier = Modifier.width(264.dp),
+                modifier = Modifier.width(360.dp),
             )
             AnimatedVisibility(
                 visible = selectedApp != null,
                 modifier = Modifier.weight(1f),
-                enter = expandHorizontally(expandFrom = Alignment.Start),
-                exit = shrinkHorizontally(shrinkTowards = Alignment.Start),
+                enter = expandHorizontally(
+                    animationSpec = tween(
+                        durationMillis = 500,
+                        easing = emphasizedEasing,
+                    ),
+                    expandFrom = Alignment.Start,
+                ) + fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 500,
+                        easing = emphasizedEasing,
+                    ),
+                ),
+                exit = shrinkHorizontally(
+                    animationSpec = tween(
+                        durationMillis = 400,
+                        easing = emphasizedEasing,
+                    ),
+                    shrinkTowards = Alignment.Start,
+                ) + fadeOut(animationSpec = tween(durationMillis = 200)),
             ) {
-                selectedApp?.let {
+                selectedApp?.let { appKey ->
                     AppDetailPane(
-                        module = it,
-                        onFocused = onDetailFocused,
-                        content = globalPresetContent,
+                        title = if (appKey == DEFAULT_PRESET_APP_KEY) {
+                            stringResource(R.string.app_default_preset)
+                        } else {
+                            installedApps.firstOrNull { it.packageName == appKey }?.label
+                                ?: appKey
+                        },
+                        content = {
+                            if (appKey == DEFAULT_PRESET_APP_KEY) {
+                                globalPresetContent()
+                            } else {
+                                appProfileContent(appKey)
+                            }
+                        },
+                        modifier = Modifier
+                            .windowInsetsPadding(
+                                WindowInsets.statusBars.only(WindowInsetsSides.Top)
+                            )
+                            .windowInsetsPadding(
+                                WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
+                            )
+                            .padding(vertical = 16.dp),
                     )
                 }
             }
@@ -601,81 +702,201 @@ private fun AppsPage(
     } else if (selectedApp == null) {
         AppListPane(
             selectedApp = null,
+            installedApps = installedApps,
             onAppSelected = { onAppSelected(it) },
             focusRequester = appFocusRequester,
-            onFocused = onContentFocused,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
         )
     } else {
         AppDetailPane(
-            module = selectedApp,
-            onFocused = onDetailFocused,
+            title = if (selectedApp == DEFAULT_PRESET_APP_KEY) {
+                stringResource(R.string.app_default_preset)
+            } else {
+                installedApps.firstOrNull { it.packageName == selectedApp }?.label
+                    ?: selectedApp
+            },
             onBack = { onAppSelected(null) },
-            content = globalPresetContent,
-            modifier = Modifier.padding(16.dp),
+            content = {
+                if (selectedApp == DEFAULT_PRESET_APP_KEY) {
+                    globalPresetContent()
+                } else {
+                    appProfileContent(selectedApp)
+                }
+            },
+            modifier = Modifier
+                .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .padding(16.dp),
         )
     }
 }
 
 @Composable
 private fun AppListPane(
-    selectedApp: AppModule?,
-    onAppSelected: (AppModule) -> Unit,
+    selectedApp: String?,
+    installedApps: List<InstalledAppInfo>,
+    onAppSelected: (String) -> Unit,
     focusRequester: FocusRequester,
-    onFocused: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .focusGroup()
-            .onFocusChanged { if (it.hasFocus) onFocused() }
-            .padding(horizontal = 8.dp, vertical = 14.dp),
-    ) {
-        PageTitle(
-            title = stringResource(R.string.nav_apps),
-            modifier = Modifier.padding(horizontal = 8.dp),
-        )
-        Spacer(Modifier.size(16.dp))
-        SegmentedListItem(
-            onClick = { onAppSelected(AppModule.DEFAULT_PRESET) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(focusRequester),
-            shapes = ListItemDefaults.segmentedShapes(
-                index = 0,
-                count = 1,
-                defaultShapes = ListItemDefaults.shapes(
-                    shape = MaterialTheme.shapes.extraLarge,
-                ),
-            ),
-            colors = ListItemDefaults.segmentedColors(
-                containerColor = if (selectedApp == AppModule.DEFAULT_PRESET) {
-                    MaterialTheme.colorScheme.secondaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHighest
+    var query by rememberSaveable { mutableStateOf("") }
+    var searchFieldFocused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val filteredApps = remember(installedApps, query) {
+        val normalized = query.trim()
+        if (normalized.isEmpty()) {
+            installedApps
+        } else {
+            installedApps.filter { app ->
+                app.label.contains(normalized, ignoreCase = true) ||
+                    app.packageName.contains(normalized, ignoreCase = true)
+            }
+        }
+    }
+    BackHandler(enabled = searchFieldFocused) {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+    }
+    FocusScrollMargin {
+        Column(
+            modifier = modifier
+                .fillMaxHeight()
+                .focusGroup()
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+        ) {
+            CollapsingTopBar(
+                title = stringResource(R.string.nav_apps),
+                scrollBehavior = scrollBehavior,
+            )
+            Spacer(Modifier.size(8.dp))
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+                    .onFocusChanged { searchFieldFocused = it.isFocused },
+                singleLine = true,
+                shape = MaterialTheme.shapes.extraLarge,
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
                 },
-            ),
-            trailingContent = {
-                Icon(Icons.Default.ChevronRight, contentDescription = null)
-            },
-            content = {
-                Text(
-                    text = stringResource(AppModule.DEFAULT_PRESET.label),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
+                placeholder = { Text(stringResource(R.string.search_apps)) },
+            )
+            Spacer(Modifier.size(12.dp))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 8.dp),
+            ) {
+                SegmentedListItem(
+                    onClick = { onAppSelected(DEFAULT_PRESET_APP_KEY) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                        .bringIntoViewOnFocus(),
+                    shapes = ListItemDefaults.segmentedShapes(
+                        index = 0,
+                        count = 1,
+                        defaultShapes = ListItemDefaults.shapes(
+                            shape = MaterialTheme.shapes.extraLarge,
+                        ),
+                    ),
+                    colors = ListItemDefaults.segmentedColors(
+                        containerColor = if (selectedApp == DEFAULT_PRESET_APP_KEY) {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHighest
+                        },
+                    ),
+                    trailingContent = {
+                        Icon(Icons.Default.ChevronRight, contentDescription = null)
+                    },
+                    content = {
+                        Text(
+                            text = stringResource(R.string.app_default_preset),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    },
                 )
-            },
-        )
+                Spacer(Modifier.size(12.dp))
+                if (filteredApps.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.no_apps_found),
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                    ) {
+                        filteredApps.forEachIndexed { index, app ->
+                            SegmentedListItem(
+                                onClick = { onAppSelected(app.packageName) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .bringIntoViewOnFocus(),
+                                shapes = ListItemDefaults.segmentedShapes(
+                                    index = index,
+                                    count = filteredApps.size,
+                                ),
+                                colors = ListItemDefaults.segmentedColors(
+                                    containerColor = if (selectedApp == app.packageName) {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHighest
+                                    },
+                                ),
+                                leadingContent = {
+                                    app.icon?.let { bitmap ->
+                                        Image(
+                                            bitmap = remember(bitmap) { bitmap.asImageBitmap() },
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(42.dp)
+                                                .clip(CircleShape),
+                                        )
+                                    }
+                                },
+                                supportingContent = {
+                                    Text(
+                                        text = app.profileSummary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                },
+                                trailingContent = {
+                                    Icon(Icons.Default.ChevronRight, contentDescription = null)
+                                },
+                                content = {
+                                    Text(
+                                        text = app.label,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.size(14.dp))
+                Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+            }
+        }
     }
 }
 
 @Composable
 private fun AppDetailPane(
-    module: AppModule,
-    onFocused: () -> Unit,
+    title: String,
     content: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
@@ -683,8 +904,7 @@ private fun AppDetailPane(
     Surface(
         modifier = modifier
             .fillMaxSize()
-            .focusGroup()
-            .onFocusChanged { if (it.hasFocus) onFocused() },
+            .focusGroup(),
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
@@ -705,11 +925,56 @@ private fun AppDetailPane(
                         }
                         Spacer(Modifier.size(4.dp))
                     }
-                    PageTitle(stringResource(module.label))
+                    PageTitle(title)
                 }
                 Spacer(Modifier.size(18.dp))
                 content()
             }
+        }
+    }
+}
+
+@Composable
+private fun CollapsingTopBar(
+    title: String,
+    scrollBehavior: TopAppBarScrollBehavior,
+    horizontalPadding: Dp = 16.dp,
+) {
+    val density = LocalDensity.current
+    val collapseRange = with(density) { (152.dp - 64.dp).toPx() }
+    SideEffect {
+        scrollBehavior.state.heightOffsetLimit = -collapseRange
+    }
+    val collapsedFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
+    val titleStyle = lerpTextStyle(
+        MaterialTheme.typography.displayMedium,
+        MaterialTheme.typography.titleLarge,
+        collapsedFraction,
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Spacer(
+            Modifier.windowInsetsTopHeight(
+                WindowInsets.statusBars.only(WindowInsetsSides.Top)
+            )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(lerpDp(152.dp, 64.dp, collapsedFraction)),
+            contentAlignment = Alignment.BottomStart,
+        ) {
+            Text(
+                text = title,
+                modifier = Modifier.padding(
+                    start = horizontalPadding,
+                    end = horizontalPadding,
+                    bottom = lerpDp(28.dp, 18.dp, collapsedFraction),
+                ),
+                style = titleStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -723,8 +988,7 @@ private fun PageTitle(
         text = title,
         modifier = modifier,
         color = MaterialTheme.colorScheme.onSurface,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.SemiBold,
+        style = MaterialTheme.typography.titleLarge,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )

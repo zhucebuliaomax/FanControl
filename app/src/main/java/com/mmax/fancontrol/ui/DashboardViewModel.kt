@@ -1,9 +1,15 @@
 package com.mmax.retrocontrol.ui
 
 import android.app.Application
+import android.content.pm.LauncherApps
 import android.content.SharedPreferences
+import android.graphics.Bitmap
+import android.os.Process
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.core.graphics.drawable.toBitmap
+import com.mmax.retrocontrol.data.AppControlProfile
+import com.mmax.retrocontrol.data.AppProfilePreferences
 import com.mmax.retrocontrol.data.BuiltInFanCurve
 import com.mmax.retrocontrol.data.ControlPresetConfig
 import com.mmax.retrocontrol.data.FanControlConfig
@@ -21,7 +27,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+
+data class InstalledAppInfo(
+    val label: String,
+    val packageName: String,
+    val icon: Bitmap?,
+    val profileSummary: String = "",
+)
 
 data class DashboardState(
     val fanConfig: FanControlConfig = FanControlConfig(),
@@ -32,6 +46,8 @@ data class DashboardState(
     ),
     val overlayEnabled: Boolean = false,
     val autoStartEnabled: Boolean = false,
+    val installedApps: List<InstalledAppInfo> = emptyList(),
+    val appProfiles: Map<String, AppControlProfile> = emptyMap(),
     val telemetry: TelemetrySnapshot = TelemetrySnapshot(),
 )
 
@@ -52,6 +68,27 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 mutableState.update { it.copy(telemetry = telemetry) }
             }
         }
+        viewModelScope.launch(Dispatchers.IO) {
+            val launcherApps = application.getSystemService(LauncherApps::class.java)
+            val apps = runCatching {
+                launcherApps.getActivityList(null, Process.myUserHandle())
+                    .distinctBy { it.applicationInfo.packageName }
+                    .map { activity ->
+                        InstalledAppInfo(
+                            label = activity.label.toString(),
+                            packageName = activity.applicationInfo.packageName,
+                            icon = runCatching {
+                                activity.getBadgedIcon(0).toBitmap(width = 96, height = 96)
+                            }.getOrNull(),
+                        )
+                    }
+                    .sortedWith(
+                        compareBy(String.CASE_INSENSITIVE_ORDER, InstalledAppInfo::label)
+                            .thenBy(InstalledAppInfo::packageName)
+                    )
+            }.getOrDefault(emptyList())
+            mutableState.update { it.copy(installedApps = apps) }
+        }
     }
 
     override fun onCleared() {
@@ -63,11 +100,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val rawFanConfig = FanCurvePreferences.load(prefs)
         val fanConfig = FanSelectionPreferences.apply(prefs, rawFanConfig)
         val curveIds = fanConfig.catalog.profiles.mapTo(mutableSetOf()) { it.id }
+        val presetConfig = PresetPreferences.load(prefs, curveIds)
+        val presetIds = presetConfig.catalog.presets.mapTo(mutableSetOf()) { it.id }
         mutableState.update {
             it.copy(
                 fanConfig = fanConfig,
-                presetConfig = PresetPreferences.load(prefs, curveIds),
+                presetConfig = presetConfig,
                 fanSelection = FanSelectionPreferences.load(prefs, fanConfig),
+                appProfiles = AppProfilePreferences.load(prefs, presetIds, curveIds),
                 overlayEnabled = prefs.getBoolean(Prefs.OVERLAY_ENABLED, false),
                 autoStartEnabled = prefs.getBoolean(Prefs.AUTO_START_ENABLED, false),
             )
@@ -164,6 +204,36 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val curveIds = mutableState.value.fanConfig.catalog.profiles.mapTo(mutableSetOf()) { it.id }
         PresetPreferences.select(prefs, presetId, curveIds)
         FanSelectionPreferences.apply(prefs)
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun setAppPreset(packageName: String, presetId: String) {
+        val state = mutableState.value
+        AppProfilePreferences.setPreset(
+            prefs = prefs,
+            packageName = packageName,
+            presetId = presetId,
+            availablePresetIds = state.presetConfig.catalog.presets
+                .mapTo(mutableSetOf()) { it.id },
+            availableFanCurveIds = state.fanConfig.catalog.profiles
+                .mapTo(mutableSetOf()) { it.id },
+        )
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun setAppFanCurve(packageName: String, profileId: String?) {
+        val state = mutableState.value
+        AppProfilePreferences.setFanCurve(
+            prefs = prefs,
+            packageName = packageName,
+            fanCurveId = profileId,
+            availablePresetIds = state.presetConfig.catalog.presets
+                .mapTo(mutableSetOf()) { it.id },
+            availableFanCurveIds = state.fanConfig.catalog.profiles
+                .mapTo(mutableSetOf()) { it.id },
+        )
         loadPreferences()
         SystemControlService.startOrUpdate(getApplication())
     }

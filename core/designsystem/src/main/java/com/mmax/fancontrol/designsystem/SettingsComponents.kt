@@ -188,7 +188,9 @@ fun SwipeToDeleteSecondaryMenuListItem(
     supportingContent: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState()
+    val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
+        positionalThreshold = { totalDistance -> totalDistance * 0.3f },
+    )
     val scope = rememberCoroutineScope()
     val isSwipeInProgress by remember(dismissState) {
         derivedStateOf {
@@ -250,7 +252,7 @@ fun SettingsSegmentScope.SettingsPreferenceRow(
     index: Int,
     count: Int,
     title: String,
-    summary: String,
+    summary: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     trailingIcon: ImageVector? = null,
@@ -284,11 +286,13 @@ fun SettingsSegmentScope.SettingsPreferenceRow(
                 )
             }
         },
-        supportingContent = {
-            Text(
-                text = summary,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        supportingContent = summary?.let { supportingText ->
+            {
+                Text(
+                    text = supportingText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         },
         content = {
             Text(
@@ -368,7 +372,7 @@ fun ListItemShapes.lockToInteractionShape(shape: Shape = focusedShape): ListItem
 )
 
 object SettingsTokens {
-    val focusScrollMargin = 30.dp
+    val focusScrollMargin = 40.dp
     val pageHorizontalPadding = 16.dp
     val sectionTitleInset = 16.dp
     val sectionTitleBottomPadding = 8.dp

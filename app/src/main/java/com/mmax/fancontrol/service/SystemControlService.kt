@@ -66,10 +66,14 @@ class SystemControlService : Service() {
     private lateinit var prefs: SharedPreferences
 
     private var fanJob: Job? = null
+    private var foregroundJob: Job? = null
     private var screenOffJob: Job? = null
     private var overlay: TelemetryOverlay? = null
     private var lastNotificationUpdateMs = 0L
     private var screenReceiverRegistered = false
+
+    @Volatile
+    private var foregroundPackageName: String? = null
 
     @Volatile
     private var fanConfig = FanControlConfig()
@@ -103,10 +107,10 @@ class SystemControlService : Service() {
             Prefs.LEGACY_FAN_CURVE_CUSTOM -> loadFanPreferences()
             Prefs.PRESET_CATALOG,
             Prefs.SELECTED_PRESET,
+            Prefs.APP_PROFILE_CATALOG,
             Prefs.FAN_SELECTION_SOURCE,
             Prefs.FAN_SELECTION_CURVE,
             Prefs.FAN_TILE_ENABLED -> {
-                FanSelectionPreferences.apply(prefs)
                 loadFanPreferences()
             }
             Prefs.OVERLAY_ENABLED -> {
@@ -137,6 +141,7 @@ class SystemControlService : Service() {
         screenReceiverRegistered = true
 
         startForeground(NOTIFICATION_ID, buildNotification())
+        startForegroundAppMonitor()
         startFanLoop()
         applyOverlayState()
         FanQuickSettingsTile.requestRefresh(applicationContext)
@@ -157,6 +162,7 @@ class SystemControlService : Service() {
             screenReceiverRegistered = false
         }
         screenOffJob?.cancel()
+        foregroundJob?.cancel()
         overlay?.hide()
         overlay = null
         scope.cancel()
@@ -166,12 +172,30 @@ class SystemControlService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun loadFanPreferences() {
-        fanConfig = FanCurvePreferences.load(prefs)
+        fanConfig = FanSelectionPreferences.resolveEffectiveConfig(
+            prefs = prefs,
+            suppliedFanConfig = FanCurvePreferences.load(prefs),
+            foregroundPackageName = foregroundPackageName,
+        )
         configRevision++
     }
 
     private fun loadOverlayPreference() {
         overlayEnabled = prefs.getBoolean(Prefs.OVERLAY_ENABLED, false)
+    }
+
+    private fun startForegroundAppMonitor() {
+        foregroundJob?.cancel()
+        foregroundJob = scope.launch {
+            while (isActive) {
+                val foreground = ForegroundAppResolver.currentPackageName()
+                if (foreground != foregroundPackageName) {
+                    foregroundPackageName = foreground
+                    loadFanPreferences()
+                }
+                delay(1_000L)
+            }
+        }
     }
 
     private fun startFanLoop() {

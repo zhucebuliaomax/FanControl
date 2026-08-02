@@ -10,7 +10,10 @@
     <string name="authorization_kernelsu">KernelSU</string>
     <string name="authorization_kernelsu_summary">KernelSU ユーザーはマネージャーでこのアプリを手動で許可してください</string>
     <string name="authorization_app_info">アプリ情報</string>
-    <string name="authorization_app_info_summary">右上のメニューで制限付き設定を許可してオーバーレイ権限を有効にします</string>
+    <string name="authorization_app_info_summary">Android のアプリ情報と制限付き設定を開きます</string>
+    <string name="authorization_overlay">他のアプリの上に表示</string>
+    <string name="authorization_overlay_granted">許可済み</string>
+    <string name="authorization_overlay_not_granted">未許可</string>
     <string name="authorization_notifications">通知設定</string>
     <string name="authorization_notifications_enabled">有効、無効にしても機能には影響しません</string>
     <string name="authorization_notifications_disabled">無効、機能には影響しません</string>

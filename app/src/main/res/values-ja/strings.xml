@@ -3,6 +3,13 @@
     <string name="app_name">RetroControl</string>
     <string name="settings_summary">温度連動のファンカーブとテレメトリー</string>
 
+    <string name="app_profile">プロファイル</string>
+    <string name="app_profile_preset">プリセット</string>
+    <string name="search_apps">アプリを検索</string>
+    <string name="no_apps_found">アプリが見つかりません</string>
+    <string name="no_options_available">利用できる項目がありません</string>
+    <string name="select_preset">プリセットを選択</string>
+
     <string name="notification_channel_name">ファン制御</string>
     <string name="notification_channel_description">現在のカーブ、ファン割合、CPU/GPU 温度を表示します</string>
     <string name="notification_content">%1$s · %2$d%% · CPU %3$s · GPU %4$s</string>
@@ -87,6 +94,7 @@
     <string name="notification_disabled">無効、機能には影響しません</string>
 
     <string name="back">戻る</string>
+    <string name="press_back_again_to_exit">もう一度戻るを押すと終了します</string>
     <string name="close">閉じる</string>
     <string name="delete">削除</string>
 

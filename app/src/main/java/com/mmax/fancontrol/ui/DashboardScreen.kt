@@ -9,6 +9,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.os.Build
+import android.os.SystemClock
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.widget.Toast
@@ -67,6 +68,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -110,6 +112,7 @@ import com.mmax.retrocontrol.BuildConfig
 import com.mmax.retrocontrol.RootAccessManager
 import com.mmax.retrocontrol.data.FanCurveJson
 import com.mmax.retrocontrol.data.FanCurvePoint
+import com.mmax.retrocontrol.data.AppProfilePreferences
 import com.mmax.retrocontrol.data.displayName
 import com.mmax.retrocontrol.designsystem.FocusScrollMargin
 import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
@@ -132,12 +135,6 @@ import com.mmax.retrocontrol.util.formatTemperature
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
-private enum class DashboardNavigationLayer {
-    TOP_LEVEL,
-    CONTENT,
-    DETAIL,
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -158,11 +155,8 @@ fun DashboardScreen(
         mutableStateOf(DashboardDestination.TELEMETRY)
     }
     var selectedControl by rememberSaveable { mutableStateOf<ControlModule?>(null) }
-    var selectedApp by rememberSaveable { mutableStateOf<AppModule?>(null) }
-    var lastControl by rememberSaveable { mutableStateOf(ControlModule.FAN) }
-    var navigationLayer by rememberSaveable {
-        mutableStateOf(DashboardNavigationLayer.CONTENT)
-    }
+    var selectedApp by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastBackPressedAt by remember { mutableLongStateOf(0L) }
     var notificationsEnabled by remember {
         mutableStateOf(context.areFanNotificationsEnabled())
     }
@@ -185,7 +179,7 @@ fun DashboardScreen(
     val appFocusRequester = remember { FocusRequester() }
     val overlayFocusRequester = remember { FocusRequester() }
     val telemetryFocusRequester = remember { FocusRequester() }
-    val authorizationFocusRequesters = remember { List(5) { FocusRequester() } }
+    val authorizationFocusRequesters = remember { List(6) { FocusRequester() } }
     val githubFocusRequester = remember { FocusRequester() }
     val navigationFocusRequesters = remember {
         List(DashboardDestination.entries.size) { FocusRequester() }
@@ -208,6 +202,7 @@ fun DashboardScreen(
 
     val thermal = state.telemetry.thermal
     val unavailable = stringResource(R.string.not_available)
+    val pressBackAgainToExit = stringResource(R.string.press_back_again_to_exit)
     val offName = stringResource(R.string.fan_mode_off)
     fun fanCurveName(profileId: String?): String = profileId
         ?.let { state.fanConfig.catalog.profile(it)?.displayName(context) }
@@ -220,47 +215,33 @@ fun DashboardScreen(
             fanCurveName = fanCurveName(preset.fanCurveId),
         )
     }
+    val appsWithProfileSummaries = state.installedApps.map { app ->
+        val profile = state.appProfiles[app.packageName]
+        val effectivePreset = AppProfilePreferences.effectivePreset(
+            profile = profile,
+            presetConfig = state.presetConfig,
+        )
+        val summary = buildList {
+            add(effectivePreset.name)
+            profile?.fanCurveId?.let { add(fanCurveName(it)) }
+            profile?.joystickId?.let(::add)
+            profile?.buttonLayoutId?.let(::add)
+            profile?.performanceProfileId?.let(::add)
+        }.joinToString(" · ")
+        app.copy(profileSummary = summary)
+    }
 
-    LaunchedEffect(
-        selectedDestination,
-        selectedControl,
-        selectedApp,
-        navigationLayer,
-        fanProfileIds,
-        presetIds,
-    ) {
-        when (navigationLayer) {
-            DashboardNavigationLayer.TOP_LEVEL -> {
-                navigationFocusRequesters[selectedDestination.ordinal].requestFocus()
-            }
-            DashboardNavigationLayer.CONTENT -> when (selectedDestination) {
-                DashboardDestination.TELEMETRY -> overlayFocusRequester.requestFocus()
-                DashboardDestination.CONTROLS -> {
-                    controlFocusRequesters[lastControl.ordinal].requestFocus()
-                }
-                DashboardDestination.ACCESS -> {
-                    authorizationFocusRequesters.first().requestFocus()
-                }
-                DashboardDestination.APPS -> appFocusRequester.requestFocus()
-            }
-            DashboardNavigationLayer.DETAIL -> when (selectedDestination) {
-                DashboardDestination.CONTROLS -> when (selectedControl) {
-                    ControlModule.FAN -> fanProfileFocusRequesters[0].requestFocus()
-                    ControlModule.PRESET -> presetFocusRequesters.first().requestFocus()
-                    ControlModule.JOYSTICK,
-                    ControlModule.BUTTON_LAYOUT,
-                    ControlModule.CORE -> emptyDetailFocusRequester.requestFocus()
-                    null -> navigationLayer = DashboardNavigationLayer.CONTENT
-                }
-                DashboardDestination.APPS -> {
-                    if (selectedApp == AppModule.DEFAULT_PRESET) {
-                        globalPresetFocusRequesters.first().requestFocus()
-                    } else {
-                        navigationLayer = DashboardNavigationLayer.CONTENT
-                    }
-                }
-                else -> navigationLayer = DashboardNavigationLayer.CONTENT
-            }
+    BackHandler {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastBackPressedAt <= 2_000L) {
+            (context as? Activity)?.finish()
+        } else {
+            lastBackPressedAt = now
+            Toast.makeText(
+                context,
+                pressBackAgainToExit,
+                Toast.LENGTH_SHORT,
+            ).show()
         }
     }
 
@@ -271,7 +252,6 @@ fun DashboardScreen(
     ) {
         val restoreId = restoreFanCurveFocusId
         if (editingProfileId == null && restoreId != null) {
-            navigationLayer = DashboardNavigationLayer.DETAIL
             withFrameNanos { }
             val selectedIndex = fanProfileIds
                 .indexOf(restoreId)
@@ -286,28 +266,10 @@ fun DashboardScreen(
     LaunchedEffect(editingPresetId, restorePresetFocusId, presetIds) {
         val restoreId = restorePresetFocusId
         if (editingPresetId == null && restoreId != null) {
-            navigationLayer = DashboardNavigationLayer.DETAIL
             withFrameNanos { }
             val index = presetIds.indexOf(restoreId).takeIf { it >= 0 } ?: 0
             presetFocusRequesters[index].requestFocus()
             restorePresetFocusId = null
-        }
-    }
-
-    BackHandler(enabled = navigationLayer != DashboardNavigationLayer.TOP_LEVEL) {
-        when (navigationLayer) {
-            DashboardNavigationLayer.DETAIL -> {
-                if (selectedDestination == DashboardDestination.APPS) {
-                    selectedApp = null
-                } else {
-                    selectedControl = null
-                }
-                navigationLayer = DashboardNavigationLayer.CONTENT
-            }
-            DashboardNavigationLayer.CONTENT -> {
-                navigationLayer = DashboardNavigationLayer.TOP_LEVEL
-            }
-            DashboardNavigationLayer.TOP_LEVEL -> Unit
         }
     }
 
@@ -331,40 +293,16 @@ fun DashboardScreen(
             selectedDestination = it
             selectedControl = null
             selectedApp = null
-            navigationLayer = DashboardNavigationLayer.CONTENT
         },
         selectedControl = selectedControl,
-        onControlSelected = { control ->
-            selectedControl = control
-            navigationLayer = if (control == null) {
-                DashboardNavigationLayer.CONTENT
-            } else {
-                lastControl = control
-                DashboardNavigationLayer.DETAIL
-            }
-        },
+        onControlSelected = { selectedControl = it },
         selectedApp = selectedApp,
-        onAppSelected = { app ->
-            selectedApp = app
-            navigationLayer = if (app == null) {
-                DashboardNavigationLayer.CONTENT
-            } else {
-                DashboardNavigationLayer.DETAIL
-            }
-        },
+        installedApps = appsWithProfileSummaries,
+        onAppSelected = { selectedApp = it },
         navigationFocusRequesters = navigationFocusRequesters,
         controlFocusRequesters = controlFocusRequesters,
         appFocusRequester = appFocusRequester,
         emptyDetailFocusRequester = emptyDetailFocusRequester,
-        onNavigationFocused = {
-            navigationLayer = DashboardNavigationLayer.TOP_LEVEL
-        },
-        onContentFocused = {
-            navigationLayer = DashboardNavigationLayer.CONTENT
-        },
-        onDetailFocused = {
-            navigationLayer = DashboardNavigationLayer.DETAIL
-        },
         telemetryContent = {
             FanTelemetrySection(
                 state = FanTelemetrySectionState(
@@ -400,18 +338,18 @@ fun DashboardScreen(
                 overlayModifier = Modifier
                     .focusRequester(overlayFocusRequester)
                     .focusProperties {
-                        up = FocusRequester.Cancel
+                        up = FocusRequester.Default
                         down = telemetryFocusRequester
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
                 telemetryPanelModifier = Modifier
                     .focusRequester(telemetryFocusRequester)
                     .focusProperties {
                         up = overlayFocusRequester
-                        down = FocusRequester.Cancel
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        down = FocusRequester.Default
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
             )
         },
@@ -434,14 +372,14 @@ fun DashboardScreen(
                 offModifier = Modifier
                     .focusRequester(fanProfileFocusRequesters[0])
                     .focusProperties {
-                        up = FocusRequester.Cancel
+                        up = FocusRequester.Default
                         down = if (fanProfileIds.isEmpty()) {
                             addCurveFocusRequester
                         } else {
                             fanProfileFocusRequesters[1]
                         }
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
                 profileModifier = { index ->
                     val focusIndex = index + 1
@@ -454,8 +392,8 @@ fun DashboardScreen(
                             } else {
                                 fanProfileFocusRequesters[focusIndex + 1]
                             }
-                            left = FocusRequester.Cancel
-                            right = FocusRequester.Cancel
+                            left = FocusRequester.Default
+                            right = FocusRequester.Default
                         }
                 },
             )
@@ -471,9 +409,9 @@ fun DashboardScreen(
                     .focusRequester(addCurveFocusRequester)
                     .focusProperties {
                         up = fanProfileFocusRequesters.last()
-                        down = FocusRequester.Cancel
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        down = FocusRequester.Default
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
             )
         },
@@ -487,7 +425,7 @@ fun DashboardScreen(
                         .focusRequester(presetFocusRequesters[index])
                         .focusProperties {
                             up = if (index == 0) {
-                                FocusRequester.Cancel
+                                FocusRequester.Default
                             } else {
                                 presetFocusRequesters[index - 1]
                             }
@@ -496,8 +434,8 @@ fun DashboardScreen(
                             } else {
                                 presetFocusRequesters[index + 1]
                             }
-                            left = FocusRequester.Cancel
-                            right = FocusRequester.Cancel
+                            left = FocusRequester.Default
+                            right = FocusRequester.Default
                         }
                 },
             )
@@ -511,9 +449,9 @@ fun DashboardScreen(
                     .focusRequester(addPresetFocusRequester)
                     .focusProperties {
                         up = presetFocusRequesters.last()
-                        down = FocusRequester.Cancel
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        down = FocusRequester.Default
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
             )
         },
@@ -530,18 +468,55 @@ fun DashboardScreen(
                         .focusRequester(globalPresetFocusRequesters[index])
                         .focusProperties {
                             up = if (index == 0) {
-                                FocusRequester.Cancel
+                                FocusRequester.Default
                             } else {
                                 globalPresetFocusRequesters[index - 1]
                             }
                             down = if (index == presetItems.lastIndex) {
-                                FocusRequester.Cancel
+                                FocusRequester.Default
                             } else {
                                 globalPresetFocusRequesters[index + 1]
                             }
-                            left = FocusRequester.Cancel
-                            right = FocusRequester.Cancel
+                            left = FocusRequester.Default
+                            right = FocusRequester.Default
                         }
+                },
+            )
+        },
+        appProfileContent = { packageName ->
+            val profile = state.appProfiles[packageName]
+            val effectivePreset = AppProfilePreferences.effectivePreset(
+                profile = profile,
+                presetConfig = state.presetConfig,
+            )
+            AppProfileSection(
+                profile = profile,
+                selectedPresetId = effectivePreset.id,
+                selectedPresetName = effectivePreset.name,
+                selectedFanCurveName = profile?.fanCurveId?.let(::fanCurveName),
+                presetChoices = state.presetConfig.catalog.presets.map { preset ->
+                    AppProfileChoice(id = preset.id, name = preset.name)
+                },
+                fanCurveChoices = buildList {
+                    add(
+                        AppProfileChoice(
+                            id = null,
+                            name = context.getString(R.string.follow_preset),
+                        )
+                    )
+                    state.fanConfig.catalog.profiles.forEach { fanProfile ->
+                        add(
+                            AppProfileChoice(
+                                id = fanProfile.id,
+                                name = fanProfile.displayName(context),
+                            )
+                        )
+                    }
+                },
+                onPresetSelected = { vm.setAppPreset(packageName, it) },
+                onFanCurveSelected = {
+                    vm.setAppFanCurve(packageName, it)
+                    if (it != null) onFanCurveSelected(true)
                 },
             )
         },
@@ -550,52 +525,62 @@ fun DashboardScreen(
                 state = AuthorizationUiState(
                     autoStartEnabled = state.autoStartEnabled,
                     rootGranted = hasRoot,
+                    overlayPermissionGranted = overlayPermissionGranted,
                     notificationsEnabled = notificationsEnabled,
                 ),
                 onAutoStartEnabledChange = vm::setAutoStartEnabled,
                 onRefreshRoot = onRefreshRoot,
                 onOpenKernelSu = { context.openKernelSu() },
                 onOpenAppInfo = { context.openAppInfo() },
+                onOpenOverlaySettings = { context.openOverlaySettings() },
                 onOpenNotificationSettings = { context.openFanNotificationSettings() },
                 autoStartModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[0])
                     .focusProperties {
-                        up = FocusRequester.Cancel
+                        up = FocusRequester.Default
                         down = authorizationFocusRequesters[1]
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
                 rootModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[1])
                     .focusProperties {
                         up = authorizationFocusRequesters[0]
                         down = authorizationFocusRequesters[2]
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
                 kernelSuModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[2])
                     .focusProperties {
                         up = authorizationFocusRequesters[1]
                         down = authorizationFocusRequesters[3]
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
                 appInfoModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[3])
                     .focusProperties {
                         up = authorizationFocusRequesters[2]
                         down = authorizationFocusRequesters[4]
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
-                notificationsModifier = Modifier
+                overlayModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[4])
                     .focusProperties {
                         up = authorizationFocusRequesters[3]
+                        down = authorizationFocusRequesters[5]
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
+                    },
+                notificationsModifier = Modifier
+                    .focusRequester(authorizationFocusRequesters[5])
+                    .focusProperties {
+                        up = authorizationFocusRequesters[4]
                         down = githubFocusRequester
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
             )
         },
@@ -604,10 +589,10 @@ fun DashboardScreen(
                 linkModifier = Modifier
                     .focusRequester(githubFocusRequester)
                     .focusProperties {
-                        up = authorizationFocusRequesters[4]
-                        down = FocusRequester.Cancel
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
+                        up = authorizationFocusRequesters[5]
+                        down = FocusRequester.Default
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
                     },
             )
         },
@@ -1123,6 +1108,21 @@ private fun Context.openAppInfo() {
             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.fromParts("package", packageName, null),
         )
+    )
+}
+
+private fun Context.openOverlaySettings() {
+    val appOverlaySettings = Intent(
+        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+        Uri.fromParts("package", packageName, null),
+    )
+    val generalOverlaySettings = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+    startActivity(
+        if (appOverlaySettings.resolveActivity(packageManager) != null) {
+            appOverlaySettings
+        } else {
+            generalOverlaySettings
+        }
     )
 }
 

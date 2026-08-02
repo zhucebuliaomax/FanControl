@@ -10,7 +10,10 @@
     <string name="authorization_kernelsu">KernelSU</string>
     <string name="authorization_kernelsu_summary">KernelSU 用户需要在管理器中手动允许本应用</string>
     <string name="authorization_app_info">应用信息</string>
-    <string name="authorization_app_info_summary">在右上角允许受限制的设置以开启浮窗权限</string>
+    <string name="authorization_app_info_summary">打开 Android 应用详情和受限制的设置</string>
+    <string name="authorization_overlay">显示在其他应用上层</string>
+    <string name="authorization_overlay_granted">已获授权</string>
+    <string name="authorization_overlay_not_granted">未获授权</string>
     <string name="authorization_notifications">通知设置</string>
     <string name="authorization_notifications_enabled">已开启，关闭不影响功能</string>
     <string name="authorization_notifications_disabled">已关闭，关闭不影响功能</string>

@@ -214,6 +214,23 @@ object FanSelectionPreferences {
     fun apply(
         prefs: SharedPreferences,
         suppliedFanConfig: FanControlConfig? = null,
+        foregroundPackageName: String? = null,
+    ): FanControlConfig {
+        val resolved = resolveEffectiveConfig(
+            prefs = prefs,
+            suppliedFanConfig = suppliedFanConfig,
+            foregroundPackageName = foregroundPackageName,
+        )
+        val current = suppliedFanConfig ?: FanCurvePreferences.load(prefs)
+        return if (current.activeProfileId == resolved.activeProfileId) current
+        else FanCurvePreferences.select(prefs, resolved.activeProfileId)
+    }
+
+    /** Resolves tile > app control > app/default preset without persisting transient app state. */
+    fun resolveEffectiveConfig(
+        prefs: SharedPreferences,
+        suppliedFanConfig: FanControlConfig? = null,
+        foregroundPackageName: String? = null,
     ): FanControlConfig {
         val current = suppliedFanConfig ?: FanCurvePreferences.load(prefs)
         var selection = load(prefs, current)
@@ -228,20 +245,33 @@ object FanSelectionPreferences {
             prefs,
             current.catalog.profiles.mapTo(mutableSetOf()) { it.id },
         )
-        val targetId = resolveTargetProfileId(selection, presetConfig, current.catalog)
-        return if (current.activeProfileId == targetId) current
-        else FanCurvePreferences.select(prefs, targetId)
+        val appProfiles = AppProfilePreferences.load(
+            prefs = prefs,
+            availablePresetIds = presetConfig.catalog.presets.mapTo(mutableSetOf()) { it.id },
+            availableFanCurveIds = current.catalog.profiles.mapTo(mutableSetOf()) { it.id },
+        )
+        val appProfile = foregroundPackageName?.let(appProfiles::get)
+        val targetId = resolveTargetProfileId(
+            selection = selection,
+            presetConfig = presetConfig,
+            fanCatalog = current.catalog,
+            appProfile = appProfile,
+        )
+        return current.copy(activeProfileId = targetId)
     }
 
     internal fun resolveTargetProfileId(
         selection: FanSelectionConfig,
         presetConfig: ControlPresetConfig,
         fanCatalog: FanCurveCatalog,
+        appProfile: AppControlProfile? = null,
     ): String? {
         if (!selection.enabled) return null
         return when (val source = selection.source) {
-            FanSelectionSource.FollowPreset -> presetConfig.selectedPreset.fanCurveId
+            FanSelectionSource.FollowPreset -> appProfile?.fanCurveId
                 ?.takeIf { fanCatalog.profile(it) != null }
+                ?: AppProfilePreferences.effectivePreset(appProfile, presetConfig).fanCurveId
+                    ?.takeIf { fanCatalog.profile(it) != null }
             is FanSelectionSource.DirectCurve -> source.profileId
                 .takeIf { fanCatalog.profile(it) != null }
         }

@@ -18,6 +18,7 @@ import com.mmax.retrocontrol.designsystem.SettingsTokens
 data class AuthorizationUiState(
     val autoStartEnabled: Boolean,
     val rootGranted: Boolean,
+    val overlayPermissionGranted: Boolean,
     val notificationsEnabled: Boolean,
 )
 
@@ -32,12 +33,14 @@ fun AuthorizationManagementSection(
     onRefreshRoot: () -> Unit,
     onOpenKernelSu: () -> Unit,
     onOpenAppInfo: () -> Unit,
+    onOpenOverlaySettings: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
     modifier: Modifier = Modifier,
     autoStartModifier: Modifier = Modifier,
     rootModifier: Modifier = Modifier,
     kernelSuModifier: Modifier = Modifier,
     appInfoModifier: Modifier = Modifier,
+    overlayModifier: Modifier = Modifier,
     notificationsModifier: Modifier = Modifier,
 ) {
     SettingsSectionTitle(
@@ -47,15 +50,8 @@ fun AuthorizationManagementSection(
     SettingsSegmentGroup {
         SettingsPreferenceRow(
             index = 0,
-            count = 5,
+            count = 6,
             title = stringResource(R.string.authorization_auto_start),
-            summary = stringResource(
-                if (state.autoStartEnabled) {
-                    R.string.authorization_auto_start_enabled
-                } else {
-                    R.string.authorization_auto_start_disabled
-                }
-            ),
             onClick = { onAutoStartEnabledChange(!state.autoStartEnabled) },
             modifier = autoStartModifier,
             trailingContent = {
@@ -68,7 +64,7 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 1,
-            count = 5,
+            count = 6,
             title = stringResource(R.string.authorization_root),
             summary = stringResource(
                 if (state.rootGranted) {
@@ -87,7 +83,7 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 2,
-            count = 5,
+            count = 6,
             title = stringResource(R.string.authorization_kernelsu),
             summary = stringResource(R.string.authorization_kernelsu_summary),
             onClick = onOpenKernelSu,
@@ -96,7 +92,7 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 3,
-            count = 5,
+            count = 6,
             title = stringResource(R.string.authorization_app_info),
             summary = stringResource(R.string.authorization_app_info_summary),
             onClick = onOpenAppInfo,
@@ -105,7 +101,22 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 4,
-            count = 5,
+            count = 6,
+            title = stringResource(R.string.authorization_overlay),
+            summary = stringResource(
+                if (state.overlayPermissionGranted) {
+                    R.string.authorization_overlay_granted
+                } else {
+                    R.string.authorization_overlay_not_granted
+                }
+            ),
+            onClick = onOpenOverlaySettings,
+            modifier = overlayModifier,
+            trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
+        )
+        SettingsPreferenceRow(
+            index = 5,
+            count = 6,
             title = stringResource(R.string.authorization_notifications),
             summary = stringResource(
                 if (state.notificationsEnabled) {

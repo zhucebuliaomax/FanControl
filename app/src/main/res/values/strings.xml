@@ -15,6 +15,12 @@
     <string name="control_core">Performance profiles</string>
     <string name="control_back">Back to control modules</string>
     <string name="app_default_preset">Default preset</string>
+    <string name="app_profile">Profile</string>
+    <string name="app_profile_preset">Preset</string>
+    <string name="search_apps">Search apps</string>
+    <string name="no_apps_found">No apps found</string>
+    <string name="no_options_available">No options available</string>
+    <string name="select_preset">Select preset</string>
     <string name="preset_default">Default</string>
     <string name="new_preset">New preset</string>
     <string name="add_preset">Add preset</string>
@@ -111,6 +117,7 @@
     <string name="notification_disabled">Disabled, disabling notifications does not affect functionality</string>
 
     <string name="back">Back</string>
+    <string name="press_back_again_to_exit">Press Back again to exit</string>
     <string name="close">Close</string>
     <string name="delete">Delete</string>
 

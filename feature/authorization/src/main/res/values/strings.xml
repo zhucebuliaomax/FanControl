@@ -10,7 +10,10 @@
     <string name="authorization_kernelsu">KernelSU</string>
     <string name="authorization_kernelsu_summary">KernelSU users must manually allow this app in the manager</string>
     <string name="authorization_app_info">App info</string>
-    <string name="authorization_app_info_summary">Use the top-right menu to allow restricted settings and enable overlay permission</string>
+    <string name="authorization_app_info_summary">Open Android app details and restricted settings</string>
+    <string name="authorization_overlay">Display over other apps</string>
+    <string name="authorization_overlay_granted">Access granted</string>
+    <string name="authorization_overlay_not_granted">Not granted</string>
     <string name="authorization_notifications">Notification settings</string>
     <string name="authorization_notifications_enabled">Enabled, disabling notifications does not affect functionality</string>
     <string name="authorization_notifications_disabled">Disabled, disabling notifications does not affect functionality</string>
