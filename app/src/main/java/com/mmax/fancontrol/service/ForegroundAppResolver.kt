@@ -9,15 +9,29 @@ object ForegroundAppResolver {
     )
 
     fun currentPackageName(): String? {
-        val activityLine = Shell.cmd(
-            "dumpsys activity activities | grep -m 1 mResumedActivity"
-        ).exec().out.firstOrNull()
-        val windowLine = if (activityLine == null) {
-            Shell.cmd("dumpsys window windows | grep -m 1 mCurrentFocus")
-                .exec().out.firstOrNull()
-        } else {
-            null
+        val activityLines = Shell.cmd("dumpsys activity activities").exec().out
+        val activityLine = activityFieldPriority.firstNotNullOfOrNull { field ->
+            activityLines.firstOrNull { field in it }
         }
-        return componentPattern.find(activityLine ?: windowLine.orEmpty())?.groupValues?.get(1)
+        componentPattern.find(activityLine.orEmpty())?.let { match ->
+            return match.groupValues[1]
+        }
+
+        val windowLines = Shell.cmd("dumpsys window windows").exec().out
+        val windowLine = windowFieldPriority.firstNotNullOfOrNull { field ->
+            windowLines.firstOrNull { field in it }
+        }
+        return componentPattern.find(windowLine.orEmpty())?.groupValues?.get(1)
     }
+
+    private val activityFieldPriority = listOf(
+        "topResumedActivity=",
+        "mResumedActivity:",
+        "ResumedActivity:",
+    )
+
+    private val windowFieldPriority = listOf(
+        "mCurrentFocus=",
+        "mFocusedApp=",
+    )
 }

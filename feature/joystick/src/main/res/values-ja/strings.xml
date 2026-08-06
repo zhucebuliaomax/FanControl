@@ -1,0 +1,36 @@
+<resources>
+    <string name="joystick_off">オフ</string>
+    <string name="joystick_off_summary">ジョイスティック照明を無効化</string>
+    <string name="joystick_add_profile">プロファイル</string>
+    <string name="joystick_new_profile">新しいプロファイル</string>
+    <string name="joystick_delete_profile">プロファイルを削除</string>
+    <string name="joystick_delete_profile_confirmation">「%1$s」を削除しますか？</string>
+    <string name="joystick_delete">削除</string>
+    <string name="joystick_cancel">キャンセル</string>
+    <string name="joystick_confirm">確認</string>
+    <string name="joystick_select">選択</string>
+    <string name="joystick_rename_profile">プロファイル名を変更</string>
+    <string name="joystick_profile_name">プロファイル名</string>
+    <string name="joystick_rgb">ジョイスティック RGB</string>
+    <string name="joystick_color_presets">カラープリセット</string>
+    <string name="joystick_custom_color">カスタムカラー</string>
+    <string name="joystick_custom_color_picker">カスタムカラーを選択</string>
+    <string name="joystick_brightness">明るさ</string>
+    <string name="joystick_brightness_value">%1$d%%</string>
+    <string name="joystick_mode_off">オフ</string>
+    <string name="joystick_mode_static">静的</string>
+    <string name="joystick_mode_rainbow">レインボーサイクル</string>
+    <string name="joystick_mode_breathe">ブリージング</string>
+    <string name="joystick_mode_ambilight">アンビライト</string>
+    <string name="joystick_mode_battery">バッテリー残量</string>
+    <string name="joystick_mode_thermal">SoC 温度</string>
+    <string name="joystick_mode_wave">レインボーウェーブ</string>
+    <string name="joystick_mode_color_cycle">カラーサイクル</string>
+    <string name="joystick_mode_strobe">ストロボ</string>
+    <string name="joystick_mode_meteor">メテオ</string>
+    <string name="joystick_mode_fire">ファイア</string>
+    <string name="joystick_mode_aurora">オーロラ</string>
+    <string name="joystick_mode_ocean">オーシャンウェーブ</string>
+    <string name="joystick_mode_starlight">スターライト</string>
+    <string name="joystick_mode_music">音楽連動</string>
+</resources>

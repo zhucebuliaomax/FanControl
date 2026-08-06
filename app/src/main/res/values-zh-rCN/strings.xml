@@ -14,9 +14,11 @@
     <string name="control_button_layout">按键布局</string>
     <string name="control_core">性能方案</string>
     <string name="control_back">返回控制模块</string>
-    <string name="app_default_preset">默认预设</string>
+    <string name="app_default_preset">默认配置</string>
+    <string name="game_profile">游戏配置</string>
+    <string name="non_game_profile">非游戏配置</string>
     <string name="app_profile">配置</string>
-    <string name="app_profile_preset">预设</string>
+    <string name="app_profile_preset">配置</string>
     <string name="search_apps">搜索应用</string>
     <string name="no_apps_found">未找到应用</string>
     <string name="filter_apps">筛选应用</string>
@@ -24,17 +26,20 @@
     <string name="filter_other">其他</string>
     <string name="filter_all">全部</string>
     <string name="no_options_available">暂无可用选项</string>
-    <string name="select_preset">选择预设</string>
-    <string name="preset_default">默认</string>
-    <string name="new_preset">新预设</string>
-    <string name="add_preset">添加预设</string>
-    <string name="rename_preset">重命名预设</string>
-    <string name="preset_name">预设名称</string>
-    <string name="delete_preset">删除预设</string>
+    <string name="select_preset">选择配置</string>
+    <string name="preset_default">default</string>
+    <string name="new_preset">新配置</string>
+    <string name="add_preset">添加配置</string>
+    <string name="rename_preset">重命名配置</string>
+    <string name="preset_name">配置名称</string>
+    <string name="delete_preset">删除配置</string>
     <string name="delete_preset_confirmation">确定删除“%1$s”吗？此操作无法撤销。</string>
     <string name="preset_fan_curve">风扇曲线</string>
     <string name="preset_performance_profile">性能方案</string>
-    <string name="follow_preset">跟随预设</string>
+    <string name="follow_preset">跟随配置</string>
+    <string name="follow_profile">跟随配置</string>
+    <string name="follow_default">跟随默认配置</string>
+    <string name="select_joystick_profile">选择摇杆配置</string>
 
     <string name="notification_channel_name">风扇控制</string>
     <string name="notification_channel_description">显示当前曲线、风扇百分比和 CPU/GPU 温度</string>
@@ -42,6 +47,7 @@
 
     <string name="tile_fan_label">风扇曲线</string>
     <string name="tile_overlay_label">温度浮窗</string>
+    <string name="tile_joystick_label">摇杆</string>
     <string name="tile_on">开启</string>
     <string name="tile_off">关闭</string>
 

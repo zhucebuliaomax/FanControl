@@ -17,4 +17,9 @@
     <string name="authorization_notifications">通知設定</string>
     <string name="authorization_notifications_enabled">有効、無効にしても機能には影響しません</string>
     <string name="authorization_notifications_disabled">無効、機能には影響しません</string>
+    <string name="authorization_microphone">マイク</string>
+    <string name="authorization_microphone_granted">音楽連動用に許可済み</string>
+    <string name="authorization_microphone_not_granted">音楽連動に必要です</string>
+    <string name="authorization_screen_capture">画面キャプチャ</string>
+    <string name="authorization_screen_capture_summary">アンビライト用のセッションを許可</string>
 </resources>

@@ -107,11 +107,6 @@ internal enum class DashboardDestination(
         R.drawable.nav_telemetry_outlined,
         R.drawable.nav_telemetry_filled,
     ),
-    CONTROLS(
-        R.string.nav_controls,
-        R.drawable.nav_controls_outlined,
-        R.drawable.nav_controls_filled,
-    ),
     APPS(
         R.string.nav_apps,
         R.drawable.nav_apps_outlined,
@@ -154,6 +149,8 @@ internal fun AdaptiveDashboardScaffold(
     telemetryContent: @Composable () -> Unit,
     fanContent: @Composable () -> Unit,
     fanAction: @Composable () -> Unit,
+    joystickContent: @Composable () -> Unit,
+    joystickAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
     globalPresetContent: @Composable () -> Unit,
@@ -239,18 +236,6 @@ internal fun AdaptiveDashboardScaffold(
                     content = telemetryContent,
                 )
 
-                DashboardDestination.CONTROLS -> ControlsPage(
-                    selectedControl = selectedControl,
-                    onControlSelected = onControlSelected,
-                    showTwoPanes = showTwoControlPanes,
-                    controlFocusRequesters = controlFocusRequesters,
-                    emptyDetailFocusRequester = emptyDetailFocusRequester,
-                    fanContent = fanContent,
-                    fanAction = fanAction,
-                    presetContent = presetContent,
-                    presetAction = presetAction,
-                )
-
                 DashboardDestination.APPS -> AppsPage(
                     selectedApp = selectedApp,
                     onAppSelected = onAppSelected,
@@ -317,6 +302,8 @@ private fun ControlsPage(
     emptyDetailFocusRequester: FocusRequester,
     fanContent: @Composable () -> Unit,
     fanAction: @Composable () -> Unit,
+    joystickContent: @Composable () -> Unit,
+    joystickAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
 ) {
@@ -341,6 +328,8 @@ private fun ControlsPage(
                     control = control,
                     fanContent = fanContent,
                     fanAction = fanAction,
+                    joystickContent = joystickContent,
+                    joystickAction = joystickAction,
                     presetContent = presetContent,
                     presetAction = presetAction,
                     emptyDetailFocusRequester = emptyDetailFocusRequester,
@@ -370,6 +359,8 @@ private fun ControlsPage(
             control = selectedControl,
             fanContent = fanContent,
             fanAction = fanAction,
+            joystickContent = joystickContent,
+            joystickAction = joystickAction,
             presetContent = presetContent,
             presetAction = presetAction,
             emptyDetailFocusRequester = emptyDetailFocusRequester,
@@ -479,11 +470,6 @@ private fun ControlModuleRow(
         shapes = ListItemDefaults.segmentedShapes(
             index = index,
             count = count,
-            defaultShapes = if (count == 1) {
-                ListItemDefaults.shapes(shape = MaterialTheme.shapes.extraLarge)
-            } else {
-                ListItemDefaults.shapes()
-            },
         ),
         colors = ListItemDefaults.segmentedColors(
             containerColor = if (selected) {
@@ -523,6 +509,8 @@ private fun ControlDetailPane(
     control: ControlModule,
     fanContent: @Composable () -> Unit,
     fanAction: @Composable () -> Unit,
+    joystickContent: @Composable () -> Unit,
+    joystickAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
     emptyDetailFocusRequester: FocusRequester,
@@ -547,7 +535,9 @@ private fun ControlDetailPane(
                             top = 30.dp,
                             end = 30.dp,
                             bottom = if (
-                                control == ControlModule.FAN || control == ControlModule.PRESET
+                                control == ControlModule.FAN ||
+                                    control == ControlModule.JOYSTICK ||
+                                    control == ControlModule.PRESET
                             ) 112.dp else 30.dp,
                         ),
                 ) {
@@ -566,6 +556,9 @@ private fun ControlDetailPane(
                     if (control == ControlModule.FAN) {
                         Spacer(Modifier.size(18.dp))
                         fanContent()
+                    } else if (control == ControlModule.JOYSTICK) {
+                        Spacer(Modifier.size(18.dp))
+                        joystickContent()
                     } else if (control == ControlModule.PRESET) {
                         Spacer(Modifier.size(18.dp))
                         presetContent()
@@ -585,6 +578,14 @@ private fun ControlDetailPane(
                             .padding(30.dp),
                     ) {
                         fanAction()
+                    }
+                } else if (control == ControlModule.JOYSTICK) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(30.dp),
+                    ) {
+                        joystickAction()
                     }
                 } else if (control == ControlModule.PRESET) {
                     Box(
@@ -697,7 +698,7 @@ private fun AppListPane(
     modifier: Modifier = Modifier,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    var appFilter by rememberSaveable { mutableStateOf(AppListFilter.GAME) }
+    var appFilter by rememberSaveable { mutableStateOf(AppListFilter.ALL) }
     var filterMenuExpanded by remember { mutableStateOf(false) }
     var searchFieldFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -822,9 +823,6 @@ private fun AppListPane(
                     shapes = ListItemDefaults.segmentedShapes(
                         index = 0,
                         count = 1,
-                        defaultShapes = ListItemDefaults.shapes(
-                            shape = MaterialTheme.shapes.extraLarge,
-                        ),
                     ),
                     colors = ListItemDefaults.segmentedColors(
                         containerColor = if (selectedApp == DEFAULT_PRESET_APP_KEY) {

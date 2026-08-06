@@ -1,0 +1,552 @@
+package com.mmax.retrocontrol.hardware
+
+import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.PixelFormat
+import android.hardware.display.DisplayManager
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import android.media.ImageReader
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import androidx.core.content.ContextCompat
+import com.mmax.retrocontrol.data.JoystickProfile
+import com.mmax.retrocontrol.feature.joystick.JoystickRgbMode
+import com.mmax.retrocontrol.service.MediaProjectionActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.util.Random
+import kotlin.math.abs
+import kotlin.math.sin
+
+/** Owns the currently resolved joystick effect inside RetroControl's service scope. */
+class JoystickEffectEngine(
+    private val context: Context,
+    private val scope: CoroutineScope,
+) {
+    private var effectJob: Job? = null
+    private var activeProfile: JoystickProfile? = null
+    private var activeSignature: JoystickProfile? = null
+    private var suspended = false
+    private var projectionIntent: Intent? = null
+    private var projection: MediaProjection? = null
+    private var imageReader: ImageReader? = null
+    private var virtualDisplay: android.hardware.display.VirtualDisplay? = null
+    private val frame = StringBuilder(768)
+
+    fun apply(profile: JoystickProfile?, force: Boolean = false) {
+        activeProfile = profile
+        if (!force && profile == activeSignature) return
+        activeSignature = profile
+        stopEffect()
+        if (suspended || profile == null || profile.mode == JoystickRgbMode.OFF) {
+            scope.launch { JoystickRgbController.turnOff() }
+            return
+        }
+        start(profile)
+    }
+
+    fun setMediaProjectionIntent(intent: Intent) {
+        projectionIntent = intent
+        apply(activeProfile, force = true)
+    }
+
+    fun suspendForScreenOff() {
+        if (suspended) return
+        suspended = true
+        stopEffect()
+        scope.launch { JoystickRgbController.turnOff() }
+    }
+
+    fun resumeAfterScreenOn() {
+        if (!suspended) return
+        suspended = false
+        apply(activeProfile, force = true)
+    }
+
+    fun destroy() {
+        stopEffect()
+        JoystickRgbController.turnOff()
+    }
+
+    private fun stopEffect() {
+        effectJob?.cancel()
+        effectJob = null
+        val consumedProjectionToken = projection != null || virtualDisplay != null
+        imageReader?.setOnImageAvailableListener(null, null)
+        virtualDisplay?.release()
+        imageReader?.close()
+        projection?.stop()
+        virtualDisplay = null
+        imageReader = null
+        projection = null
+        if (consumedProjectionToken) projectionIntent = null
+    }
+
+    private fun start(profile: JoystickProfile) {
+        when (profile.mode) {
+            JoystickRgbMode.OFF -> scope.launch { JoystickRgbController.turnOff() }
+            JoystickRgbMode.STATIC -> effectJob = scope.launch {
+                JoystickRgbController.setAll(
+                    profile.red, profile.green, profile.blue, profile.brightness,
+                )
+            }
+            JoystickRgbMode.RAINBOW -> rotatingRainbow(profile)
+            JoystickRgbMode.BREATHE -> breathe(profile)
+            JoystickRgbMode.AMBILIGHT -> ambilight(profile)
+            JoystickRgbMode.BATTERY -> battery(profile)
+            JoystickRgbMode.THERMAL -> thermal(profile)
+            JoystickRgbMode.WAVE -> wave(profile)
+            JoystickRgbMode.COLOR_CYCLE -> colorCycle(profile)
+            JoystickRgbMode.STROBE -> strobe(profile)
+            JoystickRgbMode.METEOR -> meteor(profile)
+            JoystickRgbMode.FIRE -> fire(profile)
+            JoystickRgbMode.AURORA -> aurora(profile)
+            JoystickRgbMode.OCEAN -> ocean(profile)
+            JoystickRgbMode.STARLIGHT -> starlight(profile)
+            JoystickRgbMode.MUSIC -> music(profile)
+        }
+    }
+
+    private fun rotatingRainbow(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            var hue = 0f
+            val phases = listOf(0f, 270f, 180f, 90f, 180f, 90f, 0f, 270f)
+            while (isActive) {
+                frame.setLength(0)
+                JoystickRgbController.ledPaths.forEachIndexed { index, path ->
+                    val (red, green, blue) = hsvToRgb((hue + phases[index]) % 360f)
+                    appendLed(frame, path, red, green, blue, profile.brightness)
+                }
+                JoystickRgbController.execute(frame.toString())
+                hue = (hue - 4f + 360f) % 360f
+                delay(50L)
+            }
+        }
+    }
+
+    private fun breathe(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            var progress = 0.1f
+            var increment = 0.05f
+            while (isActive) {
+                JoystickRgbController.setAll(
+                    profile.red,
+                    profile.green,
+                    profile.blue,
+                    (profile.brightness * progress).toInt(),
+                )
+                progress += increment
+                if (progress >= 1f) {
+                    progress = 1f
+                    increment = -0.05f
+                } else if (progress <= 0.1f) {
+                    progress = 0.1f
+                    increment = 0.05f
+                    delay(400L)
+                }
+                delay(120L)
+            }
+        }
+    }
+
+    private fun battery(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            val manager = context.getSystemService(android.os.BatteryManager::class.java)
+            while (isActive) {
+                val percent = manager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                val (red, green, blue) = batteryColor(percent)
+                JoystickRgbController.setAll(red, green, blue, profile.brightness)
+                delay(2_000L)
+            }
+        }
+    }
+
+    private fun thermal(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            while (isActive) {
+                val (red, green, blue) = thermalColor(
+                    ThermalSensorReader.read().controlTempC.toInt()
+                )
+                JoystickRgbController.setAll(red, green, blue, profile.brightness)
+                delay(2_000L)
+            }
+        }
+    }
+
+    private fun wave(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            var hue = 0f
+            while (isActive) {
+                frame.setLength(0)
+                sequentialPaths.forEachIndexed { index, path ->
+                    val (red, green, blue) = hsvToRgb((hue + index * 45f) % 360f)
+                    appendLed(frame, path, red, green, blue, profile.brightness)
+                }
+                JoystickRgbController.execute(frame.toString())
+                hue = (hue + 3f) % 360f
+                delay(100L)
+            }
+        }
+    }
+
+    private fun colorCycle(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            var hue = 0f
+            while (isActive) {
+                val (red, green, blue) = hsvToRgb(hue)
+                JoystickRgbController.setAll(red, green, blue, profile.brightness)
+                hue = (hue + 1f) % 360f
+                delay(120L)
+            }
+        }
+    }
+
+    private fun strobe(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            var on = true
+            while (isActive) {
+                if (on) {
+                    JoystickRgbController.setAll(
+                        profile.red, profile.green, profile.blue, profile.brightness,
+                    )
+                } else {
+                    JoystickRgbController.turnOff()
+                }
+                on = !on
+                delay(120L)
+            }
+        }
+    }
+
+    private fun meteor(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            var head = 0
+            while (isActive) {
+                frame.setLength(0)
+                sequentialPaths.forEachIndexed { index, path ->
+                    val distance = (head - index + sequentialPaths.size) % sequentialPaths.size
+                    val brightness = when (distance) {
+                        0 -> profile.brightness
+                        1 -> (profile.brightness * 0.6f).toInt()
+                        2 -> (profile.brightness * 0.3f).toInt()
+                        3 -> (profile.brightness * 0.1f).toInt()
+                        else -> 0
+                    }
+                    appendLed(
+                        frame, path, profile.red, profile.green, profile.blue, brightness,
+                    )
+                }
+                JoystickRgbController.execute(frame.toString())
+                head = (head + 1) % sequentialPaths.size
+                delay(120L)
+            }
+        }
+    }
+
+    private fun fire(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            val random = Random()
+            while (isActive) {
+                frame.setLength(0)
+                JoystickRgbController.ledPaths.forEach { path ->
+                    appendLed(
+                        frame,
+                        path,
+                        200 + random.nextInt(56),
+                        random.nextInt(120),
+                        random.nextInt(20),
+                        (profile.brightness * (0.4f + random.nextFloat() * 0.6f)).toInt(),
+                    )
+                }
+                JoystickRgbController.execute(frame.toString())
+                delay(100L + random.nextInt(60))
+            }
+        }
+    }
+
+    private fun aurora(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            var time = 0f
+            while (isActive) {
+                frame.setLength(0)
+                JoystickRgbController.ledPaths.forEachIndexed { index, path ->
+                    val phase = time + index * 0.8f
+                    val hue = 120f + 120f * sin(phase.toDouble()).toFloat()
+                    val (red, green, blue) = hsvToRgb(hue.coerceIn(0f, 359f), 0.8f)
+                    val brightness = (
+                        profile.brightness *
+                            (0.5f + 0.5f * sin((phase * 0.7f).toDouble()).toFloat())
+                        ).toInt()
+                    appendLed(frame, path, red, green, blue, brightness)
+                }
+                JoystickRgbController.execute(frame.toString())
+                time += 0.05f
+                delay(100L)
+            }
+        }
+    }
+
+    private fun ocean(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            var time = 0f
+            while (isActive) {
+                frame.setLength(0)
+                JoystickRgbController.ledPaths.forEachIndexed { index, path ->
+                    val wave = sin((time + index * 0.9f).toDouble()).toFloat()
+                    appendLed(
+                        frame,
+                        path,
+                        0,
+                        (80 + 80 * wave).toInt(),
+                        (180 + 75 * wave).toInt(),
+                        (profile.brightness * (0.3f + 0.7f * ((wave + 1f) / 2f))).toInt(),
+                    )
+                }
+                JoystickRgbController.execute(frame.toString())
+                time += 0.08f
+                delay(100L)
+            }
+        }
+    }
+
+    private fun starlight(profile: JoystickProfile) {
+        effectJob = scope.launch {
+            val random = Random()
+            while (isActive) {
+                frame.setLength(0)
+                sequentialPaths.forEach { path ->
+                    val twinkle = random.nextFloat()
+                    if (twinkle > 0.6f) {
+                        val (red, green, blue) = hsvToRgb(random.nextFloat() * 360f, 0.2f)
+                        appendLed(frame, path, red, green, blue, profile.brightness)
+                    } else {
+                        appendLed(
+                            frame, path, 200, 200, 255,
+                            (profile.brightness * twinkle * 0.3f).toInt(),
+                        )
+                    }
+                }
+                JoystickRgbController.execute(frame.toString())
+                delay(100L + random.nextInt(100))
+            }
+        }
+    }
+
+    private fun music(profile: JoystickProfile) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            scope.launch { JoystickRgbController.turnOff() }
+            return
+        }
+        effectJob = scope.launch {
+            var recorder: AudioRecord? = null
+            try {
+                val sampleRate = 8_000
+                val bufferSize = AudioRecord.getMinBufferSize(
+                    sampleRate,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                ).coerceAtLeast(1_024)
+                recorder = AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    sampleRate,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                    bufferSize,
+                )
+                recorder.startRecording()
+                val samples = ShortArray(bufferSize / 2)
+                while (isActive) {
+                    val read = recorder.read(samples, 0, samples.size)
+                    if (read > 0) {
+                        var sum = 0L
+                        repeat(read) { index -> sum += abs(samples[index].toInt()) }
+                        val level = ((sum / read) / 5_000f).coerceIn(0f, 1f)
+                        val (red, green, blue) = hsvToRgb((240f - level * 240f))
+                        JoystickRgbController.setAll(
+                            red,
+                            green,
+                            blue,
+                            (profile.brightness * (0.1f + level * 0.9f)).toInt(),
+                        )
+                    }
+                    delay(120L)
+                }
+            } catch (error: Exception) {
+                Log.e(TAG, "Music effect failed", error)
+                JoystickRgbController.turnOff()
+            } finally {
+                runCatching { recorder?.stop() }
+                recorder?.release()
+            }
+        }
+    }
+
+    private fun ambilight(profile: JoystickProfile) {
+        val token = projectionIntent
+        if (token == null) {
+            context.startActivity(
+                Intent(context, MediaProjectionActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            return
+        }
+        effectJob = scope.launch {
+            try {
+                val manager = context.getSystemService(MediaProjectionManager::class.java)
+                projection = manager.getMediaProjection(Activity.RESULT_OK, token)
+                val width = 16
+                val height = 9
+                imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+                projection?.registerCallback(object : MediaProjection.Callback() {}, null)
+                virtualDisplay = projection?.createVirtualDisplay(
+                    "RetroControl Ambilight",
+                    width,
+                    height,
+                    160,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader?.surface,
+                    null,
+                    null,
+                )
+                val zones = listOf(
+                    Triple("/sys/class/leds/left:stick:0", 0, 0),
+                    Triple("/sys/class/leds/left:stick:1", 0, height - 1),
+                    Triple("/sys/class/leds/left:stick:2", width / 4, height - 1),
+                    Triple("/sys/class/leds/left:stick:3", width / 4, 0),
+                    Triple("/sys/class/leds/right:stick:2", width - 1 - width / 4, 0),
+                    Triple("/sys/class/leds/right:stick:1", width - 1, 0),
+                    Triple("/sys/class/leds/right:stick:3", width - 1 - width / 4, height - 1),
+                    Triple("/sys/class/leds/right:stick:0", width - 1, height - 1),
+                )
+                var lastFrameAt = 0L
+                imageReader?.setOnImageAvailableListener({ reader ->
+                    val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    if (now - lastFrameAt < 16L) {
+                        image.close()
+                        return@setOnImageAvailableListener
+                    }
+                    lastFrameAt = now
+                    val plane = image.planes[0]
+                    frame.setLength(0)
+                    zones.forEach { (path, x, y) ->
+                        val offset = y * plane.rowStride + x * plane.pixelStride
+                        plane.buffer.position(offset)
+                        val red = plane.buffer.get().toInt() and 0xff
+                        val green = plane.buffer.get().toInt() and 0xff
+                        val blue = plane.buffer.get().toInt() and 0xff
+                        val luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255.0
+                        appendLed(
+                            frame, path, red, green, blue,
+                            (profile.brightness * luminance).toInt(),
+                        )
+                    }
+                    image.close()
+                    JoystickRgbController.execute(frame.toString())
+                }, Handler(Looper.getMainLooper()))
+                while (isActive) delay(1_000L)
+            } catch (error: Exception) {
+                Log.e(TAG, "Ambilight effect failed", error)
+                projectionIntent = null
+            }
+        }
+    }
+
+    private fun appendLed(
+        builder: StringBuilder,
+        path: String,
+        red: Int,
+        green: Int,
+        blue: Int,
+        brightness: Int,
+    ) {
+        builder.append("echo \"")
+            .append(red.coerceIn(0, 255)).append(' ')
+            .append(green.coerceIn(0, 255)).append(' ')
+            .append(blue.coerceIn(0, 255)).append("\" > ")
+            .append(path).append("/multi_intensity\n")
+        builder.append("echo ").append(brightness.coerceIn(0, 255)).append(" > ")
+            .append(path).append("/brightness\n")
+    }
+
+    private fun batteryColor(percent: Int): Triple<Int, Int, Int> = when {
+        percent >= 100 -> Triple(0, 255, 0)
+        percent >= 50 -> lerp(
+            Triple(255, 190, 0), Triple(0, 255, 0), (percent - 50) / 50f,
+        )
+        percent >= 0 -> lerp(Triple(255, 0, 0), Triple(255, 190, 0), percent / 50f)
+        else -> Triple(255, 0, 0)
+    }
+
+    private fun thermalColor(temp: Int): Triple<Int, Int, Int> = when {
+        temp <= 35 -> Triple(0, 80, 255)
+        temp <= 55 -> lerp(Triple(0, 80, 255), Triple(255, 140, 0), (temp - 35) / 20f)
+        temp <= 75 -> lerp(Triple(255, 140, 0), Triple(160, 0, 0), (temp - 55) / 20f)
+        else -> Triple(160, 0, 0)
+    }
+
+    private fun lerp(
+        first: Triple<Int, Int, Int>,
+        second: Triple<Int, Int, Int>,
+        fraction: Float,
+    ): Triple<Int, Int, Int> {
+        val amount = fraction.coerceIn(0f, 1f)
+        fun channel(start: Int, end: Int) = (start + (end - start) * amount).toInt()
+        return Triple(
+            channel(first.first, second.first),
+            channel(first.second, second.second),
+            channel(first.third, second.third),
+        )
+    }
+
+    private fun hsvToRgb(
+        hue: Float,
+        saturation: Float = 1f,
+        value: Float = 1f,
+    ): Triple<Int, Int, Int> {
+        val normalizedHue = (hue % 360f + 360f) % 360f
+        val chroma = value * saturation
+        val x = chroma * (1f - abs((normalizedHue / 60f) % 2f - 1f))
+        val offset = value - chroma
+        val (red, green, blue) = when {
+            normalizedHue < 60f -> Triple(chroma, x, 0f)
+            normalizedHue < 120f -> Triple(x, chroma, 0f)
+            normalizedHue < 180f -> Triple(0f, chroma, x)
+            normalizedHue < 240f -> Triple(0f, x, chroma)
+            normalizedHue < 300f -> Triple(x, 0f, chroma)
+            else -> Triple(chroma, 0f, x)
+        }
+        return Triple(
+            ((red + offset) * 255).toInt().coerceIn(0, 255),
+            ((green + offset) * 255).toInt().coerceIn(0, 255),
+            ((blue + offset) * 255).toInt().coerceIn(0, 255),
+        )
+    }
+
+    companion object {
+        private const val TAG = "JoystickEffectEngine"
+        private val sequentialPaths = listOf(
+            "/sys/class/leds/left:stick:0",
+            "/sys/class/leds/left:stick:3",
+            "/sys/class/leds/right:stick:2",
+            "/sys/class/leds/right:stick:1",
+            "/sys/class/leds/right:stick:0",
+            "/sys/class/leds/right:stick:3",
+            "/sys/class/leds/left:stick:2",
+            "/sys/class/leds/left:stick:1",
+        )
+    }
+}

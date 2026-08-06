@@ -9,10 +9,16 @@ object Prefs {
     const val FAN_CURVE_CATALOG = "fan_curve_catalog_v2"
     const val PRESET_CATALOG = "control_preset_catalog_v1"
     const val SELECTED_PRESET = "selected_control_preset"
+    const val SELECTED_GAME_PROFILE = "selected_game_profile"
+    const val SELECTED_NON_GAME_PROFILE = "selected_non_game_profile"
     const val FAN_SELECTION_SOURCE = "fan_selection_source"
     const val FAN_SELECTION_CURVE = "fan_selection_curve"
     const val FAN_TILE_ENABLED = "fan_tile_enabled"
     const val APP_PROFILE_CATALOG = "app_profile_catalog_v1"
+    const val JOYSTICK_PROFILE_CATALOG = "joystick_profile_catalog_v1"
+    const val JOYSTICK_SELECTION_SOURCE = "joystick_selection_source"
+    const val JOYSTICK_SELECTION_PROFILE = "joystick_selection_profile"
+    const val JOYSTICK_TILE_ENABLED = "joystick_tile_enabled"
 
     // Version 1 migration keys.
     const val FAN_CURVE_QUIET = "fan_curve_quiet"

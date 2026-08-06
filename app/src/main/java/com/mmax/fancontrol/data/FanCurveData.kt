@@ -37,6 +37,8 @@ data class FanCurveProfile(
     val points: List<FanCurvePoint>,
     /** User-controlled reset baseline for this individual curve. */
     val defaultPoints: List<FanCurvePoint>,
+    /** Deleted controls stay archived while existing profiles still reference them. */
+    val archived: Boolean = false,
 ) {
     init {
         require(id.isNotBlank()) { "A fan curve requires an id" }
@@ -84,6 +86,15 @@ data class FanCurveCatalog(
 
     fun remove(id: String): FanCurveCatalog =
         copy(profiles = profiles.filterNot { it.id == id })
+
+    fun archive(id: String): FanCurveCatalog = copy(
+        profiles = profiles.map { profile ->
+            if (profile.id == id) profile.copy(archived = true) else profile
+        }
+    )
+
+    val visibleProfiles: List<FanCurveProfile>
+        get() = profiles.filterNot(FanCurveProfile::archived)
 
     companion object {
         fun factoryProfiles(): List<FanCurveProfile> =

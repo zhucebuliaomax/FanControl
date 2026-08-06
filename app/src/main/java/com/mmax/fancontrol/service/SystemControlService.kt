@@ -10,26 +10,34 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.mmax.retrocontrol.MainActivity
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.data.FanCurvePreferences
+import com.mmax.retrocontrol.data.AppProfilePreferences
 import com.mmax.retrocontrol.data.FanSelectionPreferences
 import com.mmax.retrocontrol.data.FanControlConfig
 import com.mmax.retrocontrol.data.FanCurveSerializer
 import com.mmax.retrocontrol.data.Prefs
+import com.mmax.retrocontrol.data.JoystickProfile
+import com.mmax.retrocontrol.data.JoystickProfilePreferences
 import com.mmax.retrocontrol.data.displayName
 import com.mmax.retrocontrol.hardware.FanController
 import com.mmax.retrocontrol.hardware.FanResponseController
+import com.mmax.retrocontrol.hardware.JoystickEffectEngine
 import com.mmax.retrocontrol.hardware.TelemetryRepository
 import com.mmax.retrocontrol.hardware.ThermalSensorReader
 import com.mmax.retrocontrol.hardware.ThermalSnapshot
 import com.mmax.retrocontrol.overlay.TelemetryOverlay
 import com.mmax.retrocontrol.tile.FanQuickSettingsTile
 import com.mmax.retrocontrol.tile.OverlayTileService
+import com.mmax.retrocontrol.tile.JoystickQuickSettingsTile
 import com.mmax.retrocontrol.util.formatTemperature
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,18 +50,22 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * The foreground service owns fan writes and telemetry polling.
+ * The foreground service owns fan and joystick RGB writes plus telemetry polling.
  *
  * It never writes CPU/GPU settings, refresh-rate settings, thermal-zone modes
- * or kernel thermal protection. Hardware writes are limited to pwm-fan pwm1,
- * with cur_state as a compatibility fallback.
+ * or kernel thermal protection. Fan writes remain limited to pwm-fan controls;
+ * joystick writes target only the eight stick LED sysfs nodes.
  */
 class SystemControlService : Service() {
 
     companion object {
+        private const val TAG = "SystemControlService"
         const val CHANNEL_ID = "fan_control"
         private const val NOTIFICATION_ID = 1
         const val ACTION_UPDATE = "com.mmax.retrocontrol.UPDATE"
+        const val ACTION_SET_PROJECTION_INTENT =
+            "com.mmax.retrocontrol.SET_PROJECTION_INTENT"
+        const val EXTRA_PROJECTION_INTENT = "projection_intent"
 
         fun startOrUpdate(context: Context) {
             context.startForegroundService(
@@ -69,6 +81,7 @@ class SystemControlService : Service() {
     private var foregroundJob: Job? = null
     private var screenOffJob: Job? = null
     private var overlay: TelemetryOverlay? = null
+    private lateinit var joystickEffects: JoystickEffectEngine
     private var lastNotificationUpdateMs = 0L
     private var screenReceiverRegistered = false
 
@@ -77,6 +90,9 @@ class SystemControlService : Service() {
 
     @Volatile
     private var fanConfig = FanControlConfig()
+
+    @Volatile
+    private var joystickProfile: JoystickProfile? = null
 
     @Volatile
     private var configRevision = 0L
@@ -90,8 +106,14 @@ class SystemControlService : Service() {
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
-                Intent.ACTION_SCREEN_OFF -> scheduleScreenOffSuspend()
-                Intent.ACTION_USER_PRESENT -> resumeFanAfterUnlock()
+                Intent.ACTION_SCREEN_OFF -> {
+                    scheduleScreenOffSuspend()
+                    joystickEffects.suspendForScreenOff()
+                }
+                Intent.ACTION_USER_PRESENT -> {
+                    resumeFanAfterUnlock()
+                    joystickEffects.resumeAfterScreenOn()
+                }
             }
         }
     }
@@ -107,11 +129,24 @@ class SystemControlService : Service() {
             Prefs.LEGACY_FAN_CURVE_CUSTOM -> loadFanPreferences()
             Prefs.PRESET_CATALOG,
             Prefs.SELECTED_PRESET,
+            Prefs.SELECTED_GAME_PROFILE,
+            Prefs.SELECTED_NON_GAME_PROFILE,
             Prefs.APP_PROFILE_CATALOG,
             Prefs.FAN_SELECTION_SOURCE,
             Prefs.FAN_SELECTION_CURVE,
             Prefs.FAN_TILE_ENABLED -> {
                 loadFanPreferences()
+                loadJoystickPreferences()
+            }
+            Prefs.JOYSTICK_PROFILE_CATALOG -> {
+                loadJoystickPreferences()
+                JoystickQuickSettingsTile.requestRefresh(applicationContext)
+            }
+            Prefs.JOYSTICK_SELECTION_SOURCE,
+            Prefs.JOYSTICK_SELECTION_PROFILE,
+            Prefs.JOYSTICK_TILE_ENABLED -> {
+                loadJoystickPreferences(force = true)
+                JoystickQuickSettingsTile.requestRefresh(applicationContext)
             }
             Prefs.OVERLAY_ENABLED -> {
                 loadOverlayPreference()
@@ -125,6 +160,7 @@ class SystemControlService : Service() {
     override fun onCreate() {
         super.onCreate()
         prefs = getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+        joystickEffects = JoystickEffectEngine(applicationContext, scope)
         createNotificationChannel()
         loadFanPreferences()
         loadOverlayPreference()
@@ -140,18 +176,39 @@ class SystemControlService : Service() {
         )
         screenReceiverRegistered = true
 
-        startForeground(NOTIFICATION_ID, buildNotification())
+        startOrdinaryForeground()
+        loadJoystickPreferences()
         startForegroundAppMonitor()
         startFanLoop()
         applyOverlayState()
         FanQuickSettingsTile.requestRefresh(applicationContext)
+        JoystickQuickSettingsTile.requestRefresh(applicationContext)
         OverlayTileService.requestRefresh(applicationContext)
         if (!getSystemService(PowerManager::class.java).isInteractive) {
             scheduleScreenOffSuspend()
+            joystickEffects.suspendForScreenOff()
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_UPDATE -> {
+                loadFanPreferences()
+                loadJoystickPreferences(force = true)
+            }
+            ACTION_SET_PROJECTION_INTENT -> {
+                val token = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(EXTRA_PROJECTION_INTENT, Intent::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(EXTRA_PROJECTION_INTENT)
+                }
+                if (token != null) {
+                    promoteForMediaProjection()
+                    joystickEffects.setMediaProjectionIntent(token)
+                }
+            }
+        }
         return START_STICKY
     }
 
@@ -165,6 +222,7 @@ class SystemControlService : Service() {
         foregroundJob?.cancel()
         overlay?.hide()
         overlay = null
+        joystickEffects.destroy()
         scope.cancel()
         super.onDestroy()
     }
@@ -176,8 +234,18 @@ class SystemControlService : Service() {
             prefs = prefs,
             suppliedFanConfig = FanCurvePreferences.load(prefs),
             foregroundPackageName = foregroundPackageName,
+            foregroundIsGame = AppProfilePreferences.isGame(this, foregroundPackageName),
         )
         configRevision++
+    }
+
+    private fun loadJoystickPreferences(force: Boolean = false) {
+        joystickProfile = JoystickProfilePreferences.resolveEffectiveProfile(
+            prefs = prefs,
+            foregroundPackageName = foregroundPackageName,
+            foregroundIsGame = AppProfilePreferences.isGame(this, foregroundPackageName),
+        )
+        joystickEffects.apply(joystickProfile, force = force)
     }
 
     private fun loadOverlayPreference() {
@@ -192,9 +260,46 @@ class SystemControlService : Service() {
                 if (foreground != foregroundPackageName) {
                     foregroundPackageName = foreground
                     loadFanPreferences()
+                    loadJoystickPreferences()
+                    Log.i(
+                        TAG,
+                        "Foreground changed: package=$foreground, " +
+                            "fan=${fanConfig.activeProfile?.id ?: "off"}, " +
+                            "joystick=${joystickProfile?.id ?: "off"}",
+                    )
                 }
                 delay(1_000L)
             }
+        }
+    }
+
+    private fun promoteForMediaProjection() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIFICATION_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION,
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION,
+            )
+        }
+    }
+
+    /** Ordinary fan/RGB operation must not claim MediaProjection before consent. */
+    private fun startOrdinaryForeground() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIFICATION_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification())
         }
     }
 

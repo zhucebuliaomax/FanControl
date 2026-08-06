@@ -41,7 +41,7 @@ data class ControlPresetCatalog(
 
         fun defaultPreset(): ControlPreset = ControlPreset(
             id = DEFAULT_ID,
-            name = "Default",
+            name = "default",
             isDefault = true,
             fanCurveId = BuiltInFanCurve.NORMAL.id,
         )
@@ -50,11 +50,17 @@ data class ControlPresetCatalog(
 
 data class ControlPresetConfig(
     val catalog: ControlPresetCatalog = ControlPresetCatalog(),
+    /** Default profile for games. Kept under the legacy property name for migration. */
     val selectedPresetId: String = ControlPresetCatalog.DEFAULT_ID,
+    val selectedNonGamePresetId: String = ControlPresetCatalog.DEFAULT_ID,
 ) {
     val selectedPreset: ControlPreset
         get() = catalog.preset(selectedPresetId)
             ?: ControlPresetCatalog.defaultPreset()
+
+    fun defaultPreset(isGame: Boolean): ControlPreset = catalog.preset(
+        if (isGame) selectedPresetId else selectedNonGamePresetId
+    ) ?: ControlPresetCatalog.defaultPreset()
 }
 
 sealed interface FanSelectionSource {

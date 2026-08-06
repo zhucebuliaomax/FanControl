@@ -4,7 +4,13 @@
     <string name="settings_summary">温度連動のファンカーブとテレメトリー</string>
 
     <string name="app_profile">プロファイル</string>
-    <string name="app_profile_preset">プリセット</string>
+    <string name="app_profile_preset">プロファイル</string>
+    <string name="app_default_preset">デフォルトプロファイル</string>
+    <string name="game_profile">ゲームプロファイル</string>
+    <string name="non_game_profile">非ゲームプロファイル</string>
+    <string name="follow_profile">プロファイルに従う</string>
+    <string name="follow_default">デフォルトに従う</string>
+    <string name="select_joystick_profile">ジョイスティックプロファイルを選択</string>
     <string name="search_apps">アプリを検索</string>
     <string name="no_apps_found">アプリが見つかりません</string>
     <string name="filter_apps">アプリを絞り込む</string>
@@ -12,7 +18,14 @@
     <string name="filter_other">その他</string>
     <string name="filter_all">すべて</string>
     <string name="no_options_available">利用できる項目がありません</string>
-    <string name="select_preset">プリセットを選択</string>
+    <string name="select_preset">プロファイルを選択</string>
+    <string name="preset_default">default</string>
+    <string name="new_preset">新しいプロファイル</string>
+    <string name="add_preset">プロファイルを追加</string>
+    <string name="rename_preset">プロファイル名を変更</string>
+    <string name="preset_name">プロファイル名</string>
+    <string name="delete_preset">プロファイルを削除</string>
+    <string name="follow_preset">プロファイルに従う</string>
 
     <string name="notification_channel_name">ファン制御</string>
     <string name="notification_channel_description">現在のカーブ、ファン割合、CPU/GPU 温度を表示します</string>
@@ -20,6 +33,7 @@
 
     <string name="tile_fan_label">ファンカーブ</string>
     <string name="tile_overlay_label">テレメトリー</string>
+    <string name="tile_joystick_label">ジョイスティック</string>
     <string name="tile_on">オン</string>
     <string name="tile_off">オフ</string>
 

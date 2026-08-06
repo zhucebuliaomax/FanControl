@@ -2,10 +2,12 @@
 
 package com.mmax.retrocontrol.ui
 
+import android.Manifest
 import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.os.Build
@@ -102,6 +104,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -125,10 +128,16 @@ import com.mmax.retrocontrol.feature.fan.FanProfilesSection
 import com.mmax.retrocontrol.feature.fan.FanTelemetrySection
 import com.mmax.retrocontrol.feature.fan.FanTelemetrySectionState
 import com.mmax.retrocontrol.feature.fan.TemperatureTileUiState
+import com.mmax.retrocontrol.feature.joystick.AddJoystickProfileButton
+import com.mmax.retrocontrol.feature.joystick.JoystickProfileEditorDialog
+import com.mmax.retrocontrol.feature.joystick.JoystickProfileUiState
+import com.mmax.retrocontrol.feature.joystick.JoystickProfilesSection
+import com.mmax.retrocontrol.feature.joystick.R as JoystickR
 import com.mmax.retrocontrol.hardware.TemperatureSummary
 import com.mmax.retrocontrol.hardware.ThermalKind
 import com.mmax.retrocontrol.hardware.ThermalReading
 import com.mmax.retrocontrol.service.SystemControlService
+import com.mmax.retrocontrol.service.MediaProjectionActivity
 import com.mmax.retrocontrol.tile.OverlayPermissionActivity
 import com.mmax.retrocontrol.util.formatFanPercent
 import com.mmax.retrocontrol.util.formatTemperature
@@ -145,11 +154,22 @@ fun DashboardScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val hasRoot by RootAccessManager.hasRoot.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var microphoneGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val microphonePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> microphoneGranted = granted }
     val lifecycleOwner = LocalLifecycleOwner.current
     var editingProfileId by remember { mutableStateOf<String?>(null) }
     var restoreFanCurveFocusId by remember { mutableStateOf<String?>(null) }
     var editingPresetId by remember { mutableStateOf<String?>(null) }
     var restorePresetFocusId by remember { mutableStateOf<String?>(null) }
+    var editingJoystickProfileId by remember { mutableStateOf<String?>(null) }
+    var restoreJoystickFocusId by remember { mutableStateOf<String?>(null) }
     var detailKind by remember { mutableStateOf<ThermalKind?>(null) }
     var selectedDestination by rememberSaveable {
         mutableStateOf(DashboardDestination.TELEMETRY)
@@ -163,11 +183,16 @@ fun DashboardScreen(
     var overlayPermissionGranted by remember {
         mutableStateOf(Settings.canDrawOverlays(context))
     }
-    val fanProfileIds = state.fanConfig.catalog.profiles.map { it.id }
+    val fanProfileIds = state.fanConfig.catalog.visibleProfiles.map { it.id }
     val fanProfileFocusRequesters = remember(fanProfileIds) {
         List(fanProfileIds.size + 1) { FocusRequester() }
     }
     val addCurveFocusRequester = remember { FocusRequester() }
+    val joystickProfileIds = state.joystickProfiles.visibleProfiles.map { it.id }
+    val joystickProfileFocusRequesters = remember(joystickProfileIds) {
+        List(joystickProfileIds.size + 1) { FocusRequester() }
+    }
+    val addJoystickProfileFocusRequester = remember { FocusRequester() }
     val presetIds = state.presetConfig.catalog.presets.map { it.id }
     val presetFocusRequesters = remember(presetIds) {
         List(presetIds.size) { FocusRequester() }
@@ -179,7 +204,7 @@ fun DashboardScreen(
     val appFocusRequester = remember { FocusRequester() }
     val overlayFocusRequester = remember { FocusRequester() }
     val telemetryFocusRequester = remember { FocusRequester() }
-    val authorizationFocusRequesters = remember { List(6) { FocusRequester() } }
+    val authorizationFocusRequesters = remember { List(8) { FocusRequester() } }
     val githubFocusRequester = remember { FocusRequester() }
     val navigationFocusRequesters = remember {
         List(DashboardDestination.entries.size) { FocusRequester() }
@@ -194,6 +219,9 @@ fun DashboardScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 notificationsEnabled = context.areFanNotificationsEnabled()
                 overlayPermissionGranted = Settings.canDrawOverlays(context)
+                microphoneGranted = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.RECORD_AUDIO,
+                ) == PackageManager.PERMISSION_GRANTED
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -204,15 +232,32 @@ fun DashboardScreen(
     val unavailable = stringResource(R.string.not_available)
     val pressBackAgainToExit = stringResource(R.string.press_back_again_to_exit)
     val offName = stringResource(R.string.fan_mode_off)
+    val joystickOffName = stringResource(JoystickR.string.joystick_off)
     fun fanCurveName(profileId: String?): String = profileId
         ?.let { state.fanConfig.catalog.profile(it)?.displayName(context) }
         ?: offName
+    fun joystickProfileName(profileId: String?): String = profileId
+        ?.let { state.joystickProfiles.profile(it)?.name }
+        ?: joystickOffName
+    fun joystickProfileUi(profileId: String): JoystickProfileUiState? =
+        state.joystickProfiles.profile(profileId)?.let { profile ->
+            JoystickProfileUiState(
+                id = profile.id,
+                name = profile.name,
+                mode = profile.mode,
+                red = profile.red,
+                green = profile.green,
+                blue = profile.blue,
+                brightness = profile.brightness,
+            )
+        }
     val presetItems = state.presetConfig.catalog.presets.map { preset ->
         PresetListItemUiState(
             id = preset.id,
             name = preset.name,
             isDefault = preset.isDefault,
             fanCurveName = fanCurveName(preset.fanCurveId),
+            joystickProfileName = joystickProfileName(preset.joystickId),
         )
     }
     val appsWithProfileSummaries = state.installedApps.map { app ->
@@ -220,11 +265,12 @@ fun DashboardScreen(
         val effectivePreset = AppProfilePreferences.effectivePreset(
             profile = profile,
             presetConfig = state.presetConfig,
+            isGame = app.isGame,
         )
         val summary = buildList {
             add(effectivePreset.name)
             profile?.fanCurveId?.let { add(fanCurveName(it)) }
-            profile?.joystickId?.let(::add)
+            profile?.joystickId?.let { add(joystickProfileName(it)) }
             profile?.buttonLayoutId?.let(::add)
             profile?.performanceProfileId?.let(::add)
         }.joinToString(" · ")
@@ -270,6 +316,23 @@ fun DashboardScreen(
             val index = presetIds.indexOf(restoreId).takeIf { it >= 0 } ?: 0
             presetFocusRequesters[index].requestFocus()
             restorePresetFocusId = null
+        }
+    }
+
+    LaunchedEffect(
+        editingJoystickProfileId,
+        restoreJoystickFocusId,
+        joystickProfileIds,
+    ) {
+        val restoreId = restoreJoystickFocusId
+        if (editingJoystickProfileId == null && restoreId != null) {
+            withFrameNanos { }
+            val index = joystickProfileIds.indexOf(restoreId)
+                .takeIf { it >= 0 }
+                ?.plus(1)
+                ?: 0
+            joystickProfileFocusRequesters[index].requestFocus()
+            restoreJoystickFocusId = null
         }
     }
 
@@ -356,7 +419,7 @@ fun DashboardScreen(
         fanContent = {
             FanProfilesSection(
                 state = FanProfileSectionState(
-                    profiles = state.fanConfig.catalog.profiles.map { profile ->
+                    profiles = state.fanConfig.catalog.visibleProfiles.map { profile ->
                         FanProfileItemUiState(
                             id = profile.id,
                             name = profile.displayName(context),
@@ -415,6 +478,67 @@ fun DashboardScreen(
                     },
             )
         },
+        joystickContent = {
+            JoystickProfilesSection(
+                profiles = state.joystickProfiles.visibleProfiles.map { profile ->
+                    JoystickProfileUiState(
+                        id = profile.id,
+                        name = profile.name,
+                        mode = profile.mode,
+                        red = profile.red,
+                        green = profile.green,
+                        blue = profile.blue,
+                        brightness = profile.brightness,
+                    )
+                },
+                onProfileSelected = { editingJoystickProfileId = it },
+                onDeleteProfile = vm::deleteJoystickProfile,
+                offModifier = Modifier
+                    .focusRequester(joystickProfileFocusRequesters[0])
+                    .focusProperties {
+                        up = FocusRequester.Default
+                        down = if (joystickProfileIds.isEmpty()) {
+                            addJoystickProfileFocusRequester
+                        } else {
+                            joystickProfileFocusRequesters[1]
+                        }
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
+                    },
+                profileModifier = { index ->
+                    val focusIndex = index + 1
+                    Modifier
+                        .focusRequester(joystickProfileFocusRequesters[focusIndex])
+                        .focusProperties {
+                            up = joystickProfileFocusRequesters[focusIndex - 1]
+                            down = if (index == joystickProfileIds.lastIndex) {
+                                addJoystickProfileFocusRequester
+                            } else {
+                                joystickProfileFocusRequesters[focusIndex + 1]
+                            }
+                            left = FocusRequester.Default
+                            right = FocusRequester.Default
+                        }
+                },
+            )
+        },
+        joystickAction = {
+            AddJoystickProfileButton(
+                onClick = {
+                    editingJoystickProfileId = vm.addJoystickProfile(
+                        context.getString(JoystickR.string.joystick_new_profile)
+                    )
+                },
+                modifier = Modifier
+                    .focusRequester(addJoystickProfileFocusRequester)
+                    .focusProperties {
+                        up = joystickProfileFocusRequesters.last()
+                        down = FocusRequester.Default
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
+                    },
+            )
+        },
         presetContent = {
             PresetManagementSection(
                 presets = presetItems,
@@ -456,67 +580,97 @@ fun DashboardScreen(
             )
         },
         globalPresetContent = {
-            GlobalPresetSelectionSection(
-                presets = presetItems,
-                selectedPresetId = state.presetConfig.selectedPresetId,
-                onPresetSelected = {
-                    vm.selectGlobalPreset(it)
+            val gameProfile = state.presetConfig.defaultPreset(true)
+            val nonGameProfile = state.presetConfig.defaultPreset(false)
+            DefaultProfileSection(
+                gameProfileId = gameProfile.id,
+                gameProfileName = gameProfile.name,
+                nonGameProfileId = nonGameProfile.id,
+                nonGameProfileName = nonGameProfile.name,
+                profileChoices = state.presetConfig.catalog.presets.map {
+                    AppProfileChoice(it.id, it.name)
+                },
+                fanCurveChoices = state.fanConfig.catalog.visibleProfiles.map {
+                    AppProfileChoice(it.id, it.displayName(context))
+                },
+                joystickChoices = state.joystickProfiles.visibleProfiles.map {
+                    AppProfileChoice(it.id, it.name)
+                },
+                onDefaultProfileSelected = { isGame, id ->
+                    vm.selectDefaultProfile(isGame, id)
                     onFanCurveSelected(true)
                 },
-                itemModifier = { index ->
-                    Modifier
-                        .focusRequester(globalPresetFocusRequesters[index])
-                        .focusProperties {
-                            up = if (index == 0) {
-                                FocusRequester.Default
-                            } else {
-                                globalPresetFocusRequesters[index - 1]
-                            }
-                            down = if (index == presetItems.lastIndex) {
-                                FocusRequester.Default
-                            } else {
-                                globalPresetFocusRequesters[index + 1]
-                            }
-                            left = FocusRequester.Default
-                            right = FocusRequester.Default
-                        }
+                onProfileEdit = { editingPresetId = it },
+                onAddProfile = {
+                    editingPresetId = vm.addPreset(context.getString(R.string.new_preset))
+                },
+                onFanCurveEdit = { editingProfileId = it },
+                onAddFanCurve = {
+                    editingProfileId = vm.addFanCurve(context.getString(R.string.new_fan_curve))
+                },
+                onJoystickEdit = { editingJoystickProfileId = it },
+                onAddJoystick = {
+                    editingJoystickProfileId = vm.addJoystickProfile(
+                        context.getString(JoystickR.string.joystick_new_profile)
+                    )
                 },
             )
         },
         appProfileContent = { packageName ->
             val profile = state.appProfiles[packageName]
+            val app = state.installedApps.firstOrNull { it.packageName == packageName }
             val effectivePreset = AppProfilePreferences.effectivePreset(
                 profile = profile,
                 presetConfig = state.presetConfig,
+                isGame = app?.isGame == true,
             )
             AppProfileSection(
                 profile = profile,
-                selectedPresetId = effectivePreset.id,
-                selectedPresetName = effectivePreset.name,
-                selectedFanCurveName = profile?.fanCurveId?.let(::fanCurveName),
-                presetChoices = state.presetConfig.catalog.presets.map { preset ->
-                    AppProfileChoice(id = preset.id, name = preset.name)
-                },
-                fanCurveChoices = buildList {
-                    add(
-                        AppProfileChoice(
-                            id = null,
-                            name = context.getString(R.string.follow_preset),
-                        )
-                    )
-                    state.fanConfig.catalog.profiles.forEach { fanProfile ->
-                        add(
-                            AppProfileChoice(
-                                id = fanProfile.id,
-                                name = fanProfile.displayName(context),
-                            )
-                        )
+                selectedProfileName = if (profile?.presetId == null) {
+                    context.getString(R.string.follow_default)
+                } else effectivePreset.name,
+                selectedFanCurveName = profile?.fanCurveId?.let(::fanCurveName)
+                    ?: context.getString(R.string.follow_profile),
+                selectedJoystickProfileName = profile?.joystickId
+                    ?.let(::joystickProfileName)
+                    ?: context.getString(R.string.follow_profile),
+                profileChoices = buildList {
+                    add(AppProfileChoice(null, context.getString(R.string.follow_default)))
+                    state.presetConfig.catalog.presets.forEach {
+                        add(AppProfileChoice(it.id, it.name))
                     }
                 },
-                onPresetSelected = { vm.setAppPreset(packageName, it) },
+                fanCurveChoices = buildList {
+                    add(AppProfileChoice(null, context.getString(R.string.follow_profile)))
+                    state.fanConfig.catalog.visibleProfiles.forEach { fanProfile ->
+                        add(AppProfileChoice(fanProfile.id, fanProfile.displayName(context)))
+                    }
+                },
+                joystickChoices = buildList {
+                    add(AppProfileChoice(null, context.getString(R.string.follow_profile)))
+                    state.joystickProfiles.visibleProfiles.forEach { joystickProfile ->
+                        add(AppProfileChoice(joystickProfile.id, joystickProfile.name))
+                    }
+                },
+                onProfileSelected = { vm.setAppPreset(packageName, it) },
                 onFanCurveSelected = {
                     vm.setAppFanCurve(packageName, it)
                     if (it != null) onFanCurveSelected(true)
+                },
+                onJoystickSelected = { vm.setAppJoystickProfile(packageName, it) },
+                onProfileEdit = { editingPresetId = it },
+                onAddProfile = {
+                    editingPresetId = vm.addPreset(context.getString(R.string.new_preset))
+                },
+                onFanCurveEdit = { editingProfileId = it },
+                onAddFanCurve = {
+                    editingProfileId = vm.addFanCurve(context.getString(R.string.new_fan_curve))
+                },
+                onJoystickEdit = { editingJoystickProfileId = it },
+                onAddJoystick = {
+                    editingJoystickProfileId = vm.addJoystickProfile(
+                        context.getString(JoystickR.string.joystick_new_profile)
+                    )
                 },
             )
         },
@@ -527,6 +681,7 @@ fun DashboardScreen(
                     rootGranted = hasRoot,
                     overlayPermissionGranted = overlayPermissionGranted,
                     notificationsEnabled = notificationsEnabled,
+                    microphoneGranted = microphoneGranted,
                 ),
                 onAutoStartEnabledChange = vm::setAutoStartEnabled,
                 onRefreshRoot = onRefreshRoot,
@@ -534,6 +689,12 @@ fun DashboardScreen(
                 onOpenAppInfo = { context.openAppInfo() },
                 onOpenOverlaySettings = { context.openOverlaySettings() },
                 onOpenNotificationSettings = { context.openFanNotificationSettings() },
+                onRequestMicrophone = {
+                    microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                },
+                onRequestScreenCapture = {
+                    context.startActivity(Intent(context, MediaProjectionActivity::class.java))
+                },
                 autoStartModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[0])
                     .focusProperties {
@@ -578,6 +739,22 @@ fun DashboardScreen(
                     .focusRequester(authorizationFocusRequesters[5])
                     .focusProperties {
                         up = authorizationFocusRequesters[4]
+                        down = authorizationFocusRequesters[6]
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
+                    },
+                microphoneModifier = Modifier
+                    .focusRequester(authorizationFocusRequesters[6])
+                    .focusProperties {
+                        up = authorizationFocusRequesters[5]
+                        down = authorizationFocusRequesters[7]
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
+                    },
+                screenCaptureModifier = Modifier
+                    .focusRequester(authorizationFocusRequesters[7])
+                    .focusProperties {
+                        up = authorizationFocusRequesters[6]
                         down = githubFocusRequester
                         left = FocusRequester.Default
                         right = FocusRequester.Default
@@ -589,7 +766,7 @@ fun DashboardScreen(
                 linkModifier = Modifier
                     .focusRequester(githubFocusRequester)
                     .focusProperties {
-                        up = authorizationFocusRequesters[5]
+                        up = authorizationFocusRequesters[7]
                         down = FocusRequester.Default
                         left = FocusRequester.Default
                         right = FocusRequester.Default
@@ -629,7 +806,7 @@ fun DashboardScreen(
             fanCurveName = fanCurveName(preset.fanCurveId),
             fanCurveChoices = buildList {
                 add(PresetFanCurveChoice(id = null, name = offName))
-                state.fanConfig.catalog.profiles.forEach { profile ->
+                state.fanConfig.catalog.visibleProfiles.forEach { profile ->
                     add(
                         PresetFanCurveChoice(
                             id = profile.id,
@@ -642,6 +819,24 @@ fun DashboardScreen(
                 vm.setPresetFanCurve(preset.id, it)
                 if (it != null) onFanCurveSelected(true)
             },
+            onFanCurveEdit = { editingProfileId = it },
+            onAddFanCurve = {
+                editingProfileId = vm.addFanCurve(context.getString(R.string.new_fan_curve))
+            },
+            joystickProfileName = joystickProfileName(preset.joystickId),
+            joystickChoices = buildList {
+                add(PresetJoystickChoice(id = null, name = joystickOffName))
+                state.joystickProfiles.visibleProfiles.forEach { profile ->
+                    add(PresetJoystickChoice(id = profile.id, name = profile.name))
+                }
+            },
+            onJoystickSelected = { vm.setPresetJoystickProfile(preset.id, it) },
+            onJoystickEdit = { editingJoystickProfileId = it },
+            onAddJoystick = {
+                editingJoystickProfileId = vm.addJoystickProfile(
+                    context.getString(JoystickR.string.joystick_new_profile)
+                )
+            },
             onRename = { vm.renamePreset(preset.id, it) },
             onDelete = {
                 vm.deletePreset(preset.id)
@@ -651,6 +846,28 @@ fun DashboardScreen(
             onDismiss = {
                 restorePresetFocusId = preset.id
                 editingPresetId = null
+            },
+        )
+    }
+
+    editingJoystickProfileId?.let { profileId ->
+        val profile = joystickProfileUi(profileId) ?: return@let
+        JoystickProfileEditorDialog(
+            profile = profile,
+            onModeSelected = { vm.setJoystickMode(profile.id, it) },
+            onColorSelected = { red, green, blue ->
+                vm.setJoystickColor(profile.id, red, green, blue)
+            },
+            onBrightnessSelected = { vm.setJoystickBrightness(profile.id, it) },
+            onRename = { vm.renameJoystickProfile(profile.id, it) },
+            onDelete = {
+                vm.deleteJoystickProfile(profile.id)
+                restoreJoystickFocusId = profile.id
+                editingJoystickProfileId = null
+            },
+            onDismiss = {
+                restoreJoystickFocusId = profile.id
+                editingJoystickProfileId = null
             },
         )
     }

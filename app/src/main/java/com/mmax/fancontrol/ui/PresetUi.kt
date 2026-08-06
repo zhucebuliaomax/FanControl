@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.ExpandLess
@@ -62,12 +63,21 @@ data class PresetListItemUiState(
     val name: String,
     val isDefault: Boolean,
     val fanCurveName: String,
+    val joystickProfileName: String,
 )
 
 data class PresetFanCurveChoice(
     val id: String?,
     val name: String,
 )
+
+data class PresetJoystickChoice(
+    val id: String?,
+    val name: String,
+)
+
+private val PresetListItemUiState.summary: String
+    get() = "$fanCurveName · $joystickProfileName"
 
 @Composable
 fun PresetManagementSection(
@@ -134,7 +144,7 @@ fun GlobalPresetSelectionSection(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                supportingContent = { Text(preset.fanCurveName) },
+                supportingContent = { Text(preset.summary) },
                 trailingContent = {
                     if (selected) {
                         Icon(Icons.Default.Check, contentDescription = null)
@@ -179,7 +189,7 @@ private fun PresetListItem(
                 overflow = TextOverflow.Ellipsis,
             )
         },
-        supportingContent = { Text(preset.fanCurveName) },
+        supportingContent = { Text(preset.summary) },
         modifier = modifier,
     )
 }
@@ -202,7 +212,7 @@ private fun SwipeToDeletePresetItem(
         deleteIcon = Icons.Default.Delete,
         deleteContentDescription = stringResource(R.string.delete_preset),
         modifier = modifier,
-        supportingContent = { Text(preset.fanCurveName) },
+        supportingContent = { Text(preset.summary) },
         content = {
             Text(
                 text = preset.name,
@@ -229,11 +239,18 @@ fun PresetEditorDialog(
     fanCurveName: String,
     fanCurveChoices: List<PresetFanCurveChoice>,
     onFanCurveSelected: (String?) -> Unit,
+    onFanCurveEdit: (String) -> Unit,
+    onAddFanCurve: () -> Unit,
+    joystickProfileName: String,
+    joystickChoices: List<PresetJoystickChoice>,
+    onJoystickSelected: (String?) -> Unit,
+    onJoystickEdit: (String) -> Unit,
+    onAddJoystick: () -> Unit,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var expandedSection by remember(preset.id) { mutableStateOf<String?>(null) }
+    var controlPicker by remember(preset.id) { mutableStateOf<String?>(null) }
     var showRename by remember(preset.id) { mutableStateOf(false) }
     var renameDraft by remember(preset.id, preset.name) { mutableStateOf(preset.name) }
     var showDelete by remember(preset.id) { mutableStateOf(false) }
@@ -282,51 +299,72 @@ fun PresetEditorDialog(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
                 ) {
-                    ExpandablePresetSetting(
+                    ProfileControlSetting(
                         title = stringResource(R.string.preset_fan_curve),
                         summary = fanCurveName,
-                        expanded = expandedSection == "fan",
-                        hasChildren = fanCurveChoices.isNotEmpty(),
-                        onToggle = {
-                            expandedSection = if (expandedSection == "fan") null else "fan"
-                        },
+                        onClick = { controlPicker = "fan" },
                         index = 0,
                         count = 4,
-                    ) {
-                        fanCurveChoices.forEachIndexed { index, choice ->
-                            SegmentedListItem(
-                                onClick = {
-                                    onFanCurveSelected(choice.id)
-                                    expandedSection = null
-                                },
-                                shapes = ListItemDefaults.segmentedShapes(
-                                    index = index,
-                                    count = fanCurveChoices.size,
-                                ),
-                                content = { Text(choice.name) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .bringIntoViewOnFocus(),
-                            )
-                        }
-                    }
-                    EmptyPresetSetting(
+                    )
+                    ProfileControlSetting(
                         title = stringResource(R.string.control_joystick),
+                        summary = joystickProfileName,
+                        onClick = { controlPicker = "joystick" },
                         index = 1,
                         count = 4,
                     )
-                    EmptyPresetSetting(
+                    ProfileControlSetting(
                         title = stringResource(R.string.control_button_layout),
+                        summary = "",
+                        onClick = { controlPicker = "button" },
                         index = 2,
                         count = 4,
                     )
-                    EmptyPresetSetting(
+                    ProfileControlSetting(
                         title = stringResource(R.string.preset_performance_profile),
+                        summary = "",
+                        onClick = { controlPicker = "performance" },
                         index = 3,
                         count = 4,
                     )
                 }
             }
+        }
+    }
+
+    controlPicker?.let { picker ->
+        when (picker) {
+            "fan" -> ChoiceDialog(
+                title = stringResource(R.string.select_fan_curve),
+                choices = fanCurveChoices.map { AppProfileChoice(it.id, it.name) },
+                selectedId = preset.fanCurveId,
+                showRadio = true,
+                addLabel = stringResource(R.string.add_fan_curve),
+                onSelected = onFanCurveSelected,
+                onItemClick = { id -> id?.let(onFanCurveEdit) },
+                onAdd = onAddFanCurve,
+                onDismiss = { controlPicker = null },
+            )
+            "joystick" -> ChoiceDialog(
+                title = stringResource(R.string.select_joystick_profile),
+                choices = joystickChoices.map { AppProfileChoice(it.id, it.name) },
+                selectedId = preset.joystickId,
+                showRadio = true,
+                addLabel = stringResource(R.string.add_preset),
+                onSelected = onJoystickSelected,
+                onItemClick = { id -> id?.let(onJoystickEdit) },
+                onAdd = onAddJoystick,
+                onDismiss = { controlPicker = null },
+            )
+            else -> ChoiceDialog(
+                title = stringResource(
+                    if (picker == "button") R.string.control_button_layout
+                    else R.string.control_core
+                ),
+                choices = emptyList(),
+                showRadio = true,
+                onDismiss = { controlPicker = null },
+            )
         }
     }
 
@@ -371,41 +409,21 @@ fun PresetEditorDialog(
 }
 
 @Composable
-private fun ExpandablePresetSetting(
+private fun ProfileControlSetting(
     title: String,
     summary: String,
-    expanded: Boolean,
-    hasChildren: Boolean,
-    onToggle: () -> Unit,
+    onClick: () -> Unit,
     index: Int,
     count: Int,
-    children: @Composable () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
-        SegmentedListItem(
-            onClick = { if (hasChildren) onToggle() },
-            shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-            content = { Text(title) },
-            supportingContent = { Text(summary) },
-            trailingContent = {
-                if (hasChildren) {
-                    Icon(
-                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = null,
-                    )
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        AnimatedVisibility(visible = expanded) {
-            Column(
-                modifier = Modifier.padding(start = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
-            ) {
-                children()
-            }
-        }
-    }
+    SegmentedListItem(
+        onClick = onClick,
+        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        content = { Text(title) },
+        supportingContent = summary.takeIf(String::isNotEmpty)?.let { value -> { Text(value) } },
+        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable

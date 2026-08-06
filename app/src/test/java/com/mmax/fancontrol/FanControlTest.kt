@@ -33,6 +33,7 @@ class FanControlTest {
         val presets = ControlPresetConfig(
             catalog = ControlPresetCatalog(listOf(preset)),
             selectedPresetId = preset.id,
+            selectedNonGamePresetId = preset.id,
         )
         val catalog = FanCurveCatalog()
 
@@ -71,6 +72,31 @@ class FanControlTest {
         val catalog = ControlPresetCatalog(listOf(default, custom)).remove(custom.id)
 
         assertEquals(listOf(default), catalog.presets)
+    }
+
+    @Test
+    fun defaultProfiles_areResolvedByAppCategory() {
+        val game = ControlPreset(id = "game", name = "Game", fanCurveId = BuiltInFanCurve.PERFORMANCE.id)
+        val other = ControlPreset(id = "other", name = "Other", fanCurveId = BuiltInFanCurve.QUIET.id)
+        val config = ControlPresetConfig(
+            catalog = ControlPresetCatalog(listOf(ControlPresetCatalog.defaultPreset(), game, other)),
+            selectedPresetId = game.id,
+            selectedNonGamePresetId = other.id,
+        )
+
+        assertEquals(game, config.defaultPreset(isGame = true))
+        assertEquals(other, config.defaultPreset(isGame = false))
+    }
+
+    @Test
+    fun archivedControl_isHiddenButStillResolvable() {
+        val catalog = FanCurveCatalog().archive(BuiltInFanCurve.NORMAL.id)
+
+        assertNull(catalog.visibleProfiles.firstOrNull { it.id == BuiltInFanCurve.NORMAL.id })
+        assertEquals(
+            BuiltInFanCurve.NORMAL.id,
+            catalog.profile(BuiltInFanCurve.NORMAL.id)?.id,
+        )
     }
 
     @Test

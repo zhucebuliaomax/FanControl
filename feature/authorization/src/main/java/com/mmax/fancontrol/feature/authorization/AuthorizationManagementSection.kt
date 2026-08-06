@@ -20,6 +20,7 @@ data class AuthorizationUiState(
     val rootGranted: Boolean,
     val overlayPermissionGranted: Boolean,
     val notificationsEnabled: Boolean,
+    val microphoneGranted: Boolean,
 )
 
 /**
@@ -35,6 +36,8 @@ fun AuthorizationManagementSection(
     onOpenAppInfo: () -> Unit,
     onOpenOverlaySettings: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
+    onRequestMicrophone: () -> Unit,
+    onRequestScreenCapture: () -> Unit,
     modifier: Modifier = Modifier,
     autoStartModifier: Modifier = Modifier,
     rootModifier: Modifier = Modifier,
@@ -42,6 +45,8 @@ fun AuthorizationManagementSection(
     appInfoModifier: Modifier = Modifier,
     overlayModifier: Modifier = Modifier,
     notificationsModifier: Modifier = Modifier,
+    microphoneModifier: Modifier = Modifier,
+    screenCaptureModifier: Modifier = Modifier,
 ) {
     SettingsSectionTitle(
         text = stringResource(R.string.authorization_title),
@@ -50,7 +55,7 @@ fun AuthorizationManagementSection(
     SettingsSegmentGroup {
         SettingsPreferenceRow(
             index = 0,
-            count = 6,
+            count = 8,
             title = stringResource(R.string.authorization_auto_start),
             onClick = { onAutoStartEnabledChange(!state.autoStartEnabled) },
             modifier = autoStartModifier,
@@ -64,7 +69,7 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 1,
-            count = 6,
+            count = 8,
             title = stringResource(R.string.authorization_root),
             summary = stringResource(
                 if (state.rootGranted) {
@@ -83,7 +88,7 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 2,
-            count = 6,
+            count = 8,
             title = stringResource(R.string.authorization_kernelsu),
             summary = stringResource(R.string.authorization_kernelsu_summary),
             onClick = onOpenKernelSu,
@@ -92,7 +97,7 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 3,
-            count = 6,
+            count = 8,
             title = stringResource(R.string.authorization_app_info),
             summary = stringResource(R.string.authorization_app_info_summary),
             onClick = onOpenAppInfo,
@@ -101,7 +106,7 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 4,
-            count = 6,
+            count = 8,
             title = stringResource(R.string.authorization_overlay),
             summary = stringResource(
                 if (state.overlayPermissionGranted) {
@@ -116,7 +121,7 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 5,
-            count = 6,
+            count = 8,
             title = stringResource(R.string.authorization_notifications),
             summary = stringResource(
                 if (state.notificationsEnabled) {
@@ -127,6 +132,34 @@ fun AuthorizationManagementSection(
             ),
             onClick = onOpenNotificationSettings,
             modifier = notificationsModifier,
+            trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
+        )
+        SettingsPreferenceRow(
+            index = 6,
+            count = 8,
+            title = stringResource(R.string.authorization_microphone),
+            summary = stringResource(
+                if (state.microphoneGranted) {
+                    R.string.authorization_microphone_granted
+                } else {
+                    R.string.authorization_microphone_not_granted
+                }
+            ),
+            onClick = onRequestMicrophone,
+            modifier = microphoneModifier,
+            trailingIcon = if (state.microphoneGranted) {
+                Icons.Default.Check
+            } else {
+                Icons.AutoMirrored.Filled.OpenInNew
+            },
+        )
+        SettingsPreferenceRow(
+            index = 7,
+            count = 8,
+            title = stringResource(R.string.authorization_screen_capture),
+            summary = stringResource(R.string.authorization_screen_capture_summary),
+            onClick = onRequestScreenCapture,
+            modifier = screenCaptureModifier,
             trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
         )
     }

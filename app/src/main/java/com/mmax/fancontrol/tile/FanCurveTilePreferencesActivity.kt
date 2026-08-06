@@ -48,6 +48,9 @@ import com.mmax.retrocontrol.data.FanCurvePreferences
 import com.mmax.retrocontrol.data.FanSelectionPreferences
 import com.mmax.retrocontrol.data.FanSelectionSource
 import com.mmax.retrocontrol.data.Prefs
+import com.mmax.retrocontrol.data.JoystickProfilePreferences
+import com.mmax.retrocontrol.data.JoystickSelectionPreferences
+import com.mmax.retrocontrol.data.JoystickSelectionSource
 import com.mmax.retrocontrol.data.displayName
 import com.mmax.retrocontrol.service.SystemControlService
 import com.mmax.retrocontrol.theme.FanControlTheme
@@ -81,10 +84,27 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
         window.setGravity(Gravity.CENTER)
         setFinishOnTouchOutside(true)
 
+        val joystickTile = originatingTile()?.className ==
+            JoystickQuickSettingsTile::class.java.name
         setContent {
             FanControlTheme {
                 val config by remember { mutableStateOf(currentConfig()) }
                 val selection by remember { mutableStateOf(currentSelection(config)) }
+                val joystickCatalog by remember {
+                    mutableStateOf(
+                        JoystickProfilePreferences.load(
+                            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+                        )
+                    )
+                }
+                val joystickSelection by remember {
+                    mutableStateOf(
+                        JoystickSelectionPreferences.load(
+                            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE),
+                            joystickCatalog,
+                        )
+                    )
+                }
                 Surface(
                     modifier = Modifier.width(300.dp),
                     shape = MaterialTheme.shapes.extraLarge,
@@ -92,7 +112,10 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
                 ) {
                     Column(Modifier.padding(top = 18.dp, bottom = 8.dp)) {
                         Text(
-                            text = stringResource(R.string.select_fan_curve),
+                            text = stringResource(
+                                if (joystickTile) R.string.select_joystick_profile
+                                else R.string.select_fan_curve
+                            ),
                             modifier = Modifier.padding(horizontal = 20.dp),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
@@ -103,21 +126,40 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
                                 .heightIn(max = 360.dp)
                                 .verticalScroll(rememberScrollState()),
                         ) {
-                            FanSourceRow(
-                                name = stringResource(R.string.follow_preset),
-                                selected = selection.source is FanSelectionSource.FollowPreset,
-                                onClick = ::selectFollowPreset,
-                            )
-                            config.catalog.profiles.forEach { profile ->
+                            if (joystickTile) {
                                 FanSourceRow(
-                                    name = profile.displayName(
-                                        this@FanCurveTilePreferencesActivity
-                                    ),
-                                    selected = (
-                                        selection.source as? FanSelectionSource.DirectCurve
-                                    )?.profileId == profile.id,
-                                    onClick = { select(profile.id) },
+                                    name = stringResource(R.string.follow_profile),
+                                    selected = joystickSelection.source is
+                                        JoystickSelectionSource.FollowProfile,
+                                    onClick = ::selectFollowJoystickProfile,
                                 )
+                                joystickCatalog.visibleProfiles.forEach { profile ->
+                                    FanSourceRow(
+                                        name = profile.name,
+                                        selected = (
+                                            joystickSelection.source as?
+                                                JoystickSelectionSource.DirectProfile
+                                        )?.profileId == profile.id,
+                                        onClick = { selectJoystick(profile.id) },
+                                    )
+                                }
+                            } else {
+                                FanSourceRow(
+                                    name = stringResource(R.string.follow_profile),
+                                    selected = selection.source is FanSelectionSource.FollowPreset,
+                                    onClick = ::selectFollowPreset,
+                                )
+                                config.catalog.visibleProfiles.forEach { profile ->
+                                    FanSourceRow(
+                                        name = profile.displayName(
+                                            this@FanCurveTilePreferencesActivity
+                                        ),
+                                        selected = (
+                                            selection.source as? FanSelectionSource.DirectCurve
+                                        )?.profileId == profile.id,
+                                        onClick = { select(profile.id) },
+                                    )
+                                }
                             }
                         }
                         Row(
@@ -186,6 +228,28 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
             getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
         )
         finishSelection()
+    }
+
+    private fun selectJoystick(profileId: String) {
+        JoystickSelectionPreferences.selectDirectProfile(
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE), profileId,
+        )
+        finishJoystickSelection()
+    }
+
+    private fun selectFollowJoystickProfile() {
+        JoystickSelectionPreferences.selectFollowProfile(
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+        )
+        finishJoystickSelection()
+    }
+
+    private fun finishJoystickSelection() {
+        JoystickQuickSettingsTile.requestRefresh(this)
+        RootAccessManager.ensureRoot {
+            SystemControlService.startOrUpdate(applicationContext)
+            if (!requestNotificationPermissionIfNeeded()) finish()
+        }
     }
 
     private fun finishSelection() {

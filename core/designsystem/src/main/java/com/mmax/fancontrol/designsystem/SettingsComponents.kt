@@ -14,8 +14,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.RadioButtonChecked
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -44,6 +55,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -143,9 +157,8 @@ fun SecondaryMenuList(
 /**
  * Standard row for second-level menu lists.
  *
- * A one-row list is treated as a standalone card and always gets extra-large
- * idle corners. During an outer swipe gesture, [keepInteractionShape] prevents
- * focus loss from shrinking the corners.
+ * During an outer swipe gesture, [keepInteractionShape] prevents focus loss
+ * from shrinking the corners.
  */
 @Composable
 fun SecondaryMenuListItem(
@@ -240,11 +253,6 @@ private fun secondaryMenuItemShapes(index: Int, count: Int): ListItemShapes =
     ListItemDefaults.segmentedShapes(
         index = index,
         count = count,
-        defaultShapes = if (count == 1) {
-            ListItemDefaults.shapes(shape = MaterialTheme.shapes.extraLarge)
-        } else {
-            ListItemDefaults.shapes()
-        },
     )
 
 @Composable
@@ -259,11 +267,6 @@ fun SettingsSegmentScope.SettingsPreferenceRow(
     trailingIconContentDescription: String? = null,
     trailingContent: (@Composable () -> Unit)? = null,
 ) {
-    val defaultShapes = if (count == 1) {
-        ListItemDefaults.shapes(shape = MaterialTheme.shapes.extraLarge)
-    } else {
-        ListItemDefaults.shapes()
-    }
     SegmentedListItem(
         onClick = onClick,
         modifier = modifier
@@ -272,7 +275,6 @@ fun SettingsSegmentScope.SettingsPreferenceRow(
         shapes = ListItemDefaults.segmentedShapes(
             index = index,
             count = count,
-            defaultShapes = defaultShapes,
         ),
         colors = ListItemDefaults.segmentedColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -302,6 +304,137 @@ fun SettingsSegmentScope.SettingsPreferenceRow(
             )
         },
     )
+}
+
+/** Shared compact list dialog used by profile, curve, and mode pickers. */
+@Composable
+fun SettingsListDialog(
+    title: String,
+    itemCount: Int,
+    itemLabel: (Int) -> String,
+    onItemClick: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    selectedIndex: Int = -1,
+    showRadio: Boolean = false,
+    addLabel: String? = null,
+    onSelected: (Int) -> Unit = {},
+    onAdd: () -> Unit = {},
+    emptyLabel: String? = null,
+    cancelLabel: String,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        androidx.compose.material3.Surface(
+            modifier = modifier
+                .width(300.dp)
+                .heightIn(max = 480.dp),
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
+            Column(Modifier.padding(top = 18.dp, bottom = 8.dp)) {
+                Text(
+                    text = title,
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(8.dp))
+                Column(
+                    Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    if (itemCount == 0 && emptyLabel != null) {
+                        Text(
+                            text = emptyLabel,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    repeat(itemCount) { index ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (showRadio) {
+                                Icon(
+                                    imageVector = if (index == selectedIndex) {
+                                        Icons.Default.RadioButtonChecked
+                                    } else {
+                                        Icons.Default.RadioButtonUnchecked
+                                    },
+                                    contentDescription = null,
+                                    tint = if (index == selectedIndex) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier
+                                        .clickable { onSelected(index) }
+                                        .padding(start = 20.dp, end = 12.dp),
+                                )
+                            }
+                            Text(
+                                text = itemLabel(index),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clickable { onItemClick(index) }
+                                    .padding(
+                                        start = if (showRadio) 0.dp else 20.dp,
+                                        end = 20.dp,
+                                    )
+                                    .wrapContentHeight(Alignment.CenterVertically),
+                            )
+                        }
+                    }
+                    addLabel?.let { label ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp)
+                                .clickable(onClick = onAdd),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 20.dp, end = 12.dp),
+                            )
+                            Text(
+                                text = label,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .clickable(onClick = onDismiss)
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        text = cancelLabel,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
+        }
+    }
 }
 
 /**

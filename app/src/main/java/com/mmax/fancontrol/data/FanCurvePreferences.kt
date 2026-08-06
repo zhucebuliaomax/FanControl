@@ -110,9 +110,9 @@ object FanCurvePreferences {
     ): FanControlConfig {
         val current = load(prefs)
         if (current.catalog.profile(profileId) == null) return current
-        val catalog = current.catalog.remove(profileId)
+        val catalog = current.catalog.archive(profileId)
         val activeId = if (current.activeProfileId == profileId) {
-            catalog.profiles.firstOrNull()?.id
+            catalog.visibleProfiles.firstOrNull()?.id
         } else {
             current.activeProfileId?.takeIf { catalog.profile(it) != null }
         }
@@ -236,6 +236,7 @@ object FanCurvePreferences {
                     }
                     .put("points", FanCurveSerializer.serialize(profile.points))
                     .put("defaultPoints", FanCurveSerializer.serialize(profile.defaultPoints))
+                    .put("archived", profile.archived)
             )
         }
         return JSONObject()
@@ -264,6 +265,7 @@ object FanCurvePreferences {
                             item.optString("defaultPoints"),
                             fallback,
                         ),
+                        archived = item.optBoolean("archived", false),
                     )
                 )
             }

@@ -31,8 +31,8 @@ android {
         applicationId = "com.mmax.retrocontrol"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20007
-        versionName = "2.0.0 beta 7"
+        versionCode = 20009
+        versionName = "2.0.0 beta 9"
     }
 
     buildTypes {
@@ -72,6 +72,7 @@ dependencies {
   implementation(project(":core:designsystem"))
   implementation(project(":feature:authorization"))
   implementation(project(":feature:fan"))
+  implementation(project(":feature:joystick"))
 
   // Core Android dependencies
   implementation(libs.androidx.core.ktx)

@@ -17,4 +17,9 @@
     <string name="authorization_notifications">Notification settings</string>
     <string name="authorization_notifications_enabled">Enabled, disabling notifications does not affect functionality</string>
     <string name="authorization_notifications_disabled">Disabled, disabling notifications does not affect functionality</string>
+    <string name="authorization_microphone">Microphone</string>
+    <string name="authorization_microphone_granted">Access granted for Music Reactive</string>
+    <string name="authorization_microphone_not_granted">Required by Music Reactive</string>
+    <string name="authorization_screen_capture">Screen capture</string>
+    <string name="authorization_screen_capture_summary">Grant a session for Ambilight</string>
 </resources>

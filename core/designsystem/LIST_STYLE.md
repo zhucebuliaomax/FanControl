@@ -4,12 +4,9 @@ Use these rules for settings-style lists throughout the app.
 
 ## Standalone items
 
-- A row that is visually its own card always uses `MaterialTheme.shapes.extraLarge`.
-- Pass that shape through `ListItemDefaults.shapes(...)` as the `defaultShapes` of
-  `ListItemDefaults.segmentedShapes(...)`. This keeps the large radius in the idle
-  state as well as during focus, press, and selection animations.
-- Do not let a standalone row inherit the small inner corners of a larger segmented
-  list merely because its data shares the same collection.
+- A one-row list uses the same default segmented shapes as every other list.
+- Do not replace its idle shape with `MaterialTheme.shapes.extraLarge`; that makes
+  a single profile card visibly rounder than the outer rows of grouped lists.
 
 ## Swipe-to-delete actions
 

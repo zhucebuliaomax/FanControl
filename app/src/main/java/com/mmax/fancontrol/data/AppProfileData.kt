@@ -1,12 +1,14 @@
 package com.mmax.retrocontrol.data
 
 import android.content.SharedPreferences
+import android.content.Context
+import android.content.pm.ApplicationInfo
 import org.json.JSONArray
 import org.json.JSONObject
 
 data class AppControlProfile(
     val packageName: String,
-    /** Null follows the built-in default preset. */
+    /** Null follows the currently selected default preset. */
     val presetId: String? = null,
     /** Null leaves this control to the selected preset. */
     val fanCurveId: String? = null,
@@ -16,18 +18,23 @@ data class AppControlProfile(
 )
 
 object AppProfilePreferences {
+    fun isGame(context: Context, packageName: String?): Boolean {
+        if (packageName.isNullOrBlank()) return false
+        return runCatching {
+            context.packageManager.getApplicationInfo(packageName, 0).category ==
+                ApplicationInfo.CATEGORY_GAME
+        }.getOrDefault(false)
+    }
     fun load(
         prefs: SharedPreferences,
         availablePresetIds: Set<String>,
         availableFanCurveIds: Set<String>,
+        availableJoystickProfileIds: Set<String>,
     ): Map<String, AppControlProfile> {
         val stored = prefs.getString(Prefs.APP_PROFILE_CATALOG, null) ?: return emptyMap()
         val decoded = decode(stored)
         val normalized = decoded.mapValues { (_, profile) ->
-            profile.copy(
-                presetId = profile.presetId?.takeIf(availablePresetIds::contains),
-                fanCurveId = profile.fanCurveId?.takeIf(availableFanCurveIds::contains),
-            )
+            profile.copy(presetId = profile.presetId?.takeIf(availablePresetIds::contains))
         }
         if (decoded != normalized) persist(prefs, normalized)
         return normalized
@@ -36,16 +43,18 @@ object AppProfilePreferences {
     fun setPreset(
         prefs: SharedPreferences,
         packageName: String,
-        presetId: String,
+        presetId: String?,
         availablePresetIds: Set<String>,
         availableFanCurveIds: Set<String>,
+        availableJoystickProfileIds: Set<String>,
     ): Map<String, AppControlProfile> = update(
         prefs,
         packageName,
         availablePresetIds,
         availableFanCurveIds,
+        availableJoystickProfileIds,
     ) { profile ->
-        profile.copy(presetId = presetId.takeIf(availablePresetIds::contains))
+        profile.copy(presetId = presetId?.takeIf(availablePresetIds::contains))
     }
 
     fun setFanCurve(
@@ -54,33 +63,59 @@ object AppProfilePreferences {
         fanCurveId: String?,
         availablePresetIds: Set<String>,
         availableFanCurveIds: Set<String>,
+        availableJoystickProfileIds: Set<String>,
     ): Map<String, AppControlProfile> = update(
         prefs,
         packageName,
         availablePresetIds,
         availableFanCurveIds,
+        availableJoystickProfileIds,
     ) { profile ->
         profile.copy(fanCurveId = fanCurveId?.takeIf(availableFanCurveIds::contains))
+    }
+
+    fun setJoystickProfile(
+        prefs: SharedPreferences,
+        packageName: String,
+        joystickProfileId: String?,
+        availablePresetIds: Set<String>,
+        availableFanCurveIds: Set<String>,
+        availableJoystickProfileIds: Set<String>,
+    ): Map<String, AppControlProfile> = update(
+        prefs,
+        packageName,
+        availablePresetIds,
+        availableFanCurveIds,
+        availableJoystickProfileIds,
+    ) { profile ->
+        profile.copy(
+            joystickId = joystickProfileId?.takeIf(availableJoystickProfileIds::contains)
+        )
     }
 
     fun effectivePreset(
         profile: AppControlProfile?,
         presetConfig: ControlPresetConfig,
+        isGame: Boolean = true,
     ): ControlPreset = presetConfig.catalog.preset(profile?.presetId)
-        ?: presetConfig.catalog.preset(ControlPresetCatalog.DEFAULT_ID)
-        ?: presetConfig.selectedPreset
+        ?: presetConfig.defaultPreset(isGame)
 
     private fun update(
         prefs: SharedPreferences,
         packageName: String,
         availablePresetIds: Set<String>,
         availableFanCurveIds: Set<String>,
+        availableJoystickProfileIds: Set<String>,
         transform: (AppControlProfile) -> AppControlProfile,
     ): Map<String, AppControlProfile> {
         if (packageName.isBlank()) {
-            return load(prefs, availablePresetIds, availableFanCurveIds)
+            return load(
+                prefs, availablePresetIds, availableFanCurveIds, availableJoystickProfileIds,
+            )
         }
-        val current = load(prefs, availablePresetIds, availableFanCurveIds)
+        val current = load(
+            prefs, availablePresetIds, availableFanCurveIds, availableJoystickProfileIds,
+        )
         val updatedProfile = transform(
             current[packageName] ?: AppControlProfile(packageName = packageName)
         )

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.mmax.retrocontrol.designsystem"
+    namespace = "com.mmax.retrocontrol.feature.joystick"
     compileSdk = 36
 
     defaultConfig {
@@ -28,6 +28,7 @@ kotlin {
 dependencies {
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
+    implementation(project(":core:designsystem"))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
