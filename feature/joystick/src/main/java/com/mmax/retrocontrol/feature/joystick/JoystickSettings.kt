@@ -245,16 +245,16 @@ fun JoystickProfileEditorDialog(
                         content = { Text(stringResource(R.string.joystick_rgb)) },
                         modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus(),
                     )
+                    BrightnessSetting(
+                        brightness = profile.brightness,
+                        enabled = profile.mode != JoystickRgbMode.OFF,
+                        onBrightnessSelected = onBrightnessSelected,
+                    )
                     ColorPresetSetting(
                         profile = profile,
                         enabled = profile.mode.supportsCustomColor,
                         onColorSelected = onColorSelected,
                         onCustomColorClick = { showColorPicker = true },
-                    )
-                    BrightnessSetting(
-                        brightness = profile.brightness,
-                        enabled = profile.mode != JoystickRgbMode.OFF,
-                        onBrightnessSelected = onBrightnessSelected,
                     )
                 }
             }
@@ -332,7 +332,7 @@ private fun ColorPresetSetting(
     }
     Surface(
         modifier = Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.48f),
-        shape = ListItemDefaults.segmentedShapes(index = 1, count = 3).shape,
+        shape = ListItemDefaults.segmentedShapes(index = 2, count = 3).shape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
@@ -397,7 +397,7 @@ private fun BrightnessSetting(
     val percentage = (sliderNode * 100f / (BRIGHTNESS_NODE_COUNT - 1)).roundToInt()
     Surface(
         modifier = Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.48f),
-        shape = ListItemDefaults.segmentedShapes(index = 2, count = 3).shape,
+        shape = ListItemDefaults.segmentedShapes(index = 1, count = 3).shape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {

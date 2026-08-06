@@ -52,6 +52,8 @@ import com.mmax.retrocontrol.data.JoystickProfilePreferences
 import com.mmax.retrocontrol.data.JoystickSelectionPreferences
 import com.mmax.retrocontrol.data.JoystickSelectionSource
 import com.mmax.retrocontrol.data.displayName
+import com.mmax.retrocontrol.feature.joystick.JoystickRgbMode
+import com.mmax.retrocontrol.service.MediaProjectionActivity
 import com.mmax.retrocontrol.service.SystemControlService
 import com.mmax.retrocontrol.theme.FanControlTheme
 import androidx.core.content.ContextCompat
@@ -231,24 +233,34 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
     }
 
     private fun selectJoystick(profileId: String) {
-        JoystickSelectionPreferences.selectDirectProfile(
-            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE), profileId,
-        )
-        finishJoystickSelection()
+        val prefs = getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+        JoystickSelectionPreferences.selectDirectProfile(prefs, profileId)
+        val requiresCapture = JoystickProfilePreferences.load(prefs)
+            .profile(profileId)?.mode == JoystickRgbMode.AMBILIGHT
+        finishJoystickSelection(requiresCapture)
     }
 
     private fun selectFollowJoystickProfile() {
-        JoystickSelectionPreferences.selectFollowProfile(
-            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
-        )
-        finishJoystickSelection()
+        val prefs = getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+        JoystickSelectionPreferences.selectFollowProfile(prefs)
+        val requiresCapture = JoystickProfilePreferences.resolveEffectiveProfile(
+            prefs = prefs,
+            foregroundPackageName = null,
+            foregroundIsGame = false,
+        )?.mode == JoystickRgbMode.AMBILIGHT
+        finishJoystickSelection(requiresCapture)
     }
 
-    private fun finishJoystickSelection() {
+    private fun finishJoystickSelection(requiresAmbilightCapture: Boolean) {
         JoystickQuickSettingsTile.requestRefresh(this)
         RootAccessManager.ensureRoot {
             SystemControlService.startOrUpdate(applicationContext)
-            if (!requestNotificationPermissionIfNeeded()) finish()
+            if (requiresAmbilightCapture) {
+                startActivity(MediaProjectionActivity.createIntent(this))
+                finish()
+            } else if (!requestNotificationPermissionIfNeeded()) {
+                finish()
+            }
         }
     }
 

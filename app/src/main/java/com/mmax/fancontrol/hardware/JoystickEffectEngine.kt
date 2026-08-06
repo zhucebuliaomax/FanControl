@@ -19,7 +19,6 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.mmax.retrocontrol.data.JoystickProfile
 import com.mmax.retrocontrol.feature.joystick.JoystickRgbMode
-import com.mmax.retrocontrol.service.MediaProjectionActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -379,10 +378,7 @@ class JoystickEffectEngine(
     private fun ambilight(profile: JoystickProfile) {
         val token = projectionIntent
         if (token == null) {
-            context.startActivity(
-                Intent(context, MediaProjectionActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
+            scope.launch { JoystickRgbController.turnOff() }
             return
         }
         effectJob = scope.launch {
@@ -404,16 +400,16 @@ class JoystickEffectEngine(
                     null,
                 )
                 val zones = listOf(
-                    Triple("/sys/class/leds/left:stick:0", 0, 0),
-                    Triple("/sys/class/leds/left:stick:1", 0, height - 1),
-                    Triple("/sys/class/leds/left:stick:2", width / 4, height - 1),
-                    Triple("/sys/class/leds/left:stick:3", width / 4, 0),
-                    Triple("/sys/class/leds/right:stick:2", width - 1 - width / 4, 0),
-                    Triple("/sys/class/leds/right:stick:1", width - 1, 0),
-                    Triple("/sys/class/leds/right:stick:3", width - 1 - width / 4, height - 1),
-                    Triple("/sys/class/leds/right:stick:0", width - 1, height - 1),
+                    AmbilightZone("/sys/class/leds/left:stick:0", 0, 0),
+                    AmbilightZone("/sys/class/leds/left:stick:3", 4, 0),
+                    AmbilightZone("/sys/class/leds/right:stick:2", 8, 0),
+                    AmbilightZone("/sys/class/leds/right:stick:1", 12, 0),
+                    AmbilightZone("/sys/class/leds/left:stick:1", 0, 5),
+                    AmbilightZone("/sys/class/leds/left:stick:2", 4, 5),
+                    AmbilightZone("/sys/class/leds/right:stick:3", 8, 5),
+                    AmbilightZone("/sys/class/leds/right:stick:0", 12, 5),
                 )
-                val acceptedTargets = arrayOfNulls<Triple<Int, Int, Int>>(zones.size)
+                val smoothedColors = arrayOfNulls<Triple<Float, Float, Float>>(zones.size)
                 val previousColors = arrayOfNulls<Triple<Int, Int, Int>>(zones.size)
                 var lastFrameAt = 0L
                 imageReader?.setOnImageAvailableListener({ reader ->
@@ -426,27 +422,27 @@ class JoystickEffectEngine(
                     lastFrameAt = now
                     val plane = image.planes[0]
                     frame.setLength(0)
-                    zones.forEachIndexed { index, (path, x, y) ->
-                        val offset = y * plane.rowStride + x * plane.pixelStride
-                        plane.buffer.position(offset)
-                        val red = plane.buffer.get().toInt() and 0xff
-                        val green = plane.buffer.get().toInt() and 0xff
-                        val blue = plane.buffer.get().toInt() and 0xff
-                        val sampledColor = boostSaturation(red, green, blue)
-                        val target = acceptedTargets[index]?.takeIf { accepted ->
-                            colorsWithinDeadband(
-                                accepted,
-                                sampledColor,
-                                AMBILIGHT_COLOR_DEADBAND,
-                            )
-                        } ?: sampledColor.also { acceptedTargets[index] = it }
+                    zones.forEachIndexed { index, zone ->
+                        val sampledColor = averageZoneColor(plane, zone)
+                        val target = enhanceLowSaturation(sampledColor)
+                        val smoothed = smoothColor(smoothedColors[index], target)
+                        smoothedColors[index] = smoothed
+                        val smoothedTarget = Triple(
+                            smoothed.first.toInt(),
+                            smoothed.second.toInt(),
+                            smoothed.third.toInt(),
+                        )
                         val output = previousColors[index]?.let { previous ->
-                            limitColorChange(previous, target, AMBILIGHT_MAX_CHANNEL_STEP)
-                        } ?: target
+                            limitColorChange(
+                                previous,
+                                smoothedTarget,
+                                AMBILIGHT_MAX_CHANNEL_STEP,
+                            )
+                        } ?: smoothedTarget
                         if (output != previousColors[index]) {
                             appendLed(
                                 frame,
-                                path,
+                                zone.path,
                                 output.first,
                                 output.second,
                                 output.third,
@@ -466,13 +462,64 @@ class JoystickEffectEngine(
         }
     }
 
-    private fun boostSaturation(red: Int, green: Int, blue: Int): Triple<Int, Int, Int> {
+    private fun averageZoneColor(
+        plane: android.media.Image.Plane,
+        zone: AmbilightZone,
+    ): Triple<Int, Int, Int> {
+        var red = 0
+        var green = 0
+        var blue = 0
+        repeat(AMBILIGHT_ZONE_SIZE) { row ->
+            repeat(AMBILIGHT_ZONE_SIZE) { column ->
+                val offset = (zone.y + row) * plane.rowStride +
+                    (zone.x + column) * plane.pixelStride
+                red += plane.buffer.get(offset).toInt() and 0xff
+                green += plane.buffer.get(offset + 1).toInt() and 0xff
+                blue += plane.buffer.get(offset + 2).toInt() and 0xff
+            }
+        }
+        val sampleCount = AMBILIGHT_ZONE_SIZE * AMBILIGHT_ZONE_SIZE
+        return Triple(red / sampleCount, green / sampleCount, blue / sampleCount)
+    }
+
+    private fun enhanceLowSaturation(
+        color: Triple<Int, Int, Int>,
+    ): Triple<Int, Int, Int> {
         val hsv = FloatArray(3)
-        android.graphics.Color.RGBToHSV(red, green, blue, hsv)
+        android.graphics.Color.RGBToHSV(color.first, color.second, color.third, hsv)
+        val saturation = hsv[1]
+        if (saturation <= AMBILIGHT_MIN_RELIABLE_SATURATION) return color
+        val mappedSaturation = if (saturation < AMBILIGHT_SATURATION_THRESHOLD) {
+            AMBILIGHT_MAPPED_MIN_SATURATION +
+                saturation / AMBILIGHT_SATURATION_THRESHOLD *
+                (AMBILIGHT_SATURATION_THRESHOLD - AMBILIGHT_MAPPED_MIN_SATURATION)
+        } else {
+            saturation
+        }
+        val confidence = (
+            (saturation - AMBILIGHT_MIN_RELIABLE_SATURATION) /
+                (AMBILIGHT_FULL_HUE_CONFIDENCE - AMBILIGHT_MIN_RELIABLE_SATURATION)
+            ).coerceIn(0f, 1f)
         return hsvToRgb(
             hue = hsv[0],
-            saturation = (hsv[1] * AMBILIGHT_SATURATION_GAIN).coerceAtMost(1f),
+            saturation = saturation + (mappedSaturation - saturation) * confidence,
             value = hsv[2],
+        )
+    }
+
+    private fun smoothColor(
+        previous: Triple<Float, Float, Float>?,
+        target: Triple<Int, Int, Int>,
+    ): Triple<Float, Float, Float> {
+        if (previous == null) {
+            return Triple(target.first.toFloat(), target.second.toFloat(), target.third.toFloat())
+        }
+        fun smooth(previousChannel: Float, targetChannel: Int): Float =
+            previousChannel + (targetChannel - previousChannel) * AMBILIGHT_SMOOTHING_ALPHA
+        return Triple(
+            smooth(previous.first, target.first),
+            smooth(previous.second, target.second),
+            smooth(previous.third, target.third),
         )
     }
 
@@ -489,15 +536,6 @@ class JoystickEffectEngine(
             limit(previous.third, target.third),
         )
     }
-
-    private fun colorsWithinDeadband(
-        first: Triple<Int, Int, Int>,
-        second: Triple<Int, Int, Int>,
-        threshold: Int,
-    ): Boolean =
-        abs(first.first - second.first) <= threshold &&
-            abs(first.second - second.second) <= threshold &&
-            abs(first.third - second.third) <= threshold
 
     private fun appendLed(
         builder: StringBuilder,
@@ -573,9 +611,14 @@ class JoystickEffectEngine(
     companion object {
         private const val TAG = "JoystickEffectEngine"
         private const val AMBILIGHT_FRAME_INTERVAL_MS = 50L
-        private const val AMBILIGHT_COLOR_DEADBAND = 8
+        private const val AMBILIGHT_ZONE_SIZE = 4
         private const val AMBILIGHT_MAX_CHANNEL_STEP = 17
-        private const val AMBILIGHT_SATURATION_GAIN = 1.8f
+        private const val AMBILIGHT_SMOOTHING_ALPHA = 0.2f
+        private const val AMBILIGHT_MIN_RELIABLE_SATURATION = 0.02f
+        private const val AMBILIGHT_FULL_HUE_CONFIDENCE = 0.08f
+        private const val AMBILIGHT_MAPPED_MIN_SATURATION = 0.25f
+        private const val AMBILIGHT_SATURATION_THRESHOLD = 0.75f
+        private data class AmbilightZone(val path: String, val x: Int, val y: Int)
         private val sequentialPaths = listOf(
             "/sys/class/leds/left:stick:0",
             "/sys/class/leds/left:stick:3",

@@ -132,6 +132,7 @@ import com.mmax.retrocontrol.feature.joystick.AddJoystickProfileButton
 import com.mmax.retrocontrol.feature.joystick.JoystickProfileEditorDialog
 import com.mmax.retrocontrol.feature.joystick.JoystickProfileUiState
 import com.mmax.retrocontrol.feature.joystick.JoystickProfilesSection
+import com.mmax.retrocontrol.feature.joystick.JoystickRgbMode
 import com.mmax.retrocontrol.feature.joystick.R as JoystickR
 import com.mmax.retrocontrol.hardware.TemperatureSummary
 import com.mmax.retrocontrol.hardware.ThermalKind
@@ -693,7 +694,7 @@ fun DashboardScreen(
                     microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 },
                 onRequestScreenCapture = {
-                    context.startActivity(Intent(context, MediaProjectionActivity::class.java))
+                    context.startActivity(MediaProjectionActivity.createIntent(context))
                 },
                 autoStartModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[0])
@@ -854,7 +855,12 @@ fun DashboardScreen(
         val profile = joystickProfileUi(profileId) ?: return@let
         JoystickProfileEditorDialog(
             profile = profile,
-            onModeSelected = { vm.setJoystickMode(profile.id, it) },
+            onModeSelected = { mode ->
+                vm.setJoystickMode(profile.id, mode)
+                if (mode == JoystickRgbMode.AMBILIGHT) {
+                    context.startActivity(MediaProjectionActivity.createIntent(context))
+                }
+            },
             onColorSelected = { red, green, blue ->
                 vm.setJoystickColor(profile.id, red, green, blue)
             },
