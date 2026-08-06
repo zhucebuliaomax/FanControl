@@ -26,7 +26,6 @@
     <string name="joystick_mode_thermal">SoC temperature</string>
     <string name="joystick_mode_wave">Rainbow wave</string>
     <string name="joystick_mode_color_cycle">Color cycle</string>
-    <string name="joystick_mode_strobe">Strobe</string>
     <string name="joystick_mode_meteor">Meteor</string>
     <string name="joystick_mode_fire">Fire</string>
     <string name="joystick_mode_aurora">Aurora</string>

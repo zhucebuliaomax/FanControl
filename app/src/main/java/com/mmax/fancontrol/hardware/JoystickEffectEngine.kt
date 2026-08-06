@@ -108,7 +108,6 @@ class JoystickEffectEngine(
             JoystickRgbMode.THERMAL -> thermal(profile)
             JoystickRgbMode.WAVE -> wave(profile)
             JoystickRgbMode.COLOR_CYCLE -> colorCycle(profile)
-            JoystickRgbMode.STROBE -> strobe(profile)
             JoystickRgbMode.METEOR -> meteor(profile)
             JoystickRgbMode.FIRE -> fire(profile)
             JoystickRgbMode.AURORA -> aurora(profile)
@@ -207,23 +206,6 @@ class JoystickEffectEngine(
                 val (red, green, blue) = hsvToRgb(hue)
                 JoystickRgbController.setAll(red, green, blue, profile.brightness)
                 hue = (hue + 1f) % 360f
-                delay(120L)
-            }
-        }
-    }
-
-    private fun strobe(profile: JoystickProfile) {
-        effectJob = scope.launch {
-            var on = true
-            while (isActive) {
-                if (on) {
-                    JoystickRgbController.setAll(
-                        profile.red, profile.green, profile.blue, profile.brightness,
-                    )
-                } else {
-                    JoystickRgbController.turnOff()
-                }
-                on = !on
                 delay(120L)
             }
         }
@@ -431,28 +413,47 @@ class JoystickEffectEngine(
                     Triple("/sys/class/leds/right:stick:3", width - 1 - width / 4, height - 1),
                     Triple("/sys/class/leds/right:stick:0", width - 1, height - 1),
                 )
+                val acceptedTargets = arrayOfNulls<Triple<Int, Int, Int>>(zones.size)
+                val previousColors = arrayOfNulls<Triple<Int, Int, Int>>(zones.size)
                 var lastFrameAt = 0L
                 imageReader?.setOnImageAvailableListener({ reader ->
                     val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
                     val now = android.os.SystemClock.elapsedRealtime()
-                    if (now - lastFrameAt < 16L) {
+                    if (now - lastFrameAt < AMBILIGHT_FRAME_INTERVAL_MS) {
                         image.close()
                         return@setOnImageAvailableListener
                     }
                     lastFrameAt = now
                     val plane = image.planes[0]
                     frame.setLength(0)
-                    zones.forEach { (path, x, y) ->
+                    zones.forEachIndexed { index, (path, x, y) ->
                         val offset = y * plane.rowStride + x * plane.pixelStride
                         plane.buffer.position(offset)
                         val red = plane.buffer.get().toInt() and 0xff
                         val green = plane.buffer.get().toInt() and 0xff
                         val blue = plane.buffer.get().toInt() and 0xff
-                        val luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255.0
-                        appendLed(
-                            frame, path, red, green, blue,
-                            (profile.brightness * luminance).toInt(),
-                        )
+                        val sampledColor = boostSaturation(red, green, blue)
+                        val target = acceptedTargets[index]?.takeIf { accepted ->
+                            colorsWithinDeadband(
+                                accepted,
+                                sampledColor,
+                                AMBILIGHT_COLOR_DEADBAND,
+                            )
+                        } ?: sampledColor.also { acceptedTargets[index] = it }
+                        val output = previousColors[index]?.let { previous ->
+                            limitColorChange(previous, target, AMBILIGHT_MAX_CHANNEL_STEP)
+                        } ?: target
+                        if (output != previousColors[index]) {
+                            appendLed(
+                                frame,
+                                path,
+                                output.first,
+                                output.second,
+                                output.third,
+                                profile.brightness,
+                            )
+                            previousColors[index] = output
+                        }
                     }
                     image.close()
                     JoystickRgbController.execute(frame.toString())
@@ -464,6 +465,39 @@ class JoystickEffectEngine(
             }
         }
     }
+
+    private fun boostSaturation(red: Int, green: Int, blue: Int): Triple<Int, Int, Int> {
+        val hsv = FloatArray(3)
+        android.graphics.Color.RGBToHSV(red, green, blue, hsv)
+        return hsvToRgb(
+            hue = hsv[0],
+            saturation = (hsv[1] * AMBILIGHT_SATURATION_GAIN).coerceAtMost(1f),
+            value = hsv[2],
+        )
+    }
+
+    private fun limitColorChange(
+        previous: Triple<Int, Int, Int>,
+        target: Triple<Int, Int, Int>,
+        maxStep: Int,
+    ): Triple<Int, Int, Int> {
+        fun limit(previousChannel: Int, targetChannel: Int): Int =
+            targetChannel.coerceIn(previousChannel - maxStep, previousChannel + maxStep)
+        return Triple(
+            limit(previous.first, target.first),
+            limit(previous.second, target.second),
+            limit(previous.third, target.third),
+        )
+    }
+
+    private fun colorsWithinDeadband(
+        first: Triple<Int, Int, Int>,
+        second: Triple<Int, Int, Int>,
+        threshold: Int,
+    ): Boolean =
+        abs(first.first - second.first) <= threshold &&
+            abs(first.second - second.second) <= threshold &&
+            abs(first.third - second.third) <= threshold
 
     private fun appendLed(
         builder: StringBuilder,
@@ -538,6 +572,10 @@ class JoystickEffectEngine(
 
     companion object {
         private const val TAG = "JoystickEffectEngine"
+        private const val AMBILIGHT_FRAME_INTERVAL_MS = 50L
+        private const val AMBILIGHT_COLOR_DEADBAND = 8
+        private const val AMBILIGHT_MAX_CHANNEL_STEP = 17
+        private const val AMBILIGHT_SATURATION_GAIN = 1.8f
         private val sequentialPaths = listOf(
             "/sys/class/leds/left:stick:0",
             "/sys/class/leds/left:stick:3",

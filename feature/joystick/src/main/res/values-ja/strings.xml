@@ -26,7 +26,6 @@
     <string name="joystick_mode_thermal">SoC 温度</string>
     <string name="joystick_mode_wave">レインボーウェーブ</string>
     <string name="joystick_mode_color_cycle">カラーサイクル</string>
-    <string name="joystick_mode_strobe">ストロボ</string>
     <string name="joystick_mode_meteor">メテオ</string>
     <string name="joystick_mode_fire">ファイア</string>
     <string name="joystick_mode_aurora">オーロラ</string>

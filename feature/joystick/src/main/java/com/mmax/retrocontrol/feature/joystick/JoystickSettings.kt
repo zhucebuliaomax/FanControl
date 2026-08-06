@@ -91,7 +91,6 @@ enum class JoystickRgbMode(
     THERMAL(R.string.joystick_mode_thermal),
     WAVE(R.string.joystick_mode_wave),
     COLOR_CYCLE(R.string.joystick_mode_color_cycle),
-    STROBE(R.string.joystick_mode_strobe, supportsCustomColor = true),
     METEOR(R.string.joystick_mode_meteor, supportsCustomColor = true),
     FIRE(R.string.joystick_mode_fire),
     AURORA(R.string.joystick_mode_aurora),

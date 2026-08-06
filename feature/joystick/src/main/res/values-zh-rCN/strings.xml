@@ -26,7 +26,6 @@
     <string name="joystick_mode_thermal">SoC 温度</string>
     <string name="joystick_mode_wave">彩虹波浪</string>
     <string name="joystick_mode_color_cycle">颜色循环</string>
-    <string name="joystick_mode_strobe">频闪</string>
     <string name="joystick_mode_meteor">流星</string>
     <string name="joystick_mode_fire">火焰</string>
     <string name="joystick_mode_aurora">极光</string>
