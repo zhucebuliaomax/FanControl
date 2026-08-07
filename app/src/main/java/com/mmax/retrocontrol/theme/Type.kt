@@ -2,77 +2,66 @@
 
 package com.mmax.retrocontrol.theme
 
-import android.graphics.Typeface
 import androidx.compose.material3.Typography
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.Typeface as ComposeTypeface
-import androidx.compose.ui.unit.sp
-import java.io.File
+import com.mmax.retrocontrol.R
 
-val SystemGoogleSansFamily = try {
-  val fontFile = File("/product/fonts/GoogleSansFlex-Regular.ttf")
-  if (fontFile.exists() && fontFile.canRead()) {
-    val typeface = Typeface.createFromFile(fontFile)
-    FontFamily(ComposeTypeface(typeface))
-  } else {
-    FontFamily.Default
-  }
-} catch (_: Exception) {
-  FontFamily.Default
-}
+private val GoogleSansFlexWeights =
+  listOf(
+    FontWeight.Thin,
+    FontWeight.ExtraLight,
+    FontWeight.Light,
+    FontWeight.Normal,
+    FontWeight.Medium,
+    FontWeight.SemiBold,
+    FontWeight.Bold,
+    FontWeight.ExtraBold,
+    FontWeight.Black,
+  )
 
-val GoogleSansHeadlineFamily = try {
-  val fontFile = File("/product/fonts/GoogleSansFlex-Regular.ttf")
-  if (fontFile.exists()) {
-    FontFamily(
-      Font(
-        file = fontFile,
-        weight = FontWeight.Normal,
-        variationSettings = FontVariation.Settings(
-          FontVariation.weight(400),
-          FontVariation.Setting("opsz", 32f),
-        ),
-      )
-    )
-  } else {
-    FontFamily.Default
-  }
-} catch (_: Exception) {
-  FontFamily.Default
-}
+private fun googleSansFlexFont(weight: FontWeight, roundness: Float) =
+  Font(
+    resId = R.font.google_sans_flex_subset,
+    weight = weight,
+    variationSettings =
+      FontVariation.Settings(
+        FontVariation.weight(weight.weight),
+        FontVariation.Setting("ROND", roundness),
+      ),
+  )
+
+/** The bundled variable font, mapped across every CSS/Compose weight. */
+val GoogleSansFlexFamily =
+  FontFamily(
+    *GoogleSansFlexWeights.map { weight -> googleSansFlexFont(weight, roundness = 0f) }.toTypedArray()
+  )
+
+/** Rounded face for headings, with the same complete weight mapping. */
+val RoundedGoogleSansFlexFamily =
+  FontFamily(
+    *GoogleSansFlexWeights.map { weight -> googleSansFlexFont(weight, roundness = 100f) }.toTypedArray()
+  )
+
+private val MaterialTypography = Typography()
 
 val Typography =
   Typography(
-    displayMedium =
-      TextStyle(
-        fontFamily = GoogleSansHeadlineFamily,
-        fontSize = 32.sp,
-      ),
-    titleLarge =
-      TextStyle(
-        fontFamily = SystemGoogleSansFamily,
-        fontSize = 22.sp,
-      ),
-    titleMedium =
-      TextStyle(
-        fontFamily = SystemGoogleSansFamily,
-        fontSize = 16.sp,
-      ),
-    bodyMedium =
-      TextStyle(
-        fontFamily = SystemGoogleSansFamily,
-        fontSize = 14.sp,
-      ),
-    bodyLarge =
-      TextStyle(
-        fontFamily = SystemGoogleSansFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.5.sp,
-      )
+    displayLarge = MaterialTypography.displayLarge.copy(fontFamily = RoundedGoogleSansFlexFamily),
+    displayMedium = MaterialTypography.displayMedium.copy(fontFamily = RoundedGoogleSansFlexFamily),
+    displaySmall = MaterialTypography.displaySmall.copy(fontFamily = RoundedGoogleSansFlexFamily),
+    headlineLarge = MaterialTypography.headlineLarge.copy(fontFamily = RoundedGoogleSansFlexFamily),
+    headlineMedium = MaterialTypography.headlineMedium.copy(fontFamily = RoundedGoogleSansFlexFamily),
+    headlineSmall = MaterialTypography.headlineSmall.copy(fontFamily = RoundedGoogleSansFlexFamily),
+    titleLarge = MaterialTypography.titleLarge.copy(fontFamily = RoundedGoogleSansFlexFamily),
+    titleMedium = MaterialTypography.titleMedium.copy(fontFamily = RoundedGoogleSansFlexFamily),
+    titleSmall = MaterialTypography.titleSmall.copy(fontFamily = RoundedGoogleSansFlexFamily),
+    bodyLarge = MaterialTypography.bodyLarge.copy(fontFamily = GoogleSansFlexFamily),
+    bodyMedium = MaterialTypography.bodyMedium.copy(fontFamily = GoogleSansFlexFamily),
+    bodySmall = MaterialTypography.bodySmall.copy(fontFamily = GoogleSansFlexFamily),
+    labelLarge = MaterialTypography.labelLarge.copy(fontFamily = GoogleSansFlexFamily),
+    labelMedium = MaterialTypography.labelMedium.copy(fontFamily = GoogleSansFlexFamily),
+    labelSmall = MaterialTypography.labelSmall.copy(fontFamily = GoogleSansFlexFamily),
   )
