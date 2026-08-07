@@ -3,6 +3,7 @@ package com.mmax.retrocontrol.data
 import android.content.SharedPreferences
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -189,9 +190,9 @@ object AppProfilePreferences {
                     .put("performanceProfileId", profile.performanceProfileId ?: JSONObject.NULL)
             )
         }
-        prefs.edit()
-            .putString(Prefs.APP_PROFILE_CATALOG, JSONObject().put("profiles", entries).toString())
-            .apply()
+        prefs.edit {
+            putString(Prefs.APP_PROFILE_CATALOG, JSONObject().put("profiles", entries).toString())
+        }
     }
 
     private fun decode(value: String): Map<String, AppControlProfile> = runCatching {

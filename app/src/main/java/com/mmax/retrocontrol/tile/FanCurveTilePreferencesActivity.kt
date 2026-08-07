@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -14,6 +13,8 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.edit
+import androidx.core.graphics.drawable.toDrawable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,8 +52,12 @@ import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.data.JoystickProfilePreferences
 import com.mmax.retrocontrol.data.JoystickSelectionPreferences
 import com.mmax.retrocontrol.data.JoystickSelectionSource
+import com.mmax.retrocontrol.data.PerformanceProfileConfig
+import com.mmax.retrocontrol.data.PerformanceProfilePreferences
+import com.mmax.retrocontrol.data.PerformanceTilePreferences
 import com.mmax.retrocontrol.data.displayName
 import com.mmax.retrocontrol.feature.joystick.JoystickRgbMode
+import com.mmax.retrocontrol.hardware.CpuFrequencyController
 import com.mmax.retrocontrol.service.MediaProjectionActivity
 import com.mmax.retrocontrol.service.SystemControlService
 import com.mmax.retrocontrol.theme.RetroControlTheme
@@ -80,7 +85,7 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
             return
         }
 
-        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
         window.setDimAmount(0.32f)
         window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         window.setGravity(Gravity.CENTER)
@@ -88,6 +93,8 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
 
         val joystickTile = originatingTile()?.className ==
             JoystickQuickSettingsTile::class.java.name
+        val performanceTile = originatingTile()?.className ==
+            PerformanceQuickSettingsTile::class.java.name
         setContent {
             RetroControlTheme {
                 val config by remember { mutableStateOf(currentConfig()) }
@@ -107,22 +114,59 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
                         )
                     )
                 }
+                val performanceConfig by remember {
+                    mutableStateOf(
+                        if (performanceTile) {
+                            PerformanceProfilePreferences.load(
+                                getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE),
+                                CpuFrequencyController.detectPolicies(),
+                            )
+                        } else {
+                            PerformanceProfileConfig()
+                        }
+                    )
+                }
+                val selectedPerformanceProfileId = remember(performanceConfig) {
+                    currentPerformanceProfileId(performanceConfig)
+                }
                 Surface(
                     modifier = Modifier.width(360.dp),
                     shape = MaterialTheme.shapes.extraLarge,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
-                    Column(Modifier.padding(24.dp)) {
+                    Column(
+                        Modifier.padding(
+                            start = 24.dp,
+                            top = 24.dp,
+                            end = 24.dp,
+                            bottom = 12.dp,
+                        )
+                    ) {
                         Text(
                             text = stringResource(
-                                if (joystickTile) R.string.select_joystick_profile
-                                else R.string.select_fan_curve
+                                when {
+                                    performanceTile -> R.string.select_performance_profile
+                                    joystickTile -> R.string.select_joystick_profile
+                                    else -> R.string.select_fan_curve
+                                }
                             ),
                             style = MaterialTheme.typography.titleLargeEmphasized,
                         )
                         Spacer(Modifier.height(ListItemDefaults.SegmentedGap * 4))
                         val sources = buildList {
-                            if (joystickTile) {
+                            if (performanceTile) {
+                                performanceConfig.profiles.forEach { profile ->
+                                    add(
+                                        TileSourceUi(
+                                            name = profile.displayName(
+                                                this@FanCurveTilePreferencesActivity
+                                            ),
+                                            selected = selectedPerformanceProfileId == profile.id,
+                                            onClick = { selectPerformanceProfile(profile.id) },
+                                        )
+                                    )
+                                }
+                            } else if (joystickTile) {
                                 add(
                                     TileSourceUi(
                                         name = getString(R.string.follow_profile),
@@ -234,6 +278,14 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
             config,
         )
 
+    private fun currentPerformanceProfileId(config: PerformanceProfileConfig): String? {
+        val prefs = getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+        return PerformanceTilePreferences.selectedProfileId(prefs, config)
+            ?: prefs.getString(Prefs.LAST_APPLIED_PERFORMANCE_PROFILE, null)
+                ?.takeIf { config.profile(it) != null }
+            ?: config.stockProfile?.id
+    }
+
     private fun select(profileId: String) {
         FanSelectionPreferences.selectDirectCurve(
             getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE), profileId
@@ -265,6 +317,20 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
             foregroundIsGame = false,
         )?.mode == JoystickRgbMode.AMBILIGHT
         finishJoystickSelection(requiresCapture)
+    }
+
+    private fun selectPerformanceProfile(profileId: String) {
+        PerformanceTilePreferences.select(
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE),
+            profileId,
+        )
+        PerformanceQuickSettingsTile.requestRefresh(this)
+        RootAccessManager.ensureRoot {
+            SystemControlService.startOrUpdate(applicationContext)
+            if (!requestNotificationPermissionIfNeeded()) {
+                finish()
+            }
+        }
     }
 
     private fun finishJoystickSelection(requiresAmbilightCapture: Boolean) {
@@ -299,9 +365,7 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
 
         val prefs = getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
         if (prefs.getBoolean(Prefs.NOTIFICATION_PERMISSION_REQUESTED, false)) return false
-        prefs.edit()
-            .putBoolean(Prefs.NOTIFICATION_PERMISSION_REQUESTED, true)
-            .apply()
+        prefs.edit { putBoolean(Prefs.NOTIFICATION_PERMISSION_REQUESTED, true) }
         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         return true
     }

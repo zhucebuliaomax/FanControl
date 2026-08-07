@@ -3,6 +3,17 @@
     <string name="app_name">RetroControl</string>
     <string name="settings_summary">温度連動のファンカーブとテレメトリー</string>
 
+    <string name="nav_telemetry">テレメトリー</string>
+    <string name="nav_controls">コントロール</string>
+    <string name="nav_apps">アプリ</string>
+    <string name="nav_access">アクセス</string>
+    <string name="control_title">コントロール</string>
+    <string name="control_fan">ファンカーブ</string>
+    <string name="control_joystick">ジョイスティック</string>
+    <string name="control_button_layout">ボタンレイアウト</string>
+    <string name="control_core">パフォーマンスプロファイル</string>
+    <string name="control_back">コントロール一覧に戻る</string>
+
     <string name="control_preset">プロファイル</string>
 
     <string name="app_profile">プロファイル</string>
@@ -13,6 +24,7 @@
     <string name="follow_profile">プロファイルに従う</string>
     <string name="follow_default">デフォルトに従う</string>
     <string name="select_joystick_profile">ジョイスティックプロファイルを選択</string>
+    <string name="select_performance_profile">パフォーマンスプロファイルを選択</string>
     <string name="search_apps">アプリを検索</string>
     <string name="no_apps_found">アプリが見つかりません</string>
     <string name="filter_apps">アプリを絞り込む</string>
@@ -21,12 +33,14 @@
     <string name="filter_all">すべて</string>
     <string name="no_options_available">利用できる項目がありません</string>
     <string name="select_preset">プロファイルを選択</string>
-    <string name="preset_default">default</string>
     <string name="new_preset">新しいプロファイル</string>
     <string name="add_preset">プロファイルを追加</string>
     <string name="rename_preset">プロファイル名を変更</string>
     <string name="preset_name">プロファイル名</string>
     <string name="delete_preset">プロファイルを削除</string>
+    <string name="delete_preset_confirmation">「%1$s」を削除しますか？この操作は元に戻せません。</string>
+    <string name="preset_fan_curve">ファンカーブ</string>
+    <string name="preset_performance_profile">パフォーマンスプロファイル</string>
     <string name="follow_preset">プロファイルに従う</string>
     <string name="performance_unmanaged">管理しない</string>
     <string name="performance_stock">標準</string>
@@ -48,27 +62,13 @@
     <string name="tile_fan_label">ファンカーブ</string>
     <string name="tile_overlay_label">テレメトリー</string>
     <string name="tile_joystick_label">ジョイスティック</string>
+    <string name="tile_performance_label">パフォーマンスプロファイル</string>
     <string name="tile_on">オン</string>
     <string name="tile_off">オフ</string>
 
-    <string name="fan_profiles">ファンプロファイル</string>
-    <string name="fan_curve">ファンカーブ</string>
-    <string name="fan_control_off">ファン制御はオフです</string>
-    <string name="edit_fan_curve">ファンカーブを編集</string>
-    <plurals name="curve_points_summary">
-        <item quantity="other">%1$s • 制御ポイント %2$d 個</item>
-    </plurals>
-
     <string name="live_telemetry">ライブテレメトリー</string>
-    <string name="open_app_info">アプリ情報</string>
-    <string name="open_app_info_summary">右上のメニューで制限付き設定を許可してオーバーレイ権限を有効にします</string>
-    <string name="telemetry_overlay">テレメトリーオーバーレイ</string>
-    <string name="telemetry_overlay_summary">「− / +」でファン速度を 5% ずつ調整し、現在のカーブに自動保存できます</string>
-    <string name="overlay_permission_not_granted">権限がありません</string>
     <string name="cpu">CPU</string>
     <string name="gpu">GPU</string>
-    <string name="memory_temperature">メモリ温度</string>
-    <string name="battery_temperature">バッテリー温度</string>
     <string name="ddr_short">DDR</string>
     <string name="battery_short">BAT</string>
     <string name="fan_speed">ファン</string>
@@ -76,8 +76,6 @@
     <string name="increase_fan_speed">ファン速度を 5% 上げる</string>
     <string name="average_short">平均</string>
     <string name="maximum_short">最高</string>
-    <string name="average_value">平均 %1$s</string>
-    <string name="maximum_value">最高: %1$s %2$s</string>
     <string name="not_available">データなし</string>
 
     <string name="thermal_details_title">%1$s 温度の詳細</string>
@@ -97,12 +95,13 @@
     <string name="delete_curve_confirmation">「%1$s」を削除しますか？この操作は元に戻せません。</string>
     <string name="set_as_default">デフォルトに設定</string>
     <string name="reset">リセット</string>
-    <string name="import_curve">インポート</string>
-    <string name="export_curve">エクスポート</string>
-    <string name="curve_imported">ファンカーブをインポートして適用しました</string>
-    <string name="curve_import_failed">このファンカーブ JSON をインポートできません</string>
-    <string name="curve_exported">ファンカーブをエクスポートしました</string>
-    <string name="curve_export_failed">ファンカーブをエクスポートできません</string>
+    <string name="import_items">インポート</string>
+    <string name="export_items">エクスポート</string>
+    <string name="more_actions">その他の操作</string>
+    <string name="select_items_to_export">エクスポートする項目を選択</string>
+    <string name="no_items_to_export">エクスポートできる項目がありません</string>
+    <string name="items_import_result">%1$d 件をインポート、%2$d 件失敗</string>
+    <string name="items_export_result">%1$d 件をエクスポート、%2$d 件失敗</string>
     <string name="control_points">制御ポイント</string>
     <string name="control_point_value">%1$d°C   %2$s</string>
     <string name="add_point">ポイントを追加</string>
@@ -114,18 +113,9 @@
 
     <string name="root_notice_message">ファンと CPU パフォーマンスの制御には root 権限が必要です。KernelSU ユーザーは手動で権限を付与する必要があります。通知権限は実行状態の表示にのみ使用され、無効にしても機能には影響しません。</string>
     <string name="confirm">確認</string>
-    <string name="authorization_management">権限管理</string>
     <string name="root_permission">Root 権限</string>
-    <string name="root_permission_granted">Root 権限を取得済み</string>
-    <string name="root_permission_not_granted">Root 権限がありません、タップして更新</string>
-    <string name="open_kernelsu">KernelSU</string>
-    <string name="open_kernelsu_summary">KernelSU ユーザーはマネージャーでこのアプリを手動で許可してください</string>
     <string name="kernelsu_not_found">KernelSU マネージャーが見つかりません</string>
-    <string name="notification_settings">通知設定</string>
-    <string name="notification_enabled">有効、無効にしても機能には影響しません</string>
-    <string name="notification_disabled">無効、機能には影響しません</string>
 
-    <string name="back">戻る</string>
     <string name="press_back_again_to_exit">もう一度戻るを押すと終了します</string>
     <string name="close">閉じる</string>
     <string name="delete">削除</string>

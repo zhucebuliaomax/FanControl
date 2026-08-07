@@ -10,7 +10,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.DocumentsContract
-import android.os.Build
 import android.os.SystemClock
 import android.provider.OpenableColumns
 import android.provider.Settings
@@ -49,10 +48,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -95,6 +92,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -106,6 +104,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -114,7 +113,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.BuildConfig
 import com.mmax.retrocontrol.RootAccessManager
-import com.mmax.retrocontrol.data.FanCurveJson
+import com.mmax.retrocontrol.data.ControlItemJson
 import com.mmax.retrocontrol.data.FanCurvePoint
 import com.mmax.retrocontrol.data.AppProfilePreferences
 import com.mmax.retrocontrol.data.displayName
@@ -122,14 +121,12 @@ import com.mmax.retrocontrol.designsystem.FocusScrollMargin
 import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
 import com.mmax.retrocontrol.feature.authorization.AuthorizationManagementSection
 import com.mmax.retrocontrol.feature.authorization.AuthorizationUiState
-import com.mmax.retrocontrol.feature.fan.FanProfilesAddCurveButton
 import com.mmax.retrocontrol.feature.fan.FanProfileItemUiState
 import com.mmax.retrocontrol.feature.fan.FanProfileSectionState
 import com.mmax.retrocontrol.feature.fan.FanProfilesSection
 import com.mmax.retrocontrol.feature.fan.FanTelemetrySection
 import com.mmax.retrocontrol.feature.fan.FanTelemetrySectionState
 import com.mmax.retrocontrol.feature.fan.TemperatureTileUiState
-import com.mmax.retrocontrol.feature.joystick.AddJoystickProfileButton
 import com.mmax.retrocontrol.feature.joystick.JoystickProfileEditorDialog
 import com.mmax.retrocontrol.feature.joystick.JoystickProfileUiState
 import com.mmax.retrocontrol.feature.joystick.JoystickProfilesSection
@@ -146,6 +143,13 @@ import com.mmax.retrocontrol.util.formatTemperature
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
+private enum class ExportListKind { PRESET, FAN, JOYSTICK, PERFORMANCE }
+
+private data class PendingExportFile(
+    val itemName: String,
+    val json: String,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -156,6 +160,54 @@ fun DashboardScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val hasRoot by RootAccessManager.hasRoot.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
+    var exportListKind by remember { mutableStateOf<ExportListKind?>(null) }
+    var pendingExportFiles by remember { mutableStateOf<List<PendingExportFile>>(emptyList()) }
+    val importItemsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uris = result.data.selectedDocumentUris()
+            var readFailures = 0
+            val jsonFiles = uris.mapNotNull { uri ->
+                runCatching {
+                    val displayName = context.contentResolver.displayName(uri)
+                    require(displayName == null || displayName.endsWith(".json", ignoreCase = true))
+                    context.contentResolver.openInputStream(uri)
+                        ?.bufferedReader()
+                        ?.use { it.readText() }
+                        ?: error("Unable to open selected file")
+                }.getOrElse {
+                    readFailures++
+                    null
+                }
+            }
+            val imported = vm.importControlItems(jsonFiles)
+            Toast.makeText(
+                context,
+                resources.getString(
+                    R.string.items_import_result,
+                    imported.imported,
+                    imported.failed + readFailures,
+                ),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
+    val exportItemsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val treeUri = result.data?.data?.takeIf { result.resultCode == Activity.RESULT_OK }
+        if (treeUri != null) {
+            val (exported, failed) = context.exportControlFiles(treeUri, pendingExportFiles)
+            Toast.makeText(
+                context,
+                resources.getString(R.string.items_export_result, exported, failed),
+                Toast.LENGTH_SHORT,
+            ).show()
+            pendingExportFiles = emptyList()
+        }
+    }
     var microphoneGranted by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
@@ -503,12 +555,15 @@ fun DashboardScreen(
             )
         },
         fanAction = {
-            FanProfilesAddCurveButton(
-                onClick = {
+            ControlTransferFabMenu(
+                addLabel = stringResource(R.string.add_fan_curve),
+                onAdd = {
                     editingProfileId = vm.addFanCurve(
-                        context.getString(R.string.new_fan_curve)
+                        resources.getString(R.string.new_fan_curve)
                     )
                 },
+                onImport = { importItemsLauncher.launch(controlItemsImportIntent()) },
+                onExport = { exportListKind = ExportListKind.FAN },
                 modifier = Modifier
                     .focusRequester(addCurveFocusRequester)
                     .focusProperties {
@@ -564,12 +619,15 @@ fun DashboardScreen(
             )
         },
         joystickAction = {
-            AddJoystickProfileButton(
-                onClick = {
+            ControlTransferFabMenu(
+                addLabel = stringResource(JoystickR.string.joystick_add_profile),
+                onAdd = {
                     editingJoystickProfileId = vm.addJoystickProfile(
-                        context.getString(JoystickR.string.joystick_new_profile)
+                        resources.getString(JoystickR.string.joystick_new_profile)
                     )
                 },
+                onImport = { importItemsLauncher.launch(controlItemsImportIntent()) },
+                onExport = { exportListKind = ExportListKind.JOYSTICK },
                 modifier = Modifier
                     .focusRequester(addJoystickProfileFocusRequester)
                     .focusProperties {
@@ -606,10 +664,13 @@ fun DashboardScreen(
             )
         },
         presetAction = {
-            AddPresetButton(
-                onClick = {
-                    editingPresetId = vm.addPreset(context.getString(R.string.new_preset))
+            ControlTransferFabMenu(
+                addLabel = stringResource(R.string.add_preset),
+                onAdd = {
+                    editingPresetId = vm.addPreset(resources.getString(R.string.new_preset))
                 },
+                onImport = { importItemsLauncher.launch(controlItemsImportIntent()) },
+                onExport = { exportListKind = ExportListKind.PRESET },
                 modifier = Modifier
                     .focusRequester(addPresetFocusRequester)
                     .focusProperties {
@@ -646,12 +707,15 @@ fun DashboardScreen(
             )
         },
         performanceAction = {
-            AddPerformanceProfileButton(
-                onClick = {
+            ControlTransferFabMenu(
+                addLabel = stringResource(R.string.add_preset),
+                onAdd = {
                     vm.addPerformanceProfile(
-                        context.getString(R.string.new_performance_profile)
+                        resources.getString(R.string.new_performance_profile)
                     )?.let { editingPerformanceProfileId = it }
                 },
+                onImport = { importItemsLauncher.launch(controlItemsImportIntent()) },
+                onExport = { exportListKind = ExportListKind.PERFORMANCE },
                 modifier = Modifier
                     .focusRequester(addPerformanceProfileFocusRequester)
                     .focusProperties {
@@ -689,22 +753,22 @@ fun DashboardScreen(
                 },
                 onProfileEdit = { editingPresetId = it },
                 onAddProfile = {
-                    editingPresetId = vm.addPreset(context.getString(R.string.new_preset))
+                    editingPresetId = vm.addPreset(resources.getString(R.string.new_preset))
                 },
                 onFanCurveEdit = { editingProfileId = it },
                 onAddFanCurve = {
-                    editingProfileId = vm.addFanCurve(context.getString(R.string.new_fan_curve))
+                    editingProfileId = vm.addFanCurve(resources.getString(R.string.new_fan_curve))
                 },
                 onJoystickEdit = { editingJoystickProfileId = it },
                 onAddJoystick = {
                     editingJoystickProfileId = vm.addJoystickProfile(
-                        context.getString(JoystickR.string.joystick_new_profile)
+                        resources.getString(JoystickR.string.joystick_new_profile)
                     )
                 },
                 onPerformanceEdit = { editingPerformanceProfileId = it },
                 onAddPerformance = {
                     vm.addPerformanceProfile(
-                        context.getString(R.string.new_performance_profile)
+                        resources.getString(R.string.new_performance_profile)
                     )?.let { editingPerformanceProfileId = it }
                 },
             )
@@ -720,36 +784,36 @@ fun DashboardScreen(
             AppProfileSection(
                 profile = profile,
                 selectedProfileName = if (profile?.presetId == null) {
-                    context.getString(R.string.follow_default)
+                    resources.getString(R.string.follow_default)
                 } else effectivePreset.name,
                 selectedFanCurveName = profile?.fanCurveId?.let(::fanCurveName)
-                    ?: context.getString(R.string.follow_profile),
+                    ?: resources.getString(R.string.follow_profile),
                 selectedJoystickProfileName = profile?.joystickId
                     ?.let(::joystickProfileName)
-                    ?: context.getString(R.string.follow_profile),
+                    ?: resources.getString(R.string.follow_profile),
                 selectedPerformanceProfileName = profile?.performanceProfileId
                     ?.let(::performanceProfileName)
-                    ?: context.getString(R.string.follow_profile),
+                    ?: resources.getString(R.string.follow_profile),
                 profileChoices = buildList {
-                    add(AppProfileChoice(null, context.getString(R.string.follow_default)))
+                    add(AppProfileChoice(null, resources.getString(R.string.follow_default)))
                     state.presetConfig.catalog.presets.forEach {
                         add(AppProfileChoice(it.id, it.name))
                     }
                 },
                 fanCurveChoices = buildList {
-                    add(AppProfileChoice(null, context.getString(R.string.follow_profile)))
+                    add(AppProfileChoice(null, resources.getString(R.string.follow_profile)))
                     state.fanConfig.catalog.profiles.forEach { fanProfile ->
                         add(AppProfileChoice(fanProfile.id, fanProfile.displayName(context)))
                     }
                 },
                 joystickChoices = buildList {
-                    add(AppProfileChoice(null, context.getString(R.string.follow_profile)))
+                    add(AppProfileChoice(null, resources.getString(R.string.follow_profile)))
                     state.joystickProfiles.profiles.forEach { joystickProfile ->
                         add(AppProfileChoice(joystickProfile.id, joystickProfile.name))
                     }
                 },
                 performanceChoices = buildList {
-                    add(AppProfileChoice(null, context.getString(R.string.follow_profile)))
+                    add(AppProfileChoice(null, resources.getString(R.string.follow_profile)))
                     state.performanceProfiles.profiles.forEach { performanceProfile ->
                         add(
                             AppProfileChoice(
@@ -768,22 +832,22 @@ fun DashboardScreen(
                 onPerformanceSelected = { vm.setAppPerformanceProfile(packageName, it) },
                 onProfileEdit = { editingPresetId = it },
                 onAddProfile = {
-                    editingPresetId = vm.addPreset(context.getString(R.string.new_preset))
+                    editingPresetId = vm.addPreset(resources.getString(R.string.new_preset))
                 },
                 onFanCurveEdit = { editingProfileId = it },
                 onAddFanCurve = {
-                    editingProfileId = vm.addFanCurve(context.getString(R.string.new_fan_curve))
+                    editingProfileId = vm.addFanCurve(resources.getString(R.string.new_fan_curve))
                 },
                 onJoystickEdit = { editingJoystickProfileId = it },
                 onAddJoystick = {
                     editingJoystickProfileId = vm.addJoystickProfile(
-                        context.getString(JoystickR.string.joystick_new_profile)
+                        resources.getString(JoystickR.string.joystick_new_profile)
                     )
                 },
                 onPerformanceEdit = { editingPerformanceProfileId = it },
                 onAddPerformance = {
                     vm.addPerformanceProfile(
-                        context.getString(R.string.new_performance_profile)
+                        resources.getString(R.string.new_performance_profile)
                     )?.let { editingPerformanceProfileId = it }
                 },
             )
@@ -889,6 +953,67 @@ fun DashboardScreen(
         },
     )
 
+    exportListKind?.let { kind ->
+        val choices = when (kind) {
+            ExportListKind.PRESET -> state.presetConfig.catalog.presets.map {
+                ExportChoice(it.id, it.name)
+            }
+            ExportListKind.FAN -> state.fanConfig.catalog.profiles.map {
+                ExportChoice(it.id, it.displayName(context))
+            }
+            ExportListKind.JOYSTICK -> state.joystickProfiles.profiles.map {
+                ExportChoice(it.id, it.name)
+            }
+            ExportListKind.PERFORMANCE -> state.performanceProfiles.profiles.map {
+                ExportChoice(it.id, it.displayName(context))
+            }
+        }
+        ExportSelectionDialog(
+            choices = choices,
+            onExport = { selectedIds ->
+                pendingExportFiles = when (kind) {
+                    ExportListKind.PRESET -> state.presetConfig.catalog.presets
+                        .filter { it.id in selectedIds }
+                        .map { preset ->
+                            val fanCurve = state.fanConfig.catalog.profile(preset.fanCurveId)
+                                ?.let { it.displayName(context) to it }
+                            val joystick = state.joystickProfiles.profile(preset.joystickId)
+                            val performance = state.performanceProfiles
+                                .profile(preset.performanceProfileId)
+                                ?.let { it.displayName(context) to it }
+                            PendingExportFile(
+                                preset.name,
+                                ControlItemJson.encodePreset(
+                                    preset = preset,
+                                    fanCurve = fanCurve,
+                                    joystick = joystick,
+                                    performance = performance,
+                                ),
+                            )
+                        }
+                    ExportListKind.FAN -> state.fanConfig.catalog.profiles
+                        .filter { it.id in selectedIds }
+                        .map {
+                            val name = it.displayName(context)
+                            PendingExportFile(name, ControlItemJson.encodeFanCurve(name, it))
+                        }
+                    ExportListKind.JOYSTICK -> state.joystickProfiles.profiles
+                        .filter { it.id in selectedIds }
+                        .map { PendingExportFile(it.name, ControlItemJson.encodeJoystick(it)) }
+                    ExportListKind.PERFORMANCE -> state.performanceProfiles.profiles
+                        .filter { it.id in selectedIds }
+                        .map {
+                            val name = it.displayName(context)
+                            PendingExportFile(name, ControlItemJson.encodePerformance(name, it))
+                        }
+                }
+                exportListKind = null
+                exportItemsLauncher.launch(controlItemsExportDirectoryIntent())
+            },
+            onDismiss = { exportListKind = null },
+        )
+    }
+
     editingProfileId?.let { profileId ->
         val profile = state.fanConfig.catalog.profile(profileId) ?: return@let
         FanCurveEditorDialog(
@@ -935,7 +1060,7 @@ fun DashboardScreen(
             },
             onFanCurveEdit = { editingProfileId = it },
             onAddFanCurve = {
-                editingProfileId = vm.addFanCurve(context.getString(R.string.new_fan_curve))
+                editingProfileId = vm.addFanCurve(resources.getString(R.string.new_fan_curve))
             },
             joystickProfileName = joystickProfileName(preset.joystickId),
             joystickChoices = buildList {
@@ -948,7 +1073,7 @@ fun DashboardScreen(
             onJoystickEdit = { editingJoystickProfileId = it },
             onAddJoystick = {
                 editingJoystickProfileId = vm.addJoystickProfile(
-                    context.getString(JoystickR.string.joystick_new_profile)
+                    resources.getString(JoystickR.string.joystick_new_profile)
                 )
             },
             performanceProfileName = performanceProfileName(preset.performanceProfileId),
@@ -974,7 +1099,7 @@ fun DashboardScreen(
             onPerformanceEdit = { editingPerformanceProfileId = it },
             onAddPerformance = {
                 vm.addPerformanceProfile(
-                    context.getString(R.string.new_performance_profile)
+                    resources.getString(R.string.new_performance_profile)
                 )?.let { editingPerformanceProfileId = it }
             },
             onRename = { vm.renamePreset(preset.id, it) },
@@ -1149,7 +1274,6 @@ private fun FanCurveEditorDialog(
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
     val draft = remember(profileId) {
         mutableStateListOf<FanCurvePoint>().apply { addAll(points.sortedBy { it.tempC }) }
     }
@@ -1160,56 +1284,6 @@ private fun FanCurveEditorDialog(
     LaunchedEffect(profileName, showRenameDialog) {
         if (!showRenameDialog) renameDraft = profileName
     }
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val uri = result.data?.data?.takeIf { result.resultCode == Activity.RESULT_OK }
-        if (uri != null) {
-            val exported = runCatching {
-                val json = FanCurveJson.encode(
-                    profileId = profileId,
-                    profileName = profileName,
-                    points = draft.toList(),
-                )
-                context.contentResolver.openOutputStream(uri, "wt")
-                    ?.bufferedWriter()
-                    ?.use { writer -> writer.write(json) }
-                    ?: error("Unable to open export destination")
-            }.isSuccess
-            Toast.makeText(
-                context,
-                if (exported) R.string.curve_exported else R.string.curve_export_failed,
-                Toast.LENGTH_SHORT,
-            ).show()
-        }
-    }
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            val imported = runCatching {
-                val displayName = context.contentResolver.displayName(uri)
-                require(displayName == null || displayName.endsWith(".json", ignoreCase = true))
-                val json = context.contentResolver.openInputStream(uri)
-                    ?.bufferedReader()
-                    ?.use { reader -> reader.readText() }
-                    ?: error("Unable to open selected file")
-                FanCurveJson.decode(json)
-            }.getOrNull()
-            if (imported != null) {
-                draft.clear()
-                draft.addAll(imported)
-                selectedIndex = -1
-                onPointsChanged(imported)
-            }
-            Toast.makeText(
-                context,
-                if (imported != null) R.string.curve_imported else R.string.curve_import_failed,
-                Toast.LENGTH_SHORT,
-            ).show()
-        }
-    }
-
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -1264,12 +1338,6 @@ private fun FanCurveEditorDialog(
                                 draft.addAll(defaultPoints.sortedBy { it.tempC })
                                 selectedIndex = -1
                                 onReset()
-                            },
-                            onImport = {
-                                importLauncher.launch(arrayOf("application/json"))
-                            },
-                            onExport = {
-                                exportLauncher.launch(fanCurveExportIntent())
                             },
                         )
                     }
@@ -1383,8 +1451,6 @@ private fun CurveGraphPanel(
     onCommit: () -> Unit,
     onSetDefault: () -> Unit,
     onReset: () -> Unit,
-    onImport: () -> Unit,
-    onExport: () -> Unit,
 ) {
     Column(modifier) {
         Row(
@@ -1400,16 +1466,6 @@ private fun CurveGraphPanel(
                 onClick = onReset,
                 icon = { Icon(Icons.Default.Restore, null, Modifier.size(17.dp)) },
                 label = stringResource(R.string.reset),
-            )
-            CurveFileButton(
-                onClick = onImport,
-                icon = { Icon(Icons.Default.FileOpen, null, Modifier.size(17.dp)) },
-                label = stringResource(R.string.import_curve),
-            )
-            CurveFileButton(
-                onClick = onExport,
-                icon = { Icon(Icons.Default.SaveAlt, null, Modifier.size(17.dp)) },
-                label = stringResource(R.string.export_curve),
             )
         }
         Spacer(Modifier.height(10.dp))
@@ -1447,23 +1503,117 @@ private fun android.content.ContentResolver.displayName(uri: Uri): String? =
         if (cursor.moveToFirst()) cursor.getString(0) else null
     }
 
-private fun fanCurveExportIntent(): Intent =
-    Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+private fun Intent?.selectedDocumentUris(): List<Uri> {
+    val intent = this ?: return emptyList()
+    return buildList {
+        intent.clipData?.let { clips ->
+            repeat(clips.itemCount) { index -> add(clips.getItemAt(index).uri) }
+        }
+        intent.data?.let(::add)
+    }.distinct()
+}
+
+private fun controlItemsImportIntent(): Intent =
+    Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
         addCategory(Intent.CATEGORY_OPENABLE)
-        type = "application/json"
-        putExtra(Intent.EXTRA_TITLE, "fan curve.json")
+        type = "*/*"
+        putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
         putExtra(
-            DocumentsContract.EXTRA_INITIAL_URI,
-            DocumentsContract.buildDocumentUri(
-                "com.android.externalstorage.documents",
-                "primary:Download",
-            ),
+            Intent.EXTRA_MIME_TYPES,
+            arrayOf("application/json", "text/json", "text/plain", "application/octet-stream"),
         )
+        putExtra(DocumentsContract.EXTRA_INITIAL_URI, downloadsDocumentUri())
     }
+
+private fun controlItemsExportDirectoryIntent(): Intent =
+    Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+        putExtra(DocumentsContract.EXTRA_INITIAL_URI, downloadsDocumentUri())
+    }
+
+private fun downloadsDocumentUri(): Uri = DocumentsContract.buildDocumentUri(
+    "com.android.externalstorage.documents",
+    "primary:Download",
+)
+
+private fun Context.exportControlFiles(
+    treeUri: Uri,
+    files: List<PendingExportFile>,
+): Pair<Int, Int> {
+    val resolver = contentResolver
+    val parentUri = runCatching {
+        DocumentsContract.buildDocumentUriUsingTree(
+            treeUri,
+            DocumentsContract.getTreeDocumentId(treeUri),
+        )
+    }.getOrElse { return 0 to files.size }
+    val usedNames = resolver.childDisplayNames(treeUri).toMutableSet()
+    var exported = 0
+    var failed = 0
+    files.forEach { file ->
+        val name = uniqueJsonFileName(file.itemName, usedNames)
+        val success = runCatching {
+            val uri = DocumentsContract.createDocument(
+                resolver,
+                parentUri,
+                "application/json",
+                name,
+            ) ?: error("Unable to create export file")
+            resolver.openOutputStream(uri, "wt")
+                ?.bufferedWriter()
+                ?.use { it.write(file.json) }
+                ?: error("Unable to open export file")
+        }.isSuccess
+        if (success) {
+            exported++
+            usedNames += name
+        } else {
+            failed++
+        }
+    }
+    return exported to failed
+}
+
+private fun android.content.ContentResolver.childDisplayNames(treeUri: Uri): Set<String> =
+    runCatching {
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+            treeUri,
+            DocumentsContract.getTreeDocumentId(treeUri),
+        )
+        query(
+            childrenUri,
+            arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            buildSet {
+                while (cursor.moveToNext()) add(cursor.getString(0))
+            }
+        }.orEmpty()
+    }.getOrDefault(emptySet())
+
+private fun uniqueJsonFileName(itemName: String, usedNames: Set<String>): String {
+    val sanitized = itemName
+        .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+        .trim()
+        .trim('.')
+        .ifBlank { "item" }
+    val base = if (sanitized.endsWith(".json", ignoreCase = true)) {
+        sanitized.dropLast(5).ifBlank { "item" }
+    } else {
+        sanitized
+    }
+    var suffix = 0
+    var candidate: String
+    do {
+        candidate = if (suffix == 0) "$base.json" else "$base.$suffix.json"
+        suffix++
+    } while (usedNames.any { it.equals(candidate, ignoreCase = true) })
+    return candidate
+}
 
 private fun Context.areFanNotificationsEnabled(): Boolean {
     if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return false
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
     val channel = getSystemService(NotificationManager::class.java)
         .getNotificationChannel(SystemControlService.CHANNEL_ID)
     return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
@@ -1548,7 +1698,7 @@ private fun AppFooter(
                 .bringIntoViewOnFocus()
                 .clickable {
                     context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse(githubUrl))
+                        Intent(Intent.ACTION_VIEW, githubUrl.toUri())
                     )
                 }
                 .padding(horizontal = 8.dp, vertical = 4.dp),

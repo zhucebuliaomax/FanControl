@@ -83,6 +83,9 @@ fun PerformanceProfilesSection(
                         onDeleteRequest = { onDeleteProfile(profile.id) },
                         deleteIcon = Icons.Default.Delete,
                         deleteContentDescription = stringResource(R.string.delete_performance_profile),
+                        trailingContent = {
+                            Icon(Icons.Default.ChevronRight, contentDescription = null)
+                        },
                         supportingContent = {
                             Text(profile.frequencySummary(config.policies))
                         },
@@ -102,9 +105,6 @@ fun PerformanceProfilesSection(
                     count = config.profiles.size,
                     onClick = { onProfileSelected(profile.id) },
                     supportingContent = { Text(profile.frequencySummary(config.policies)) },
-                    trailingContent = {
-                        Icon(Icons.Default.ChevronRight, contentDescription = null)
-                    },
                     modifier = profileModifier(index).bringIntoViewOnFocus(),
                     content = {
                         Text(
@@ -128,7 +128,7 @@ fun AddPerformanceProfileButton(
         onClick = onClick,
         modifier = modifier,
         icon = { Icon(Icons.Default.Add, contentDescription = null) },
-        text = { Text(stringResource(R.string.add_performance_profile)) },
+        text = { Text(stringResource(R.string.add_preset)) },
     )
 }
 

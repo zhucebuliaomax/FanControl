@@ -17,6 +17,7 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.mmax.retrocontrol.MainActivity
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.data.FanCurvePreferences
@@ -26,6 +27,7 @@ import com.mmax.retrocontrol.data.FanControlConfig
 import com.mmax.retrocontrol.data.FanCurveSerializer
 import com.mmax.retrocontrol.data.PerformanceProfilePreferences
 import com.mmax.retrocontrol.data.PerformanceProfileResolver
+import com.mmax.retrocontrol.data.PerformanceTilePreferences
 import com.mmax.retrocontrol.data.PresetPreferences
 import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.data.JoystickProfile
@@ -42,6 +44,7 @@ import com.mmax.retrocontrol.overlay.TelemetryOverlay
 import com.mmax.retrocontrol.tile.FanQuickSettingsTile
 import com.mmax.retrocontrol.tile.OverlayTileService
 import com.mmax.retrocontrol.tile.JoystickQuickSettingsTile
+import com.mmax.retrocontrol.tile.PerformanceQuickSettingsTile
 import com.mmax.retrocontrol.util.formatTemperature
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -174,7 +177,14 @@ class SystemControlService : Service() {
                 loadJoystickPreferences()
                 applyPerformanceProfile()
             }
-            Prefs.PERFORMANCE_PROFILE_CATALOG -> applyPerformanceProfile(force = true)
+            Prefs.PERFORMANCE_PROFILE_CATALOG -> {
+                applyPerformanceProfile(force = true)
+                PerformanceQuickSettingsTile.requestRefresh(applicationContext)
+            }
+            Prefs.PERFORMANCE_TILE_PROFILE -> {
+                applyPerformanceProfile(force = true)
+                PerformanceQuickSettingsTile.requestRefresh(applicationContext)
+            }
             Prefs.JOYSTICK_PROFILE_CATALOG -> {
                 loadJoystickPreferences()
                 JoystickQuickSettingsTile.requestRefresh(applicationContext)
@@ -221,6 +231,7 @@ class SystemControlService : Service() {
         applyOverlayState()
         FanQuickSettingsTile.requestRefresh(applicationContext)
         JoystickQuickSettingsTile.requestRefresh(applicationContext)
+        PerformanceQuickSettingsTile.requestRefresh(applicationContext)
         OverlayTileService.requestRefresh(applicationContext)
         if (!getSystemService(PowerManager::class.java).isInteractive) {
             scheduleScreenOffSuspend()
@@ -331,12 +342,13 @@ class SystemControlService : Service() {
                 availablePerformanceProfileIds = performanceIds,
             )
             val appIsGame = AppProfilePreferences.isGame(this@SystemControlService, foregroundPackageName)
-            val targetId = PerformanceProfileResolver.resolveTargetProfileId(
-                profileConfig = profileConfig,
-                presetConfig = presetConfig,
-                appProfile = foregroundPackageName?.let(appProfiles::get),
-                appIsGame = appIsGame,
-            )
+            val targetId = PerformanceTilePreferences.selectedProfileId(prefs, profileConfig)
+                ?: PerformanceProfileResolver.resolveTargetProfileId(
+                    profileConfig = profileConfig,
+                    presetConfig = presetConfig,
+                    appProfile = foregroundPackageName?.let(appProfiles::get),
+                    appIsGame = appIsGame,
+                )
             val previouslyApplied = prefs.getString(
                 Prefs.LAST_APPLIED_PERFORMANCE_PROFILE,
                 null,
@@ -367,13 +379,13 @@ class SystemControlService : Service() {
                     }
                     performanceRequestInitialized = true
                     lastRequestedPerformanceProfileId = targetId
-                    prefs.edit().apply {
+                    prefs.edit {
                         if (targetId == null) {
                             remove(Prefs.LAST_APPLIED_PERFORMANCE_PROFILE)
                         } else {
                             putString(Prefs.LAST_APPLIED_PERFORMANCE_PROFILE, targetId)
                         }
-                    }.apply()
+                    }
                 }
                 .onFailure { error ->
                     performanceRequestInitialized = false

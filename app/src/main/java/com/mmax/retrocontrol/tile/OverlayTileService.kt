@@ -10,6 +10,7 @@ import android.graphics.drawable.Icon
 import android.provider.Settings
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import androidx.core.content.edit
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.service.SystemControlService
@@ -43,19 +44,17 @@ class OverlayTileService : TileService() {
         }
 
         val next = !isActuallyEnabled()
-        getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(Prefs.OVERLAY_ENABLED, next)
-            .apply()
+        getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE).edit {
+            putBoolean(Prefs.OVERLAY_ENABLED, next)
+        }
         updateTile(next)
         val started = runCatching {
             SystemControlService.startOrUpdate(applicationContext)
         }.isSuccess
         if (next && !started) {
-            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(Prefs.OVERLAY_ENABLED, false)
-                .apply()
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE).edit {
+                putBoolean(Prefs.OVERLAY_ENABLED, false)
+            }
             updateTile(false)
         }
     }

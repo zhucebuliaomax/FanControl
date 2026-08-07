@@ -224,6 +224,7 @@ fun SwipeToDeleteSecondaryMenuListItem(
     deleteIcon: ImageVector,
     deleteContentDescription: String,
     modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null,
     supportingContent: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -267,6 +268,7 @@ fun SwipeToDeleteSecondaryMenuListItem(
                 onClick = onClick,
                 modifier = modifier,
                 keepInteractionShape = isSwipeInProgress,
+                trailingContent = trailingContent,
                 supportingContent = supportingContent,
                 content = content,
             )
@@ -364,7 +366,14 @@ fun SettingsListDialog(
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
-            Column(Modifier.padding(24.dp)) {
+            Column(
+                Modifier.padding(
+                    start = 24.dp,
+                    top = 24.dp,
+                    end = 24.dp,
+                    bottom = 12.dp,
+                )
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLargeEmphasized,

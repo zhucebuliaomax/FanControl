@@ -1,6 +1,7 @@
 package com.mmax.retrocontrol.data
 
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -30,13 +31,11 @@ object FanCurvePreferences {
             hasLegacyArchivedField(storedCatalog) ||
             rawSelection != normalizedSelection
         ) {
-            prefs.edit()
-                .putString(Prefs.FAN_CURVE_CATALOG, encodeCatalog(catalog))
-                .putString(Prefs.FAN_MODE, normalizedSelection)
-                .apply {
-                    activeId?.let { putString(Prefs.LAST_FAN_CURVE, it) }
-                }
-                .apply()
+            prefs.edit {
+                putString(Prefs.FAN_CURVE_CATALOG, encodeCatalog(catalog))
+                putString(Prefs.FAN_MODE, normalizedSelection)
+                activeId?.let { putString(Prefs.LAST_FAN_CURVE, it) }
+            }
         }
         return FanControlConfig(catalog = catalog, activeProfileId = activeId)
     }
@@ -44,12 +43,10 @@ object FanCurvePreferences {
     fun select(prefs: SharedPreferences, profileId: String?): FanControlConfig {
         val current = load(prefs)
         val selectedId = profileId?.takeIf { current.catalog.profile(it) != null }
-        prefs.edit()
-            .putString(Prefs.FAN_MODE, selectedId ?: OFF)
-            .apply {
-                selectedId?.let { putString(Prefs.LAST_FAN_CURVE, it) }
-            }
-            .apply()
+        prefs.edit {
+            putString(Prefs.FAN_MODE, selectedId ?: OFF)
+            selectedId?.let { putString(Prefs.LAST_FAN_CURVE, it) }
+        }
         return current.copy(activeProfileId = selectedId)
     }
 
@@ -106,6 +103,29 @@ object FanCurvePreferences {
         )
         persist(prefs, updated)
         return updated
+    }
+
+    fun addImported(
+        prefs: SharedPreferences,
+        name: String,
+        points: List<FanCurvePoint>,
+        defaultPoints: List<FanCurvePoint>,
+    ): FanControlConfig {
+        val current = load(prefs)
+        val cleanPoints = FanCurveSerializer.sanitize(points)
+        val cleanDefaults = FanCurveSerializer.sanitize(defaultPoints)
+        require(cleanPoints.size >= 2 && cleanDefaults.size >= 2) {
+            "A fan curve requires at least two points"
+        }
+        val profile = FanCurveProfile(
+            id = "curve-${UUID.randomUUID()}",
+            customName = name.trim().take(40).ifBlank { "Fan curve" },
+            points = cleanPoints,
+            defaultPoints = cleanDefaults,
+        )
+        return current.copy(catalog = current.catalog.plus(profile)).also {
+            persist(prefs, it)
+        }
     }
 
     fun delete(
@@ -165,13 +185,11 @@ object FanCurvePreferences {
     }
 
     private fun persist(prefs: SharedPreferences, config: FanControlConfig) {
-        prefs.edit()
-            .putString(Prefs.FAN_CURVE_CATALOG, encodeCatalog(config.catalog))
-            .putString(Prefs.FAN_MODE, config.activeProfileId ?: OFF)
-            .apply {
-                config.activeProfileId?.let { putString(Prefs.LAST_FAN_CURVE, it) }
-            }
-            .apply()
+        prefs.edit {
+            putString(Prefs.FAN_CURVE_CATALOG, encodeCatalog(config.catalog))
+            putString(Prefs.FAN_MODE, config.activeProfileId ?: OFF)
+            config.activeProfileId?.let { putString(Prefs.LAST_FAN_CURVE, it) }
+        }
     }
 
     private fun resolveActiveId(

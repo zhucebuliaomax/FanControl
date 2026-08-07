@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.core.content.edit
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -100,14 +101,14 @@ class TelemetryOverlay(
                         prefs.getString(Prefs.OVERLAY_DISPLAY_MODE, null)
                     ),
                     onDisplayModeChanged = { displayMode ->
-                        prefs.edit()
-                            .putString(Prefs.OVERLAY_DISPLAY_MODE, displayMode.storageValue)
-                            .apply()
+                        prefs.edit {
+                            putString(Prefs.OVERLAY_DISPLAY_MODE, displayMode.storageValue)
+                        }
                     },
                     onDrag = ::moveBy,
                     onAdjustFan = onAdjustFan,
                     onClose = {
-                        prefs.edit().putBoolean(Prefs.OVERLAY_ENABLED, false).apply()
+                        prefs.edit { putBoolean(Prefs.OVERLAY_ENABLED, false) }
                     },
                 )
             }
@@ -141,10 +142,10 @@ class TelemetryOverlay(
         mainHandler.post {
             host?.let {
                 runCatching { windowManager.updateViewLayout(it.composeView, layout) }
-                prefs.edit()
-                    .putInt(Prefs.OVERLAY_X, posX)
-                    .putInt(Prefs.OVERLAY_Y, posY)
-                    .apply()
+                prefs.edit {
+                    putInt(Prefs.OVERLAY_X, posX)
+                    putInt(Prefs.OVERLAY_Y, posY)
+                }
             }
         }
     }

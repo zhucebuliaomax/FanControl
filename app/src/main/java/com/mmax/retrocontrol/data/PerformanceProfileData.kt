@@ -2,6 +2,7 @@ package com.mmax.retrocontrol.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.mmax.retrocontrol.R
 import org.json.JSONArray
 import org.json.JSONObject
@@ -117,6 +118,26 @@ object PerformanceProfilePreferences {
         return load(prefs, policies) to id
     }
 
+    fun addImported(
+        prefs: SharedPreferences,
+        policies: List<CpuFrequencyPolicy>,
+        name: String,
+        maxFrequencies: Map<Int, Int>,
+    ): PerformanceProfileConfig {
+        val current = load(prefs, policies)
+        val imported = PerformanceProfile(
+            id = "performance-${UUID.randomUUID()}",
+            customName = name.trim().take(40).ifBlank { "Performance profile" },
+            maxFrequencies = maxFrequencies,
+        )
+        val normalized = normalize(imported, policies) ?: imported
+        persist(
+            prefs,
+            current.profiles.filter(PerformanceProfile::isEditable) + normalized,
+        )
+        return load(prefs, policies)
+    }
+
     fun update(
         prefs: SharedPreferences,
         policies: List<CpuFrequencyPolicy>,
@@ -215,12 +236,12 @@ object PerformanceProfilePreferences {
                     .put("maxFrequencies", frequencies)
             )
         }
-        prefs.edit()
-            .putString(
+        prefs.edit {
+            putString(
                 Prefs.PERFORMANCE_PROFILE_CATALOG,
                 JSONObject().put("profiles", entries).toString(),
             )
-            .apply()
+        }
     }
 
     private fun decode(serialized: String?): List<PerformanceProfile> {
@@ -276,5 +297,18 @@ object PerformanceProfileResolver {
                 presetConfig,
                 appIsGame,
             ).performanceProfileId?.takeIf(availableIds::contains)
+    }
+}
+
+/** A profile selected from Quick Settings overrides app/preset performance automation. */
+object PerformanceTilePreferences {
+    fun selectedProfileId(
+        prefs: SharedPreferences,
+        profileConfig: PerformanceProfileConfig,
+    ): String? = prefs.getString(Prefs.PERFORMANCE_TILE_PROFILE, null)
+        ?.takeIf { profileConfig.profile(it) != null }
+
+    fun select(prefs: SharedPreferences, profileId: String) {
+        prefs.edit { putString(Prefs.PERFORMANCE_TILE_PROFILE, profileId) }
     }
 }

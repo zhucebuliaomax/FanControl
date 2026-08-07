@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -189,6 +190,9 @@ private fun SwipeToDeleteProfileItem(
         onDeleteRequest = { showDeleteConfirmation = true },
         deleteIcon = Icons.Default.Delete,
         deleteContentDescription = stringResource(R.string.fanfeature_delete_curve),
+        trailingContent = {
+            Icon(Icons.Default.ChevronRight, contentDescription = null)
+        },
         modifier = modifier,
         supportingContent = {
             Text(

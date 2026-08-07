@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.core.content.edit
 import com.mmax.retrocontrol.RootAccessManager
 import com.mmax.retrocontrol.data.FanCurvePreferences
 import com.mmax.retrocontrol.data.Prefs
@@ -28,7 +29,7 @@ class BootReceiver : BroadcastReceiver() {
         val prefs = appContext.getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
 
         // Overlay visibility is intentionally never restored across a reboot.
-        prefs.edit().putBoolean(Prefs.OVERLAY_ENABLED, false).apply()
+        prefs.edit { putBoolean(Prefs.OVERLAY_ENABLED, false) }
         OverlayTileService.requestRefresh(appContext)
 
         if (!prefs.getBoolean(Prefs.AUTO_START_ENABLED, false)) {

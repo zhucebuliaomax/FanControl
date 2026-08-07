@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.service.SystemControlService
 import com.mmax.retrocontrol.theme.RetroControlTheme
@@ -52,9 +53,9 @@ class MainActivity : ComponentActivity() {
                         confirmButton = {
                             TextButton(
                                 onClick = {
-                                    prefs.edit()
-                                        .putBoolean(Prefs.ROOT_NOTICE_ACKNOWLEDGED, true)
-                                        .apply()
+                                    prefs.edit {
+                                        putBoolean(Prefs.ROOT_NOTICE_ACKNOWLEDGED, true)
+                                    }
                                     showRootNotice = false
                                     requestRoot(forceRefresh = true)
                                 },
@@ -87,9 +88,7 @@ class MainActivity : ComponentActivity() {
 
         val prefs = getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
         if (prefs.getBoolean(Prefs.NOTIFICATION_PERMISSION_REQUESTED, false)) return
-        prefs.edit()
-            .putBoolean(Prefs.NOTIFICATION_PERMISSION_REQUESTED, true)
-            .apply()
+        prefs.edit { putBoolean(Prefs.NOTIFICATION_PERMISSION_REQUESTED, true) }
         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }

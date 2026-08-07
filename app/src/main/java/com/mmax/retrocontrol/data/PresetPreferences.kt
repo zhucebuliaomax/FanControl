@@ -1,6 +1,7 @@
 package com.mmax.retrocontrol.data
 
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -137,6 +138,34 @@ object PresetPreferences {
         return updated to id
     }
 
+    fun addImported(
+        prefs: SharedPreferences,
+        preset: ControlPreset,
+        availableFanCurveIds: Set<String>,
+        availableJoystickProfileIds: Set<String>,
+        availablePerformanceProfileIds: Set<String>? = null,
+    ): ControlPresetConfig {
+        val current = load(
+            prefs,
+            availableFanCurveIds,
+            availableJoystickProfileIds,
+            availablePerformanceProfileIds,
+        )
+        val imported = normalizeControlReferences(
+            preset.copy(
+                id = "preset-${UUID.randomUUID()}",
+                name = preset.name.trim().take(40).ifBlank { "New preset" },
+                isDefault = false,
+            ),
+            availableFanCurveIds,
+            availableJoystickProfileIds,
+            availablePerformanceProfileIds,
+        )
+        return current.copy(catalog = current.catalog.plus(imported)).also {
+            persist(prefs, it)
+        }
+    }
+
     fun rename(
         prefs: SharedPreferences,
         presetId: String,
@@ -247,12 +276,12 @@ object PresetPreferences {
     }
 
     private fun persist(prefs: SharedPreferences, config: ControlPresetConfig) {
-        prefs.edit()
-            .putString(Prefs.PRESET_CATALOG, encodeCatalog(config.catalog))
-            .putString(Prefs.SELECTED_PRESET, config.selectedPresetId)
-            .putString(Prefs.SELECTED_GAME_PROFILE, config.selectedPresetId)
-            .putString(Prefs.SELECTED_NON_GAME_PROFILE, config.selectedNonGamePresetId)
-            .apply()
+        prefs.edit {
+            putString(Prefs.PRESET_CATALOG, encodeCatalog(config.catalog))
+            putString(Prefs.SELECTED_PRESET, config.selectedPresetId)
+            putString(Prefs.SELECTED_GAME_PROFILE, config.selectedPresetId)
+            putString(Prefs.SELECTED_NON_GAME_PROFILE, config.selectedNonGamePresetId)
+        }
     }
 
     private fun encodeCatalog(catalog: ControlPresetCatalog): String {
@@ -426,16 +455,16 @@ object FanSelectionPreferences {
     }
 
     private fun persist(prefs: SharedPreferences, config: FanSelectionConfig) {
-        prefs.edit()
-            .putString(
+        prefs.edit {
+            putString(
                 Prefs.FAN_SELECTION_SOURCE,
                 if (config.source is FanSelectionSource.FollowPreset) SOURCE_PRESET else SOURCE_CURVE,
             )
-            .putString(
+            putString(
                 Prefs.FAN_SELECTION_CURVE,
                 (config.source as? FanSelectionSource.DirectCurve)?.profileId,
             )
-            .putBoolean(Prefs.FAN_TILE_ENABLED, config.enabled)
-            .apply()
+            putBoolean(Prefs.FAN_TILE_ENABLED, config.enabled)
+        }
     }
 }

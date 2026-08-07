@@ -27,7 +27,6 @@
     <string name="filter_all">全部</string>
     <string name="no_options_available">暂无可用选项</string>
     <string name="select_preset">选择配置</string>
-    <string name="preset_default">default</string>
     <string name="new_preset">新配置</string>
     <string name="add_preset">添加配置</string>
     <string name="rename_preset">重命名配置</string>
@@ -52,6 +51,7 @@
     <string name="follow_profile">跟随配置</string>
     <string name="follow_default">跟随默认配置</string>
     <string name="select_joystick_profile">选择摇杆配置</string>
+    <string name="select_performance_profile">选择性能方案</string>
 
     <string name="notification_channel_name">风扇控制</string>
     <string name="notification_channel_description">显示当前曲线、风扇百分比和 CPU/GPU 温度</string>
@@ -60,27 +60,13 @@
     <string name="tile_fan_label">风扇曲线</string>
     <string name="tile_overlay_label">温度浮窗</string>
     <string name="tile_joystick_label">摇杆</string>
+    <string name="tile_performance_label">性能方案</string>
     <string name="tile_on">开启</string>
     <string name="tile_off">关闭</string>
 
-    <string name="fan_profiles">风扇方案</string>
-    <string name="fan_curve">风扇曲线</string>
-    <string name="fan_control_off">风扇控制已关闭</string>
-    <string name="edit_fan_curve">编辑风扇曲线</string>
-    <plurals name="curve_points_summary">
-        <item quantity="other">%1$s • %2$d 个控制点</item>
-    </plurals>
-
     <string name="live_telemetry">实时温度</string>
-    <string name="open_app_info">应用信息</string>
-    <string name="open_app_info_summary">在右上角允许受限制的设置以开启浮窗权限</string>
-    <string name="telemetry_overlay">温度浮窗</string>
-    <string name="telemetry_overlay_summary">可使用 “− / +” 按 5% 调整转速并自动保存至当前曲线</string>
-    <string name="overlay_permission_not_granted">未获取权限</string>
     <string name="cpu">CPU</string>
     <string name="gpu">GPU</string>
-    <string name="memory_temperature">内存温度</string>
-    <string name="battery_temperature">电池温度</string>
     <string name="ddr_short">DDR</string>
     <string name="battery_short">电池</string>
     <string name="fan_speed">风扇</string>
@@ -88,8 +74,6 @@
     <string name="increase_fan_speed">风扇转速提高 5%</string>
     <string name="average_short">平均</string>
     <string name="maximum_short">最高</string>
-    <string name="average_value">平均 %1$s</string>
-    <string name="maximum_value">最高：%1$s %2$s</string>
     <string name="not_available">无数据</string>
 
     <string name="thermal_details_title">%1$s 温度详情</string>
@@ -109,12 +93,13 @@
     <string name="delete_curve_confirmation">确定删除“%1$s”吗？此操作无法撤销。</string>
     <string name="set_as_default">设置默认</string>
     <string name="reset">重置</string>
-    <string name="import_curve">导入</string>
-    <string name="export_curve">导出</string>
-    <string name="curve_imported">风扇曲线已导入并应用</string>
-    <string name="curve_import_failed">无法导入该风扇曲线 JSON</string>
-    <string name="curve_exported">风扇曲线已导出</string>
-    <string name="curve_export_failed">无法导出风扇曲线</string>
+    <string name="import_items">导入</string>
+    <string name="export_items">导出</string>
+    <string name="more_actions">更多操作</string>
+    <string name="select_items_to_export">选择要导出的项目</string>
+    <string name="no_items_to_export">没有可导出的项目</string>
+    <string name="items_import_result">已导入 %1$d 个，失败 %2$d 个</string>
+    <string name="items_export_result">已导出 %1$d 个，失败 %2$d 个</string>
     <string name="control_points">控制点</string>
     <string name="control_point_value">%1$d°C   %2$s</string>
     <string name="add_point">添加控制点</string>
@@ -126,18 +111,9 @@
 
     <string name="root_notice_message">风扇与 CPU 性能控制需要 Root 权限。KernelSU 用户需要手动授权。通知权限仅用于展示运行状态，禁用不影响功能。</string>
     <string name="confirm">确定</string>
-    <string name="authorization_management">授权管理</string>
     <string name="root_permission">Root 权限</string>
-    <string name="root_permission_granted">已获取 Root 权限</string>
-    <string name="root_permission_not_granted">未获取root权限，点击刷新</string>
-    <string name="open_kernelsu">KernelSU</string>
-    <string name="open_kernelsu_summary">KernelSU用户需要在管理器中手动允许本应用</string>
     <string name="kernelsu_not_found">未找到 KernelSU 管理器</string>
-    <string name="notification_settings">通知设置</string>
-    <string name="notification_enabled">已开启，关闭不影响功能</string>
-    <string name="notification_disabled">已关闭，关闭不影响功能</string>
 
-    <string name="back">返回</string>
     <string name="press_back_again_to_exit">再按一次返回键退出</string>
     <string name="close">关闭</string>
     <string name="delete">删除</string>

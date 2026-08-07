@@ -503,6 +503,9 @@ private fun ControlModuleRow(
             index = index,
             count = count,
         ),
+        colors = ListItemDefaults.segmentedColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        ),
         trailingContent = {
             Icon(
                 imageVector = Icons.Default.ChevronRight,
@@ -787,6 +790,7 @@ private fun AppListPane(
                             expanded = filterMenuExpanded,
                             onDismissRequest = { filterMenuExpanded = false },
                             modifier = Modifier.width(220.dp),
+                            shape = MaterialTheme.shapes.extraLarge,
                         ) {
                             val filters = listOf(
                                 AppListFilter.GAME to R.string.filter_games,
@@ -848,6 +852,9 @@ private fun AppListPane(
                         index = 0,
                         count = 1,
                     ),
+                    colors = ListItemDefaults.segmentedColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    ),
                     trailingContent = {
                         Icon(Icons.Default.ChevronRight, contentDescription = null)
                     },
@@ -883,6 +890,9 @@ private fun AppListPane(
                                 shapes = settingsSegmentedShapes(
                                     index = index,
                                     count = filteredApps.size,
+                                ),
+                                colors = ListItemDefaults.segmentedColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                 ),
                                 leadingContent = {
                                     app.icon?.let { bitmap ->

@@ -1,6 +1,7 @@
 package com.mmax.retrocontrol.data
 
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.mmax.retrocontrol.feature.joystick.JoystickRgbMode
 import org.json.JSONArray
 import org.json.JSONObject
@@ -101,8 +102,8 @@ object JoystickSelectionPreferences {
     }
 
     private fun persist(prefs: SharedPreferences, config: JoystickSelectionConfig) {
-        prefs.edit()
-            .putString(
+        prefs.edit {
+            putString(
                 Prefs.JOYSTICK_SELECTION_SOURCE,
                 if (config.source is JoystickSelectionSource.FollowProfile) {
                     SOURCE_PROFILE
@@ -110,12 +111,12 @@ object JoystickSelectionPreferences {
                     SOURCE_DIRECT
                 },
             )
-            .putString(
+            putString(
                 Prefs.JOYSTICK_SELECTION_PROFILE,
                 (config.source as? JoystickSelectionSource.DirectProfile)?.profileId,
             )
-            .putBoolean(Prefs.JOYSTICK_TILE_ENABLED, config.enabled)
-            .apply()
+            putBoolean(Prefs.JOYSTICK_TILE_ENABLED, config.enabled)
+        }
     }
 }
 
@@ -141,6 +142,14 @@ object JoystickProfilePreferences {
             name = name.trim().take(40).ifBlank { "New profile" },
         )
         return current.plus(profile).also { persist(prefs, it) } to id
+    }
+
+    fun addImported(
+        prefs: SharedPreferences,
+        profile: JoystickProfile,
+    ): JoystickProfileCatalog {
+        val imported = profile.copy(id = "joystick-${UUID.randomUUID()}").normalized()
+        return load(prefs).plus(imported).also { persist(prefs, it) }
     }
 
     fun rename(
@@ -221,7 +230,7 @@ object JoystickProfilePreferences {
     }
 
     private fun persist(prefs: SharedPreferences, catalog: JoystickProfileCatalog) {
-        prefs.edit().putString(Prefs.JOYSTICK_PROFILE_CATALOG, encode(catalog)).apply()
+        prefs.edit { putString(Prefs.JOYSTICK_PROFILE_CATALOG, encode(catalog)) }
     }
 
     private fun encode(catalog: JoystickProfileCatalog): String {

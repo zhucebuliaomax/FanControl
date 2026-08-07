@@ -9,11 +9,13 @@ import android.os.Process
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.content.edit
 import com.mmax.retrocontrol.RootAccessManager
 import com.mmax.retrocontrol.data.AppControlProfile
 import com.mmax.retrocontrol.data.AppProfilePreferences
 import com.mmax.retrocontrol.data.BuiltInFanCurve
 import com.mmax.retrocontrol.data.ControlPresetConfig
+import com.mmax.retrocontrol.data.ControlItemJson
 import com.mmax.retrocontrol.data.FanControlConfig
 import com.mmax.retrocontrol.data.FanCurvePoint
 import com.mmax.retrocontrol.data.FanCurvePreferences
@@ -60,6 +62,11 @@ data class DashboardState(
     val installedApps: List<InstalledAppInfo> = emptyList(),
     val appProfiles: Map<String, AppControlProfile> = emptyMap(),
     val telemetry: TelemetrySnapshot = TelemetrySnapshot(),
+)
+
+data class ControlImportResult(
+    val imported: Int,
+    val failed: Int,
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -111,7 +118,6 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     override fun onCleared() {
         prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener)
-        super.onCleared()
     }
 
     private fun loadPreferences() {
@@ -162,6 +168,88 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
         mutableState.update { it.copy(fanConfig = config) }
         SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun importControlItems(jsonFiles: List<String>): ControlImportResult {
+        var imported = 0
+        var failed = 0
+        jsonFiles.forEach { json ->
+            val success = runCatching {
+                when (val item = ControlItemJson.decode(json)) {
+                    is ControlItemJson.Item.FanCurve -> FanCurvePreferences.addImported(
+                        prefs = prefs,
+                        name = item.name,
+                        points = item.points,
+                        defaultPoints = item.defaultPoints,
+                    )
+                    is ControlItemJson.Item.Joystick -> JoystickProfilePreferences.addImported(
+                        prefs = prefs,
+                        profile = item.value,
+                    )
+                    is ControlItemJson.Item.Performance -> PerformanceProfilePreferences.addImported(
+                        prefs = prefs,
+                        policies = mutableState.value.performanceProfiles.policies,
+                        name = item.name,
+                        maxFrequencies = item.maxFrequencies,
+                    )
+                    is ControlItemJson.Item.Preset -> {
+                        val current = mutableState.value
+                        var preset = item.value
+                        item.fanCurve?.let { fanCurve ->
+                            val config = FanCurvePreferences.addImported(
+                                prefs = prefs,
+                                name = fanCurve.name,
+                                points = fanCurve.points,
+                                defaultPoints = fanCurve.defaultPoints,
+                            )
+                            preset = preset.copy(fanCurveId = config.catalog.profiles.last().id)
+                        }
+                        item.joystick?.let { joystick ->
+                            val catalog = JoystickProfilePreferences.addImported(
+                                prefs = prefs,
+                                profile = joystick.value,
+                            )
+                            preset = preset.copy(joystickId = catalog.profiles.last().id)
+                        }
+                        item.performance?.let { performance ->
+                            val config = PerformanceProfilePreferences.addImported(
+                                prefs = prefs,
+                                policies = current.performanceProfiles.policies,
+                                name = performance.name,
+                                maxFrequencies = performance.maxFrequencies,
+                            )
+                            preset = preset.copy(
+                                performanceProfileId = config.profiles.last().id,
+                            )
+                        }
+                        val fanIds = FanCurvePreferences.load(prefs).catalog.profiles
+                            .mapTo(mutableSetOf()) { it.id }
+                        val joystickIds = JoystickProfilePreferences.load(prefs).profiles
+                            .mapTo(mutableSetOf()) { it.id }
+                        val performanceIds = PerformanceProfilePreferences.load(
+                            prefs,
+                            current.performanceProfiles.policies,
+                        ).profiles.mapTo(mutableSetOf()) { it.id }
+                        PresetPreferences.addImported(
+                            prefs = prefs,
+                            preset = preset,
+                            availableFanCurveIds = fanIds,
+                            availableJoystickProfileIds = joystickIds,
+                            availablePerformanceProfileIds = performanceIds
+                                .takeIf { current.performanceProfiles.policies.isNotEmpty() },
+                        )
+                    }
+                }
+            }.isSuccess
+            if (success) {
+                imported++
+                loadPreferences()
+            } else {
+                failed++
+            }
+        }
+        if (imported > 0) SystemControlService.startOrUpdate(getApplication())
+        return ControlImportResult(imported = imported, failed = failed)
     }
 
     fun addFanCurve(name: String): String {
@@ -483,13 +571,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun setOverlayEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(Prefs.OVERLAY_ENABLED, enabled).apply()
+        prefs.edit { putBoolean(Prefs.OVERLAY_ENABLED, enabled) }
         mutableState.update { it.copy(overlayEnabled = enabled) }
         SystemControlService.startOrUpdate(getApplication())
     }
 
     fun setAutoStartEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(Prefs.AUTO_START_ENABLED, enabled).apply()
+        prefs.edit { putBoolean(Prefs.AUTO_START_ENABLED, enabled) }
         mutableState.update { it.copy(autoStartEnabled = enabled) }
     }
 

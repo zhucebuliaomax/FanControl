@@ -2,11 +2,12 @@ package com.mmax.retrocontrol.tile
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.service.SystemControlService
 
@@ -30,7 +31,7 @@ class OverlayPermissionActivity : ComponentActivity() {
         permissionLauncher.launch(
             Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName"),
+                "package:$packageName".toUri(),
             )
         )
     }
@@ -39,20 +40,18 @@ class OverlayPermissionActivity : ComponentActivity() {
         if (Settings.canDrawOverlays(this)) {
             enableOverlayAndFinish()
         } else {
-            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(Prefs.OVERLAY_ENABLED, false)
-                .apply()
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE).edit {
+                putBoolean(Prefs.OVERLAY_ENABLED, false)
+            }
             OverlayTileService.requestRefresh(this)
             finish()
         }
     }
 
     private fun enableOverlayAndFinish() {
-        getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(Prefs.OVERLAY_ENABLED, true)
-            .apply()
+        getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE).edit {
+            putBoolean(Prefs.OVERLAY_ENABLED, true)
+        }
         SystemControlService.startOrUpdate(this)
         OverlayTileService.requestRefresh(this)
         finish()

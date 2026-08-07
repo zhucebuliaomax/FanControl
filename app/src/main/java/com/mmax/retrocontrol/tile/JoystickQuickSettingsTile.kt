@@ -9,6 +9,7 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import androidx.core.content.edit
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.RootAccessManager
 import com.mmax.retrocontrol.data.JoystickProfilePreferences
@@ -54,7 +55,7 @@ class JoystickQuickSettingsTile : TileService() {
                 SystemControlService.startOrUpdate(applicationContext)
             }.isSuccess
             if (next.enabled && !started) {
-                prefs.edit().putBoolean(Prefs.JOYSTICK_TILE_ENABLED, false).apply()
+                prefs.edit { putBoolean(Prefs.JOYSTICK_TILE_ENABLED, false) }
             }
             requestRefresh(applicationContext)
         }

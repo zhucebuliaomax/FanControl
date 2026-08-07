@@ -27,7 +27,6 @@
     <string name="filter_all">All</string>
     <string name="no_options_available">No options available</string>
     <string name="select_preset">Select profile</string>
-    <string name="preset_default">default</string>
     <string name="new_preset">New profile</string>
     <string name="add_preset">Add profile</string>
     <string name="rename_preset">Rename profile</string>
@@ -52,6 +51,7 @@
     <string name="follow_profile">Follow profile</string>
     <string name="follow_default">Follow default</string>
     <string name="select_joystick_profile">Select joystick profile</string>
+    <string name="select_performance_profile">Select performance profile</string>
 
     <string name="notification_channel_name">Fan control</string>
     <string name="notification_channel_description">Shows the active curve, fan percentage, and CPU/GPU temperatures</string>
@@ -60,28 +60,13 @@
     <string name="tile_fan_label">Fan curve</string>
     <string name="tile_overlay_label">Telemetry</string>
     <string name="tile_joystick_label">Joysticks</string>
+    <string name="tile_performance_label">Performance profile</string>
     <string name="tile_on">On</string>
     <string name="tile_off">Off</string>
 
-    <string name="fan_profiles">Fan curves</string>
-    <string name="fan_curve">Fan curve</string>
-    <string name="fan_control_off">Fan control is off</string>
-    <string name="edit_fan_curve">Edit fan curve</string>
-    <plurals name="curve_points_summary">
-        <item quantity="one">%1$s • %2$d control point</item>
-        <item quantity="other">%1$s • %2$d control points</item>
-    </plurals>
-
     <string name="live_telemetry">Live telemetry</string>
-    <string name="open_app_info">App info</string>
-    <string name="open_app_info_summary">Use the top-right menu to allow restricted settings and enable overlay permission</string>
-    <string name="telemetry_overlay">Telemetry overlay</string>
-    <string name="telemetry_overlay_summary">Use “− / +” to adjust fan speed in 5% steps and automatically save it to the current curve</string>
-    <string name="overlay_permission_not_granted">Permission not granted</string>
     <string name="cpu">CPU</string>
     <string name="gpu">GPU</string>
-    <string name="memory_temperature">Memory temperature</string>
-    <string name="battery_temperature">Battery temperature</string>
     <string name="ddr_short">DDR</string>
     <string name="battery_short">BAT</string>
     <string name="fan_speed">Fan</string>
@@ -89,8 +74,6 @@
     <string name="increase_fan_speed">Increase fan speed by 5 percent</string>
     <string name="average_short">Avg</string>
     <string name="maximum_short">Max</string>
-    <string name="average_value">Avg %1$s</string>
-    <string name="maximum_value">Max: %1$s %2$s</string>
     <string name="not_available">N/A</string>
 
     <string name="thermal_details_title">%1$s thermal details</string>
@@ -110,12 +93,13 @@
     <string name="delete_curve_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="set_as_default">Set default</string>
     <string name="reset">Reset</string>
-    <string name="import_curve">Import</string>
-    <string name="export_curve">Export</string>
-    <string name="curve_imported">Fan curve imported and applied</string>
-    <string name="curve_import_failed">Couldn’t import this fan curve JSON</string>
-    <string name="curve_exported">Fan curve exported</string>
-    <string name="curve_export_failed">Couldn’t export the fan curve</string>
+    <string name="import_items">Import</string>
+    <string name="export_items">Export</string>
+    <string name="more_actions">More actions</string>
+    <string name="select_items_to_export">Select items to export</string>
+    <string name="no_items_to_export">No items to export</string>
+    <string name="items_import_result">Imported %1$d; failed %2$d</string>
+    <string name="items_export_result">Exported %1$d; failed %2$d</string>
     <string name="control_points">Control points</string>
     <string name="control_point_value">%1$d°C   %2$s</string>
     <string name="add_point">Add point</string>
@@ -127,18 +111,9 @@
 
     <string name="root_notice_message">Fan and CPU performance control require root access. KernelSU users must grant access manually. Notification permission is only used to show running status; disabling it does not affect functionality.</string>
     <string name="confirm">OK</string>
-    <string name="authorization_management">Authorization management</string>
     <string name="root_permission">Root access</string>
-    <string name="root_permission_granted">Root access granted</string>
-    <string name="root_permission_not_granted">Root access not granted, tap to refresh</string>
-    <string name="open_kernelsu">KernelSU</string>
-    <string name="open_kernelsu_summary">KernelSU users must manually allow this app in the manager</string>
     <string name="kernelsu_not_found">KernelSU manager not found</string>
-    <string name="notification_settings">Notification settings</string>
-    <string name="notification_enabled">Enabled, disabling notifications does not affect functionality</string>
-    <string name="notification_disabled">Disabled, disabling notifications does not affect functionality</string>
 
-    <string name="back">Back</string>
     <string name="press_back_again_to_exit">Press Back again to exit</string>
     <string name="close">Close</string>
     <string name="delete">Delete</string>

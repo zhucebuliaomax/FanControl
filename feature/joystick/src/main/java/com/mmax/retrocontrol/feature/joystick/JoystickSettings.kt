@@ -140,6 +140,9 @@ fun JoystickProfilesSection(
                     onDeleteRequest = { showDelete = true },
                     deleteIcon = Icons.Default.Delete,
                     deleteContentDescription = stringResource(R.string.joystick_delete_profile),
+                    trailingContent = {
+                        Icon(Icons.Default.ChevronRight, contentDescription = null)
+                    },
                     modifier = profileModifier(index),
                     supportingContent = { Text(stringResource(profile.mode.labelRes)) },
                     content = {
