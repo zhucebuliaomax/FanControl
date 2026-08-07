@@ -41,6 +41,7 @@ fun DefaultProfileSection(
     profileChoices: List<AppProfileChoice>,
     fanCurveChoices: List<AppProfileChoice>,
     joystickChoices: List<AppProfileChoice>,
+    performanceChoices: List<AppProfileChoice>,
     onDefaultProfileSelected: (Boolean, String) -> Unit,
     onProfileEdit: (String) -> Unit,
     onAddProfile: () -> Unit,
@@ -48,6 +49,8 @@ fun DefaultProfileSection(
     onAddFanCurve: () -> Unit,
     onJoystickEdit: (String) -> Unit,
     onAddJoystick: () -> Unit,
+    onPerformanceEdit: (String) -> Unit,
+    onAddPerformance: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var picker by remember { mutableStateOf<DefaultPicker?>(null) }
@@ -76,7 +79,8 @@ fun DefaultProfileSection(
         ControlsCard(
             fanSummary = null,
             joystickSummary = null,
-            remainingSummary = null,
+            buttonSummary = null,
+            performanceSummary = null,
             onFanClick = { picker = DefaultPicker.FAN_LIBRARY },
             onJoystickClick = { picker = DefaultPicker.JOYSTICK_LIBRARY },
             onButtonClick = { picker = DefaultPicker.BUTTON },
@@ -115,11 +119,17 @@ fun DefaultProfileSection(
                 onAdd = onAddJoystick,
                 onDismiss = { picker = null },
             )
-            DefaultPicker.BUTTON, DefaultPicker.PERFORMANCE -> ChoiceDialog(
-                title = stringResource(
-                    if (active == DefaultPicker.BUTTON) R.string.control_button_layout
-                    else R.string.control_core
-                ),
+            DefaultPicker.PERFORMANCE -> ChoiceDialog(
+                title = stringResource(R.string.control_core),
+                choices = performanceChoices,
+                showRadio = false,
+                addLabel = stringResource(R.string.add_performance_profile),
+                onItemClick = { id -> id?.let(onPerformanceEdit) },
+                onAdd = onAddPerformance,
+                onDismiss = { picker = null },
+            )
+            DefaultPicker.BUTTON -> ChoiceDialog(
+                title = stringResource(R.string.control_button_layout),
                 choices = emptyList(),
                 showRadio = false,
                 onDismiss = { picker = null },
@@ -134,18 +144,23 @@ fun AppProfileSection(
     selectedProfileName: String,
     selectedFanCurveName: String,
     selectedJoystickProfileName: String,
+    selectedPerformanceProfileName: String,
     profileChoices: List<AppProfileChoice>,
     fanCurveChoices: List<AppProfileChoice>,
     joystickChoices: List<AppProfileChoice>,
+    performanceChoices: List<AppProfileChoice>,
     onProfileSelected: (String?) -> Unit,
     onFanCurveSelected: (String?) -> Unit,
     onJoystickSelected: (String?) -> Unit,
+    onPerformanceSelected: (String?) -> Unit,
     onProfileEdit: (String) -> Unit,
     onAddProfile: () -> Unit,
     onFanCurveEdit: (String) -> Unit,
     onAddFanCurve: () -> Unit,
     onJoystickEdit: (String) -> Unit,
     onAddJoystick: () -> Unit,
+    onPerformanceEdit: (String) -> Unit,
+    onAddPerformance: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var picker by remember(profile?.packageName) { mutableStateOf<AppPicker?>(null) }
@@ -165,7 +180,8 @@ fun AppProfileSection(
         ControlsCard(
             fanSummary = selectedFanCurveName,
             joystickSummary = selectedJoystickProfileName,
-            remainingSummary = stringResource(R.string.follow_profile),
+            buttonSummary = stringResource(R.string.follow_profile),
+            performanceSummary = selectedPerformanceProfileName,
             onFanClick = { picker = AppPicker.FAN },
             onJoystickClick = { picker = AppPicker.JOYSTICK },
             onButtonClick = { picker = AppPicker.BUTTON },
@@ -208,11 +224,19 @@ fun AppProfileSection(
                 onAdd = onAddJoystick,
                 onDismiss = { picker = null },
             )
-            AppPicker.BUTTON, AppPicker.PERFORMANCE -> ChoiceDialog(
-                title = stringResource(
-                    if (active == AppPicker.BUTTON) R.string.control_button_layout
-                    else R.string.control_core
-                ),
+            AppPicker.PERFORMANCE -> ChoiceDialog(
+                title = stringResource(R.string.control_core),
+                choices = performanceChoices,
+                selectedId = profile?.performanceProfileId,
+                showRadio = true,
+                addLabel = stringResource(R.string.add_performance_profile),
+                onSelected = onPerformanceSelected,
+                onItemClick = { id -> id?.let(onPerformanceEdit) },
+                onAdd = onAddPerformance,
+                onDismiss = { picker = null },
+            )
+            AppPicker.BUTTON -> ChoiceDialog(
+                title = stringResource(R.string.control_button_layout),
                 choices = emptyList(),
                 selectedId = null,
                 showRadio = true,
@@ -226,7 +250,8 @@ fun AppProfileSection(
 private fun ControlsCard(
     fanSummary: String?,
     joystickSummary: String?,
-    remainingSummary: String?,
+    buttonSummary: String?,
+    performanceSummary: String?,
     onFanClick: () -> Unit,
     onJoystickClick: () -> Unit,
     onButtonClick: () -> Unit,
@@ -235,8 +260,8 @@ private fun ControlsCard(
     val rows = listOf(
         Triple(R.string.control_fan, fanSummary, onFanClick),
         Triple(R.string.control_joystick, joystickSummary, onJoystickClick),
-        Triple(R.string.control_button_layout, remainingSummary, onButtonClick),
-        Triple(R.string.control_core, remainingSummary, onPerformanceClick),
+        Triple(R.string.control_button_layout, buttonSummary, onButtonClick),
+        Triple(R.string.control_core, performanceSummary, onPerformanceClick),
     )
     Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
         rows.forEachIndexed { index, (title, summary, action) ->

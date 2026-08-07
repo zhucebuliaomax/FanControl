@@ -26,6 +26,18 @@
     <string name="preset_name">プロファイル名</string>
     <string name="delete_preset">プロファイルを削除</string>
     <string name="follow_preset">プロファイルに従う</string>
+    <string name="performance_unmanaged">管理しない</string>
+    <string name="performance_stock">標準</string>
+    <string name="performance_balanced">バランス</string>
+    <string name="performance_efficient">効率</string>
+    <string name="performance_battery_saver">省電力</string>
+    <string name="performance_policies_unavailable">CPU 周波数ポリシーを利用できません。Root 権限を付与して更新してください。</string>
+    <string name="performance_policy_number">cpufreq policy%1$d</string>
+    <string name="performance_profile_name">パフォーマンスプロファイル名</string>
+    <string name="new_performance_profile">新しいパフォーマンスプロファイル</string>
+    <string name="add_performance_profile">パフォーマンスプロファイルを追加</string>
+    <string name="delete_performance_profile">パフォーマンスプロファイルを削除</string>
+    <string name="delete_performance_profile_confirmation">「%1$s」を削除しますか？この操作は元に戻せません。</string>
 
     <string name="notification_channel_name">ファン制御</string>
     <string name="notification_channel_description">現在のカーブ、ファン割合、CPU/GPU 温度を表示します</string>
@@ -98,7 +110,7 @@
     <string name="fan_mode_performance">パフォーマンス</string>
     <string name="fan_mode_custom">カスタム</string>
 
-    <string name="root_notice_message">ファン制御には root 権限が必要です。KernelSU ユーザーは手動で権限を付与する必要があります。通知権限は実行状態の表示にのみ使用され、無効にしても機能には影響しません。</string>
+    <string name="root_notice_message">ファンと CPU パフォーマンスの制御には root 権限が必要です。KernelSU ユーザーは手動で権限を付与する必要があります。通知権限は実行状態の表示にのみ使用され、無効にしても機能には影響しません。</string>
     <string name="confirm">確認</string>
     <string name="authorization_management">権限管理</string>
     <string name="root_permission">Root 権限</string>
@@ -115,6 +127,7 @@
     <string name="press_back_again_to_exit">もう一度戻るを押すと終了します</string>
     <string name="close">閉じる</string>
     <string name="delete">削除</string>
+    <string name="save">保存</string>
 
     <string name="github">GitHub</string>
     <string name="github_url">https://github.com/zhucebuliaomax/RetroControl</string>

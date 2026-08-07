@@ -24,7 +24,7 @@ private val LightColorScheme =
   )
 
 @Composable
-fun FanControlTheme(
+fun RetroControlTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
   dynamicColor: Boolean = true,
   content: @Composable () -> Unit,

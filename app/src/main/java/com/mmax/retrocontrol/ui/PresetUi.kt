@@ -64,6 +64,7 @@ data class PresetListItemUiState(
     val isDefault: Boolean,
     val fanCurveName: String,
     val joystickProfileName: String,
+    val performanceProfileName: String,
 )
 
 data class PresetFanCurveChoice(
@@ -76,8 +77,13 @@ data class PresetJoystickChoice(
     val name: String,
 )
 
+data class PresetPerformanceChoice(
+    val id: String?,
+    val name: String,
+)
+
 private val PresetListItemUiState.summary: String
-    get() = "$fanCurveName · $joystickProfileName"
+    get() = "$fanCurveName · $joystickProfileName · $performanceProfileName"
 
 @Composable
 fun PresetManagementSection(
@@ -246,6 +252,11 @@ fun PresetEditorDialog(
     onJoystickSelected: (String?) -> Unit,
     onJoystickEdit: (String) -> Unit,
     onAddJoystick: () -> Unit,
+    performanceProfileName: String,
+    performanceChoices: List<PresetPerformanceChoice>,
+    onPerformanceSelected: (String?) -> Unit,
+    onPerformanceEdit: (String) -> Unit,
+    onAddPerformance: () -> Unit,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
@@ -322,7 +333,7 @@ fun PresetEditorDialog(
                     )
                     ProfileControlSetting(
                         title = stringResource(R.string.preset_performance_profile),
-                        summary = "",
+                        summary = performanceProfileName,
                         onClick = { controlPicker = "performance" },
                         index = 3,
                         count = 4,
@@ -356,11 +367,19 @@ fun PresetEditorDialog(
                 onAdd = onAddJoystick,
                 onDismiss = { controlPicker = null },
             )
+            "performance" -> ChoiceDialog(
+                title = stringResource(R.string.preset_performance_profile),
+                choices = performanceChoices.map { AppProfileChoice(it.id, it.name) },
+                selectedId = preset.performanceProfileId,
+                showRadio = true,
+                addLabel = stringResource(R.string.add_performance_profile),
+                onSelected = onPerformanceSelected,
+                onItemClick = { id -> id?.let(onPerformanceEdit) },
+                onAdd = onAddPerformance,
+                onDismiss = { controlPicker = null },
+            )
             else -> ChoiceDialog(
-                title = stringResource(
-                    if (picker == "button") R.string.control_button_layout
-                    else R.string.control_core
-                ),
+                title = stringResource(R.string.control_button_layout),
                 choices = emptyList(),
                 showRadio = true,
                 onDismiss = { controlPicker = null },

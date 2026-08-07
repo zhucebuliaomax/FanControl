@@ -107,6 +107,11 @@ internal enum class DashboardDestination(
         R.drawable.nav_telemetry_outlined,
         R.drawable.nav_telemetry_filled,
     ),
+    CONTROLS(
+        R.string.nav_controls,
+        R.drawable.nav_controls_outlined,
+        R.drawable.nav_controls_filled,
+    ),
     APPS(
         R.string.nav_apps,
         R.drawable.nav_apps_outlined,
@@ -153,6 +158,8 @@ internal fun AdaptiveDashboardScaffold(
     joystickAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
+    performanceContent: @Composable () -> Unit,
+    performanceAction: @Composable () -> Unit,
     globalPresetContent: @Composable () -> Unit,
     appProfileContent: @Composable (String) -> Unit,
     accessContent: @Composable () -> Unit,
@@ -236,6 +243,22 @@ internal fun AdaptiveDashboardScaffold(
                     content = telemetryContent,
                 )
 
+                DashboardDestination.CONTROLS -> ControlsPage(
+                    selectedControl = selectedControl,
+                    onControlSelected = onControlSelected,
+                    showTwoPanes = showTwoControlPanes,
+                    controlFocusRequesters = controlFocusRequesters,
+                    emptyDetailFocusRequester = emptyDetailFocusRequester,
+                    fanContent = fanContent,
+                    fanAction = fanAction,
+                    joystickContent = joystickContent,
+                    joystickAction = joystickAction,
+                    presetContent = presetContent,
+                    presetAction = presetAction,
+                    performanceContent = performanceContent,
+                    performanceAction = performanceAction,
+                )
+
                 DashboardDestination.APPS -> AppsPage(
                     selectedApp = selectedApp,
                     onAppSelected = onAppSelected,
@@ -306,6 +329,8 @@ private fun ControlsPage(
     joystickAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
+    performanceContent: @Composable () -> Unit,
+    performanceAction: @Composable () -> Unit,
 ) {
     BackHandler(enabled = !showTwoPanes && selectedControl != null) {
         onControlSelected(null)
@@ -332,6 +357,8 @@ private fun ControlsPage(
                     joystickAction = joystickAction,
                     presetContent = presetContent,
                     presetAction = presetAction,
+                    performanceContent = performanceContent,
+                    performanceAction = performanceAction,
                     emptyDetailFocusRequester = emptyDetailFocusRequester,
                     modifier = Modifier
                         .weight(1f)
@@ -363,6 +390,8 @@ private fun ControlsPage(
             joystickAction = joystickAction,
             presetContent = presetContent,
             presetAction = presetAction,
+            performanceContent = performanceContent,
+            performanceAction = performanceAction,
             emptyDetailFocusRequester = emptyDetailFocusRequester,
             onBack = { onControlSelected(null) },
             modifier = Modifier
@@ -513,6 +542,8 @@ private fun ControlDetailPane(
     joystickAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
+    performanceContent: @Composable () -> Unit,
+    performanceAction: @Composable () -> Unit,
     emptyDetailFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
@@ -537,7 +568,8 @@ private fun ControlDetailPane(
                             bottom = if (
                                 control == ControlModule.FAN ||
                                     control == ControlModule.JOYSTICK ||
-                                    control == ControlModule.PRESET
+                                    control == ControlModule.PRESET ||
+                                    control == ControlModule.CORE
                             ) 112.dp else 30.dp,
                         ),
                 ) {
@@ -562,6 +594,9 @@ private fun ControlDetailPane(
                     } else if (control == ControlModule.PRESET) {
                         Spacer(Modifier.size(18.dp))
                         presetContent()
+                    } else if (control == ControlModule.CORE) {
+                        Spacer(Modifier.size(18.dp))
+                        performanceContent()
                     } else {
                         Spacer(
                             Modifier
@@ -594,6 +629,14 @@ private fun ControlDetailPane(
                             .padding(30.dp),
                     ) {
                         presetAction()
+                    }
+                } else if (control == ControlModule.CORE) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(30.dp),
+                    ) {
+                        performanceAction()
                     }
                 }
             }

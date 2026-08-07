@@ -171,6 +171,8 @@ fun DashboardScreen(
     var restorePresetFocusId by remember { mutableStateOf<String?>(null) }
     var editingJoystickProfileId by remember { mutableStateOf<String?>(null) }
     var restoreJoystickFocusId by remember { mutableStateOf<String?>(null) }
+    var editingPerformanceProfileId by remember { mutableStateOf<String?>(null) }
+    var restorePerformanceFocusId by remember { mutableStateOf<String?>(null) }
     var detailKind by remember { mutableStateOf<ThermalKind?>(null) }
     var selectedDestination by rememberSaveable {
         mutableStateOf(DashboardDestination.TELEMETRY)
@@ -194,6 +196,11 @@ fun DashboardScreen(
         List(joystickProfileIds.size + 1) { FocusRequester() }
     }
     val addJoystickProfileFocusRequester = remember { FocusRequester() }
+    val performanceProfileIds = state.performanceProfiles.profiles.map { it.id }
+    val performanceProfileFocusRequesters = remember(performanceProfileIds) {
+        List(performanceProfileIds.size) { FocusRequester() }
+    }
+    val addPerformanceProfileFocusRequester = remember { FocusRequester() }
     val presetIds = state.presetConfig.catalog.presets.map { it.id }
     val presetFocusRequesters = remember(presetIds) {
         List(presetIds.size) { FocusRequester() }
@@ -240,6 +247,10 @@ fun DashboardScreen(
     fun joystickProfileName(profileId: String?): String = profileId
         ?.let { state.joystickProfiles.profile(it)?.name }
         ?: joystickOffName
+    val unmanagedPerformanceName = stringResource(R.string.performance_unmanaged)
+    fun performanceProfileName(profileId: String?): String = profileId
+        ?.let { state.performanceProfiles.profile(it)?.displayName(context) }
+        ?: unmanagedPerformanceName
     fun joystickProfileUi(profileId: String): JoystickProfileUiState? =
         state.joystickProfiles.profile(profileId)?.let { profile ->
             JoystickProfileUiState(
@@ -259,6 +270,7 @@ fun DashboardScreen(
             isDefault = preset.isDefault,
             fanCurveName = fanCurveName(preset.fanCurveId),
             joystickProfileName = joystickProfileName(preset.joystickId),
+            performanceProfileName = performanceProfileName(preset.performanceProfileId),
         )
     }
     val appsWithProfileSummaries = state.installedApps.map { app ->
@@ -273,7 +285,7 @@ fun DashboardScreen(
             profile?.fanCurveId?.let { add(fanCurveName(it)) }
             profile?.joystickId?.let { add(joystickProfileName(it)) }
             profile?.buttonLayoutId?.let(::add)
-            profile?.performanceProfileId?.let(::add)
+            profile?.performanceProfileId?.let { add(performanceProfileName(it)) }
         }.joinToString(" · ")
         app.copy(profileSummary = summary)
     }
@@ -307,6 +319,21 @@ fun DashboardScreen(
                 ?: 0
             fanProfileFocusRequesters[selectedIndex].requestFocus()
             restoreFanCurveFocusId = null
+        }
+    }
+
+    LaunchedEffect(
+        editingPerformanceProfileId,
+        restorePerformanceFocusId,
+        performanceProfileIds,
+    ) {
+        val restoreId = restorePerformanceFocusId
+        if (editingPerformanceProfileId == null && restoreId != null) {
+            withFrameNanos { }
+            performanceProfileIds.indexOf(restoreId)
+                .takeIf { it >= 0 }
+                ?.let { performanceProfileFocusRequesters[it].requestFocus() }
+            restorePerformanceFocusId = null
         }
     }
 
@@ -580,6 +607,49 @@ fun DashboardScreen(
                     },
             )
         },
+        performanceContent = {
+            PerformanceProfilesSection(
+                config = state.performanceProfiles,
+                onProfileSelected = { editingPerformanceProfileId = it },
+                onDeleteProfile = vm::deletePerformanceProfile,
+                profileModifier = { index ->
+                    Modifier
+                        .focusRequester(performanceProfileFocusRequesters[index])
+                        .focusProperties {
+                            up = if (index == 0) {
+                                FocusRequester.Default
+                            } else {
+                                performanceProfileFocusRequesters[index - 1]
+                            }
+                            down = if (index == performanceProfileIds.lastIndex) {
+                                addPerformanceProfileFocusRequester
+                            } else {
+                                performanceProfileFocusRequesters[index + 1]
+                            }
+                            left = FocusRequester.Default
+                            right = FocusRequester.Default
+                        }
+                },
+            )
+        },
+        performanceAction = {
+            AddPerformanceProfileButton(
+                onClick = {
+                    vm.addPerformanceProfile(
+                        context.getString(R.string.new_performance_profile)
+                    )?.let { editingPerformanceProfileId = it }
+                },
+                modifier = Modifier
+                    .focusRequester(addPerformanceProfileFocusRequester)
+                    .focusProperties {
+                        up = performanceProfileFocusRequesters.lastOrNull()
+                            ?: FocusRequester.Default
+                        down = FocusRequester.Default
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
+                    },
+            )
+        },
         globalPresetContent = {
             val gameProfile = state.presetConfig.defaultPreset(true)
             val nonGameProfile = state.presetConfig.defaultPreset(false)
@@ -596,6 +666,9 @@ fun DashboardScreen(
                 },
                 joystickChoices = state.joystickProfiles.visibleProfiles.map {
                     AppProfileChoice(it.id, it.name)
+                },
+                performanceChoices = state.performanceProfiles.profiles.map {
+                    AppProfileChoice(it.id, it.displayName(context))
                 },
                 onDefaultProfileSelected = { isGame, id ->
                     vm.selectDefaultProfile(isGame, id)
@@ -614,6 +687,12 @@ fun DashboardScreen(
                     editingJoystickProfileId = vm.addJoystickProfile(
                         context.getString(JoystickR.string.joystick_new_profile)
                     )
+                },
+                onPerformanceEdit = { editingPerformanceProfileId = it },
+                onAddPerformance = {
+                    vm.addPerformanceProfile(
+                        context.getString(R.string.new_performance_profile)
+                    )?.let { editingPerformanceProfileId = it }
                 },
             )
         },
@@ -635,6 +714,9 @@ fun DashboardScreen(
                 selectedJoystickProfileName = profile?.joystickId
                     ?.let(::joystickProfileName)
                     ?: context.getString(R.string.follow_profile),
+                selectedPerformanceProfileName = profile?.performanceProfileId
+                    ?.let(::performanceProfileName)
+                    ?: context.getString(R.string.follow_profile),
                 profileChoices = buildList {
                     add(AppProfileChoice(null, context.getString(R.string.follow_default)))
                     state.presetConfig.catalog.presets.forEach {
@@ -653,12 +735,24 @@ fun DashboardScreen(
                         add(AppProfileChoice(joystickProfile.id, joystickProfile.name))
                     }
                 },
+                performanceChoices = buildList {
+                    add(AppProfileChoice(null, context.getString(R.string.follow_profile)))
+                    state.performanceProfiles.profiles.forEach { performanceProfile ->
+                        add(
+                            AppProfileChoice(
+                                performanceProfile.id,
+                                performanceProfile.displayName(context),
+                            )
+                        )
+                    }
+                },
                 onProfileSelected = { vm.setAppPreset(packageName, it) },
                 onFanCurveSelected = {
                     vm.setAppFanCurve(packageName, it)
                     if (it != null) onFanCurveSelected(true)
                 },
                 onJoystickSelected = { vm.setAppJoystickProfile(packageName, it) },
+                onPerformanceSelected = { vm.setAppPerformanceProfile(packageName, it) },
                 onProfileEdit = { editingPresetId = it },
                 onAddProfile = {
                     editingPresetId = vm.addPreset(context.getString(R.string.new_preset))
@@ -672,6 +766,12 @@ fun DashboardScreen(
                     editingJoystickProfileId = vm.addJoystickProfile(
                         context.getString(JoystickR.string.joystick_new_profile)
                     )
+                },
+                onPerformanceEdit = { editingPerformanceProfileId = it },
+                onAddPerformance = {
+                    vm.addPerformanceProfile(
+                        context.getString(R.string.new_performance_profile)
+                    )?.let { editingPerformanceProfileId = it }
                 },
             )
         },
@@ -838,6 +938,32 @@ fun DashboardScreen(
                     context.getString(JoystickR.string.joystick_new_profile)
                 )
             },
+            performanceProfileName = performanceProfileName(preset.performanceProfileId),
+            performanceChoices = buildList {
+                add(
+                    PresetPerformanceChoice(
+                        id = null,
+                        name = unmanagedPerformanceName,
+                    )
+                )
+                state.performanceProfiles.profiles.forEach { profile ->
+                    add(
+                        PresetPerformanceChoice(
+                            id = profile.id,
+                            name = profile.displayName(context),
+                        )
+                    )
+                }
+            },
+            onPerformanceSelected = {
+                vm.setPresetPerformanceProfile(preset.id, it)
+            },
+            onPerformanceEdit = { editingPerformanceProfileId = it },
+            onAddPerformance = {
+                vm.addPerformanceProfile(
+                    context.getString(R.string.new_performance_profile)
+                )?.let { editingPerformanceProfileId = it }
+            },
             onRename = { vm.renamePreset(preset.id, it) },
             onDelete = {
                 vm.deletePreset(preset.id)
@@ -847,6 +973,28 @@ fun DashboardScreen(
             onDismiss = {
                 restorePresetFocusId = preset.id
                 editingPresetId = null
+            },
+        )
+    }
+
+    editingPerformanceProfileId?.let { profileId ->
+        val profile = state.performanceProfiles.profile(profileId) ?: return@let
+        PerformanceProfileEditorDialog(
+            profile = profile,
+            policies = state.performanceProfiles.policies,
+            onSave = { name, frequencies ->
+                vm.updatePerformanceProfile(profile.id, name, frequencies)
+                restorePerformanceFocusId = profile.id
+                editingPerformanceProfileId = null
+            },
+            onDelete = {
+                vm.deletePerformanceProfile(profile.id)
+                restorePerformanceFocusId = profile.id
+                editingPerformanceProfileId = null
+            },
+            onDismiss = {
+                restorePerformanceFocusId = profile.id
+                editingPerformanceProfileId = null
             },
         )
     }

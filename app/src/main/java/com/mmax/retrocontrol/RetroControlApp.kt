@@ -3,7 +3,7 @@ package com.mmax.retrocontrol
 import android.app.Application
 import com.topjohnwu.superuser.Shell
 
-class FanControlApp : Application() {
+class RetroControlApp : Application() {
     override fun onCreate() {
         super.onCreate()
         Shell.enableVerboseLogging = BuildConfig.DEBUG

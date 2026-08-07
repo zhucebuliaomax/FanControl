@@ -19,7 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.service.SystemControlService
-import com.mmax.retrocontrol.theme.FanControlTheme
+import com.mmax.retrocontrol.theme.RetroControlTheme
 import com.mmax.retrocontrol.ui.DashboardScreen
 
 class MainActivity : ComponentActivity() {
@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
             !prefs.getBoolean(Prefs.ROOT_NOTICE_ACKNOWLEDGED, false)
         )
         setContent {
-            FanControlTheme {
+            RetroControlTheme {
                 DashboardScreen(
                     onFanCurveSelected = ::onFanCurveSelected,
                     onRefreshRoot = { requestRoot(forceRefresh = true) },

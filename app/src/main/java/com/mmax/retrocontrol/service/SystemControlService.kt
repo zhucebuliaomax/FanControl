@@ -24,12 +24,16 @@ import com.mmax.retrocontrol.data.AppProfilePreferences
 import com.mmax.retrocontrol.data.FanSelectionPreferences
 import com.mmax.retrocontrol.data.FanControlConfig
 import com.mmax.retrocontrol.data.FanCurveSerializer
+import com.mmax.retrocontrol.data.PerformanceProfilePreferences
+import com.mmax.retrocontrol.data.PerformanceProfileResolver
+import com.mmax.retrocontrol.data.PresetPreferences
 import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.data.JoystickProfile
 import com.mmax.retrocontrol.data.JoystickProfilePreferences
 import com.mmax.retrocontrol.data.displayName
 import com.mmax.retrocontrol.hardware.FanController
 import com.mmax.retrocontrol.hardware.FanResponseController
+import com.mmax.retrocontrol.hardware.CpuFrequencyController
 import com.mmax.retrocontrol.hardware.JoystickEffectEngine
 import com.mmax.retrocontrol.hardware.TelemetryRepository
 import com.mmax.retrocontrol.hardware.ThermalSensorReader
@@ -50,11 +54,12 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * The foreground service owns fan and joystick RGB writes plus telemetry polling.
+ * The foreground service owns fan, joystick RGB, and CPU frequency-profile writes
+ * plus telemetry polling.
  *
- * It never writes CPU/GPU settings, refresh-rate settings, thermal-zone modes
- * or kernel thermal protection. Fan writes remain limited to pwm-fan controls;
- * joystick writes target only the eight stick LED sysfs nodes.
+ * CPU writes are limited to cpufreq policy minimum/maximum nodes. It never changes
+ * governors, GPU settings, refresh-rate settings, thermal-zone modes, or kernel
+ * thermal protection.
  */
 class SystemControlService : Service() {
 
@@ -80,6 +85,7 @@ class SystemControlService : Service() {
     private var fanJob: Job? = null
     private var foregroundJob: Job? = null
     private var screenOffJob: Job? = null
+    private var performanceJob: Job? = null
     private var overlay: TelemetryOverlay? = null
     private lateinit var joystickEffects: JoystickEffectEngine
     private var lastNotificationUpdateMs = 0L
@@ -102,6 +108,12 @@ class SystemControlService : Service() {
 
     @Volatile
     private var fanSuspendedForScreenOff = false
+
+    @Volatile
+    private var performanceRequestInitialized = false
+
+    @Volatile
+    private var lastRequestedPerformanceProfileId: String? = null
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -137,7 +149,9 @@ class SystemControlService : Service() {
             Prefs.FAN_TILE_ENABLED -> {
                 loadFanPreferences()
                 loadJoystickPreferences()
+                applyPerformanceProfile()
             }
+            Prefs.PERFORMANCE_PROFILE_CATALOG -> applyPerformanceProfile(force = true)
             Prefs.JOYSTICK_PROFILE_CATALOG -> {
                 loadJoystickPreferences()
                 JoystickQuickSettingsTile.requestRefresh(applicationContext)
@@ -178,6 +192,7 @@ class SystemControlService : Service() {
 
         startOrdinaryForeground()
         loadJoystickPreferences()
+        applyPerformanceProfile(force = true)
         startForegroundAppMonitor()
         startFanLoop()
         applyOverlayState()
@@ -195,6 +210,7 @@ class SystemControlService : Service() {
             ACTION_UPDATE -> {
                 loadFanPreferences()
                 loadJoystickPreferences(force = true)
+                applyPerformanceProfile(force = true)
             }
             ACTION_SET_PROJECTION_INTENT -> {
                 val token = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -220,6 +236,7 @@ class SystemControlService : Service() {
         }
         screenOffJob?.cancel()
         foregroundJob?.cancel()
+        performanceJob?.cancel()
         overlay?.hide()
         overlay = null
         joystickEffects.destroy()
@@ -252,6 +269,86 @@ class SystemControlService : Service() {
         overlayEnabled = prefs.getBoolean(Prefs.OVERLAY_ENABLED, false)
     }
 
+    private fun applyPerformanceProfile(force: Boolean = false) {
+        performanceJob?.cancel()
+        performanceJob = scope.launch {
+            val policies = CpuFrequencyController.detectPolicies()
+            if (policies.isEmpty()) {
+                Log.w(TAG, "CPU frequency policies are unavailable")
+                return@launch
+            }
+            val profileConfig = PerformanceProfilePreferences.load(prefs, policies)
+            val performanceIds = profileConfig.profiles.mapTo(mutableSetOf()) { it.id }
+            val fanIds = FanCurvePreferences.load(prefs).catalog.profiles
+                .mapTo(mutableSetOf()) { it.id }
+            val joystickIds = JoystickProfilePreferences.load(prefs).profiles
+                .mapTo(mutableSetOf()) { it.id }
+            val presetConfig = PresetPreferences.load(
+                prefs,
+                fanIds,
+                joystickIds,
+                performanceIds,
+            )
+            val appProfiles = AppProfilePreferences.load(
+                prefs = prefs,
+                availablePresetIds = presetConfig.catalog.presets
+                    .mapTo(mutableSetOf()) { it.id },
+                availableFanCurveIds = fanIds,
+                availableJoystickProfileIds = joystickIds,
+                availablePerformanceProfileIds = performanceIds,
+            )
+            val appIsGame = AppProfilePreferences.isGame(this@SystemControlService, foregroundPackageName)
+            val targetId = PerformanceProfileResolver.resolveTargetProfileId(
+                profileConfig = profileConfig,
+                presetConfig = presetConfig,
+                appProfile = foregroundPackageName?.let(appProfiles::get),
+                appIsGame = appIsGame,
+            )
+            val previouslyApplied = prefs.getString(
+                Prefs.LAST_APPLIED_PERFORMANCE_PROFILE,
+                null,
+            )
+            if (
+                !force && performanceRequestInitialized &&
+                targetId == lastRequestedPerformanceProfileId
+            ) {
+                return@launch
+            }
+
+            val target = if (targetId == null) {
+                if (previouslyApplied == null) {
+                    performanceRequestInitialized = true
+                    lastRequestedPerformanceProfileId = null
+                    return@launch
+                }
+                profileConfig.stockProfile
+            } else {
+                profileConfig.profile(targetId)
+            } ?: return@launch
+
+            CpuFrequencyController.applyProfile(target, policies)
+                .onSuccess { result ->
+                    if (!result.verificationPassed) {
+                        performanceRequestInitialized = false
+                        return@onSuccess
+                    }
+                    performanceRequestInitialized = true
+                    lastRequestedPerformanceProfileId = targetId
+                    prefs.edit().apply {
+                        if (targetId == null) {
+                            remove(Prefs.LAST_APPLIED_PERFORMANCE_PROFILE)
+                        } else {
+                            putString(Prefs.LAST_APPLIED_PERFORMANCE_PROFILE, targetId)
+                        }
+                    }.apply()
+                }
+                .onFailure { error ->
+                    performanceRequestInitialized = false
+                    Log.e(TAG, "Unable to apply performance profile ${target.id}", error)
+                }
+        }
+    }
+
     private fun startForegroundAppMonitor() {
         foregroundJob?.cancel()
         foregroundJob = scope.launch {
@@ -261,11 +358,13 @@ class SystemControlService : Service() {
                     foregroundPackageName = foreground
                     loadFanPreferences()
                     loadJoystickPreferences()
+                    applyPerformanceProfile()
                     Log.i(
                         TAG,
                         "Foreground changed: package=$foreground, " +
                             "fan=${fanConfig.activeProfile?.id ?: "off"}, " +
-                            "joystick=${joystickProfile?.id ?: "off"}",
+                            "joystick=${joystickProfile?.id ?: "off"}, " +
+                            "performance=${lastRequestedPerformanceProfileId ?: "unmanaged"}",
                     )
                 }
                 delay(1_000L)

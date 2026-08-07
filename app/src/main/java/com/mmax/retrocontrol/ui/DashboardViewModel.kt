@@ -9,6 +9,7 @@ import android.os.Process
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.core.graphics.drawable.toBitmap
+import com.mmax.retrocontrol.RootAccessManager
 import com.mmax.retrocontrol.data.AppControlProfile
 import com.mmax.retrocontrol.data.AppProfilePreferences
 import com.mmax.retrocontrol.data.BuiltInFanCurve
@@ -19,12 +20,15 @@ import com.mmax.retrocontrol.data.FanCurvePreferences
 import com.mmax.retrocontrol.data.FanSelectionConfig
 import com.mmax.retrocontrol.data.FanSelectionPreferences
 import com.mmax.retrocontrol.data.PresetPreferences
+import com.mmax.retrocontrol.data.PerformanceProfileConfig
+import com.mmax.retrocontrol.data.PerformanceProfilePreferences
 import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.data.JoystickProfileCatalog
 import com.mmax.retrocontrol.data.JoystickProfilePreferences
 import com.mmax.retrocontrol.feature.joystick.JoystickRgbMode
 import com.mmax.retrocontrol.hardware.TelemetryRepository
 import com.mmax.retrocontrol.hardware.TelemetrySnapshot
+import com.mmax.retrocontrol.hardware.CpuFrequencyController
 import com.mmax.retrocontrol.service.SystemControlService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +50,7 @@ data class DashboardState(
     val fanConfig: FanControlConfig = FanControlConfig(),
     val presetConfig: ControlPresetConfig = ControlPresetConfig(),
     val joystickProfiles: JoystickProfileCatalog = JoystickProfileCatalog(),
+    val performanceProfiles: PerformanceProfileConfig = PerformanceProfileConfig(),
     val fanSelection: FanSelectionConfig = FanSelectionConfig(
         source = com.mmax.retrocontrol.data.FanSelectionSource.FollowPreset,
         enabled = true,
@@ -72,6 +77,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             TelemetryRepository.state.collectLatest { telemetry ->
                 mutableState.update { it.copy(telemetry = telemetry) }
+            }
+        }
+        viewModelScope.launch {
+            RootAccessManager.hasRoot.collectLatest { granted ->
+                if (granted) refreshPerformancePolicies()
             }
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -110,16 +120,33 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val curveIds = fanConfig.catalog.profiles.mapTo(mutableSetOf()) { it.id }
         val joystickProfiles = JoystickProfilePreferences.load(prefs)
         val joystickIds = joystickProfiles.profiles.mapTo(mutableSetOf()) { it.id }
-        val presetConfig = PresetPreferences.load(prefs, curveIds, joystickIds)
+        val performanceProfiles = PerformanceProfilePreferences.load(
+            prefs,
+            mutableState.value.performanceProfiles.policies,
+        )
+        val performanceIds = performanceProfiles.profiles
+            .mapTo(mutableSetOf()) { it.id }
+            .takeIf { performanceProfiles.policies.isNotEmpty() }
+        val presetConfig = PresetPreferences.load(
+            prefs,
+            curveIds,
+            joystickIds,
+            performanceIds,
+        )
         val presetIds = presetConfig.catalog.presets.mapTo(mutableSetOf()) { it.id }
         mutableState.update {
             it.copy(
                 fanConfig = fanConfig,
                 presetConfig = presetConfig,
                 joystickProfiles = joystickProfiles,
+                performanceProfiles = performanceProfiles,
                 fanSelection = FanSelectionPreferences.load(prefs, fanConfig),
                 appProfiles = AppProfilePreferences.load(
-                    prefs, presetIds, curveIds, joystickIds,
+                    prefs,
+                    presetIds,
+                    curveIds,
+                    joystickIds,
+                    performanceIds,
                 ),
                 overlayEnabled = prefs.getBoolean(Prefs.OVERLAY_ENABLED, false),
                 autoStartEnabled = prefs.getBoolean(Prefs.AUTO_START_ENABLED, false),
@@ -334,6 +361,94 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         SystemControlService.startOrUpdate(getApplication())
     }
 
+    fun addPerformanceProfile(name: String): String? {
+        val policies = mutableState.value.performanceProfiles.policies
+        val result = PerformanceProfilePreferences.add(prefs, policies, name) ?: return null
+        mutableState.update { it.copy(performanceProfiles = result.first) }
+        loadPreferences()
+        return result.second
+    }
+
+    fun updatePerformanceProfile(
+        profileId: String,
+        name: String,
+        maxFrequencies: Map<Int, Int>,
+    ) {
+        val policies = mutableState.value.performanceProfiles.policies
+        PerformanceProfilePreferences.update(
+            prefs = prefs,
+            policies = policies,
+            profileId = profileId,
+            name = name,
+            maxFrequencies = maxFrequencies,
+        )
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun deletePerformanceProfile(profileId: String) {
+        val state = mutableState.value
+        val config = PerformanceProfilePreferences.delete(
+            prefs,
+            state.performanceProfiles.policies,
+            profileId,
+        )
+        val performanceIds = config.profiles.mapTo(mutableSetOf()) { it.id }
+        val fanIds = state.fanConfig.catalog.profiles.mapTo(mutableSetOf()) { it.id }
+        val joystickIds = state.joystickProfiles.profiles.mapTo(mutableSetOf()) { it.id }
+        val presets = PresetPreferences.load(
+            prefs,
+            fanIds,
+            joystickIds,
+            performanceIds,
+        )
+        AppProfilePreferences.load(
+            prefs = prefs,
+            availablePresetIds = presets.catalog.presets.mapTo(mutableSetOf()) { it.id },
+            availableFanCurveIds = fanIds,
+            availableJoystickProfileIds = joystickIds,
+            availablePerformanceProfileIds = performanceIds,
+        )
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun setPresetPerformanceProfile(presetId: String, profileId: String?) {
+        val state = mutableState.value
+        PresetPreferences.setPerformanceProfile(
+            prefs = prefs,
+            presetId = presetId,
+            performanceProfileId = profileId,
+            availableFanCurveIds = state.fanConfig.catalog.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availableJoystickProfileIds = state.joystickProfiles.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availablePerformanceProfileIds = state.performanceProfiles.profiles
+                .mapTo(mutableSetOf()) { it.id },
+        )
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun setAppPerformanceProfile(packageName: String, profileId: String?) {
+        val state = mutableState.value
+        AppProfilePreferences.setPerformanceProfile(
+            prefs = prefs,
+            packageName = packageName,
+            performanceProfileId = profileId,
+            availablePresetIds = state.presetConfig.catalog.presets
+                .mapTo(mutableSetOf()) { it.id },
+            availableFanCurveIds = state.fanConfig.catalog.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availableJoystickProfileIds = state.joystickProfiles.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availablePerformanceProfileIds = state.performanceProfiles.profiles
+                .mapTo(mutableSetOf()) { it.id },
+        )
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
     fun setAppJoystickProfile(packageName: String, profileId: String?) {
         val state = mutableState.value
         AppProfilePreferences.setJoystickProfile(
@@ -364,4 +479,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun joystickProfileIds(): Set<String> =
         mutableState.value.joystickProfiles.profiles.mapTo(mutableSetOf()) { it.id }
+
+    private fun refreshPerformancePolicies() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val policies = CpuFrequencyController.detectPolicies(forceRefresh = true)
+            val config = PerformanceProfilePreferences.load(prefs, policies)
+            mutableState.update { it.copy(performanceProfiles = config) }
+            loadPreferences()
+        }
+    }
 }

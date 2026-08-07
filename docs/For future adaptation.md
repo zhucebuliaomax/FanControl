@@ -37,7 +37,7 @@ Follow `docs/FAN_ADAPTATION.md` and use read-only commands first to identify the
 - Add new thermal-type naming conventions centrally in `ThermalClassifier.kt`, with classification tests.
 - If a device has different fan-node names, PWM ranges, polarity, or enable semantics, introduce an explicit hardware configuration model near `FanController.kt`.
 - When differences span several devices, prefer capability-based hardware profiles over device-model branches in the control loop.
-- Keep all writes restricted to fan-output nodes, and leave kernel overheat protection enabled.
+- Keep fan writes restricted to fan-output nodes and performance writes restricted to cpufreq policy minimum/maximum nodes. Leave kernel overheat protection enabled.
 
 Real-device validation should cover 0%, an intermediate value, 100%, screen off, unlock, service restart, and root-shell recreation.
 
@@ -58,6 +58,7 @@ When adding a sensor, first decide whether it is display-only or contributes to 
 - The service owns scheduling, lifecycle, and hardware calls.
 - `FanResponseController` owns independently testable filtering, deadband, and ramping algorithms.
 - `FanController` owns sysfs discovery, range mapping, and writes.
+- `CpuFrequencyController` owns cpufreq policy discovery, maximum-frequency writes, and post-write verification.
 - `TelemetryRepository` publishes runtime state.
 
 Changes to the loop interval, filter window, or ramp duration should be tested with irregular time intervals to cover scheduler jitter and boundary conditions.
@@ -65,7 +66,7 @@ Changes to the loop interval, filter window, or ramp duration should be tested w
 ## Suggested review checklist
 
 - Hardware access has not been introduced into UI or feature modules.
-- Kernel thermal protection and non-fan nodes remain unchanged.
+- Kernel thermal protection, governors, and hardware nodes outside the feature being changed remain untouched.
 - New persisted fields have defaults and a migration strategy.
 - New user-visible text has been localized.
 - New logic has tests for normal and boundary cases.

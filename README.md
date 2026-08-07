@@ -1,12 +1,14 @@
 # ![Icon](./assets/icon.svg) RetroControl
 
-RetroControl is an app for the **rooted** Retroid Pocket 6 that gives you full control over the cooling fan.
+RetroControl is an app for the **rooted** Retroid Pocket 6 that controls the cooling fan, joystick lighting, and CPU performance profiles.
 
 **Note:** Although it should work on other similar devices, it has only been tested on the RP6 running LineageOS 23.
 
 ### What can it do?
 
 RetroControl comes with three default fan profiles: Quiet, Normal, and Performance. Every profile can be fully customized, saved, or deleted, and you can create as many custom fan curves as you like.
+
+Performance profiles cap each detected CPU cluster through Linux cpufreq sysfs nodes. Stock, Balanced, Efficient, and Battery saver profiles are generated from the frequencies exposed by the running kernel; custom profiles can be assigned to presets or individual apps.
 
 ![Fan profiles](./assets/fan%20profiles.png)
 
@@ -39,7 +41,7 @@ When the screen has remained off for 5 seconds, app-controlled fan output is sus
 
 ## Build and test
 
-Other devices may expose different thermal-zone names or fan-control nodes; read the [device adaptation guide](app/src/main/java/com/mmax/fancontrol/hardware/DEVICE_ADAPTATION.md) before testing.
+Other devices may expose different thermal-zone names or fan-control nodes; read the [device adaptation guide](app/src/main/java/com/mmax/retrocontrol/hardware/DEVICE_ADAPTATION.md) before testing.
 
 ```shell
 ./gradlew :app:assembleDebug
@@ -51,7 +53,7 @@ Other devices may expose different thermal-zone names or fan-control nodes; read
 
 This tool has only been tested on the **Retroid Pocket 6 running LineageOS**, not Stock OS or other devices. It requires root access to read the relevant sysfs nodes and control the fan.
 
-It reads thermal sensors and fan control nodes via sysfs at runtime without altering kernel thermal limits. Incorrect curves or unsupported hardware may still affect cooling, so use it at your own risk.
+It reads thermal sensors and writes fan and cpufreq controls through sysfs without altering kernel thermal limits. Incorrect fan curves or CPU frequency limits may affect cooling, stability, battery life, and performance, so use it at your own risk.
 
 This project originally started as a fork of [Retroid-Pocket-6-Lineage-OS-Fan-and-RGB-Control](https://github.com/hasan-ege/Retroid-Pocket-6-Lineage-OS-Fan-and-RGB-Control), but after heavy modifications, very little of the original code remains, so I decided to publish it as a standalone repository.
 

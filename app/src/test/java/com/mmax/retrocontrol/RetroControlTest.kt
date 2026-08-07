@@ -21,7 +21,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class FanControlTest {
+class RetroControlTest {
     @Test
     fun fanSelection_directCurveOverridesGlobalPreset() {
         val preset = ControlPreset(

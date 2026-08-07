@@ -1,7 +1,7 @@
 package com.mmax.retrocontrol.data
 
 object Prefs {
-    const val FILE = "fan_control"
+    const val FILE = "retro_control"
 
     /** "OFF" or an active profile id. Kept under the legacy key for migration compatibility. */
     const val FAN_MODE = "fan_mode"
@@ -19,6 +19,8 @@ object Prefs {
     const val JOYSTICK_SELECTION_SOURCE = "joystick_selection_source"
     const val JOYSTICK_SELECTION_PROFILE = "joystick_selection_profile"
     const val JOYSTICK_TILE_ENABLED = "joystick_tile_enabled"
+    const val PERFORMANCE_PROFILE_CATALOG = "performance_profile_catalog_v1"
+    const val LAST_APPLIED_PERFORMANCE_PROFILE = "last_applied_performance_profile"
 
     // Version 1 migration keys.
     const val FAN_CURVE_QUIET = "fan_curve_quiet"

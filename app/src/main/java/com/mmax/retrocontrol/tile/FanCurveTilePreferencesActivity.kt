@@ -55,7 +55,7 @@ import com.mmax.retrocontrol.data.displayName
 import com.mmax.retrocontrol.feature.joystick.JoystickRgbMode
 import com.mmax.retrocontrol.service.MediaProjectionActivity
 import com.mmax.retrocontrol.service.SystemControlService
-import com.mmax.retrocontrol.theme.FanControlTheme
+import com.mmax.retrocontrol.theme.RetroControlTheme
 import androidx.core.content.ContextCompat
 
 /** Routes Quick Settings long presses and renders the fan chooser as a real dialog window. */
@@ -89,7 +89,7 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
         val joystickTile = originatingTile()?.className ==
             JoystickQuickSettingsTile::class.java.name
         setContent {
-            FanControlTheme {
+            RetroControlTheme {
                 val config by remember { mutableStateOf(currentConfig()) }
                 val selection by remember { mutableStateOf(currentSelection(config)) }
                 val joystickCatalog by remember {

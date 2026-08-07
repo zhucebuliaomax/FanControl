@@ -36,6 +36,18 @@
     <string name="delete_preset_confirmation">确定删除“%1$s”吗？此操作无法撤销。</string>
     <string name="preset_fan_curve">风扇曲线</string>
     <string name="preset_performance_profile">性能方案</string>
+    <string name="performance_unmanaged">不管理</string>
+    <string name="performance_stock">原厂性能</string>
+    <string name="performance_balanced">均衡</string>
+    <string name="performance_efficient">能效</string>
+    <string name="performance_battery_saver">省电</string>
+    <string name="performance_policies_unavailable">CPU 频率策略不可用，请授予 Root 权限后刷新。</string>
+    <string name="performance_policy_number">cpufreq policy%1$d</string>
+    <string name="performance_profile_name">性能方案名称</string>
+    <string name="new_performance_profile">新性能方案</string>
+    <string name="add_performance_profile">添加性能方案</string>
+    <string name="delete_performance_profile">删除性能方案</string>
+    <string name="delete_performance_profile_confirmation">确定删除“%1$s”吗？此操作无法撤销。</string>
     <string name="follow_preset">跟随配置</string>
     <string name="follow_profile">跟随配置</string>
     <string name="follow_default">跟随默认配置</string>
@@ -112,7 +124,7 @@
     <string name="fan_mode_performance">性能</string>
     <string name="fan_mode_custom">自定义</string>
 
-    <string name="root_notice_message">风扇控制需要 Root 权限。 KernelSU用户需要手动授权。通知权限仅为展示运行状态，禁用不影响功能。</string>
+    <string name="root_notice_message">风扇与 CPU 性能控制需要 Root 权限。KernelSU 用户需要手动授权。通知权限仅用于展示运行状态，禁用不影响功能。</string>
     <string name="confirm">确定</string>
     <string name="authorization_management">授权管理</string>
     <string name="root_permission">Root 权限</string>
@@ -129,6 +141,7 @@
     <string name="press_back_again_to_exit">再按一次返回键退出</string>
     <string name="close">关闭</string>
     <string name="delete">删除</string>
+    <string name="save">保存</string>
 
     <string name="github">GitHub</string>
     <string name="github_url">https://github.com/zhucebuliaomax/RetroControl</string>

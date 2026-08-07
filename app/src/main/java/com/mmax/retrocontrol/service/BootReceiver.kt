@@ -11,7 +11,7 @@ import com.mmax.retrocontrol.tile.FanQuickSettingsTile
 import com.mmax.retrocontrol.tile.OverlayTileService
 
 /**
- * Restores fan control after boot only when the user opted in.
+ * Restores hardware profiles after boot only when the user opted in.
  * The overlay is always left off after a reboot.
  */
 class BootReceiver : BroadcastReceiver() {
@@ -39,7 +39,7 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
 
-        Log.i(TAG, "Boot detected — preparing automatic fan-control start")
+        Log.i(TAG, "Boot detected — preparing automatic control-service start")
         RootAccessManager.ensureRoot { granted ->
             val started = granted && runCatching {
                 SystemControlService.startOrUpdate(appContext)

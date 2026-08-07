@@ -36,6 +36,18 @@
     <string name="delete_preset_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="preset_fan_curve">Fan curve</string>
     <string name="preset_performance_profile">Performance profile</string>
+    <string name="performance_unmanaged">Unmanaged</string>
+    <string name="performance_stock">Stock</string>
+    <string name="performance_balanced">Balanced</string>
+    <string name="performance_efficient">Efficient</string>
+    <string name="performance_battery_saver">Battery saver</string>
+    <string name="performance_policies_unavailable">CPU frequency policies are unavailable. Grant root access and refresh.</string>
+    <string name="performance_policy_number">cpufreq policy%1$d</string>
+    <string name="performance_profile_name">Performance profile name</string>
+    <string name="new_performance_profile">New performance profile</string>
+    <string name="add_performance_profile">Add performance profile</string>
+    <string name="delete_performance_profile">Delete performance profile</string>
+    <string name="delete_performance_profile_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="follow_preset">Follow profile</string>
     <string name="follow_profile">Follow profile</string>
     <string name="follow_default">Follow default</string>
@@ -113,7 +125,7 @@
     <string name="fan_mode_performance">Performance</string>
     <string name="fan_mode_custom">Custom</string>
 
-    <string name="root_notice_message">Fan control requires root access. KernelSU users must grant access manually. Notification permission is only used to show running status; disabling it does not affect functionality.</string>
+    <string name="root_notice_message">Fan and CPU performance control require root access. KernelSU users must grant access manually. Notification permission is only used to show running status; disabling it does not affect functionality.</string>
     <string name="confirm">OK</string>
     <string name="authorization_management">Authorization management</string>
     <string name="root_permission">Root access</string>
@@ -130,6 +142,7 @@
     <string name="press_back_again_to_exit">Press Back again to exit</string>
     <string name="close">Close</string>
     <string name="delete">Delete</string>
+    <string name="save">Save</string>
 
     <string name="github">GitHub</string>
     <string name="github_url">https://github.com/zhucebuliaomax/RetroControl</string>
