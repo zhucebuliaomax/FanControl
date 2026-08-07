@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
@@ -56,7 +57,8 @@ class MainActivity : ComponentActivity() {
                                         .apply()
                                     showRootNotice = false
                                     requestRoot(forceRefresh = true)
-                                }
+                                },
+                                shapes = ButtonDefaults.shapes(),
                             ) {
                                 Text(stringResource(R.string.confirm))
                             }

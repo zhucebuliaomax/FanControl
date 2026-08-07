@@ -2,7 +2,6 @@
 
 package com.mmax.retrocontrol.ui
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -25,10 +23,11 @@ import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -55,6 +54,7 @@ import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.data.ControlPreset
 import com.mmax.retrocontrol.designsystem.SecondaryMenuList
 import com.mmax.retrocontrol.designsystem.SecondaryMenuListItem
+import com.mmax.retrocontrol.designsystem.SecondaryMenuSelectableListItem
 import com.mmax.retrocontrol.designsystem.SwipeToDeleteSecondaryMenuListItem
 import com.mmax.retrocontrol.designsystem.settingsSegmentedShapes
 import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
@@ -129,24 +129,19 @@ fun GlobalPresetSelectionSection(
     SecondaryMenuList {
         presets.forEachIndexed { index, preset ->
             val selected = preset.id == selectedPresetId
-            SecondaryMenuListItem(
+            SecondaryMenuSelectableListItem(
+                selected = selected,
                 index = index,
                 count = presets.size,
                 onClick = { onPresetSelected(preset.id) },
-                colors = if (selected) {
-                    ListItemDefaults.segmentedColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        supportingContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        trailingContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                } else {
-                    ListItemDefaults.segmentedColors()
-                },
                 content = {
                     Text(
                         text = preset.name,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        style = if (selected) {
+                            MaterialTheme.typography.bodyLargeEmphasized
+                        } else {
+                            MaterialTheme.typography.bodyLarge
+                        },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -171,7 +166,6 @@ fun AddPresetButton(
     ExtendedFloatingActionButton(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
         icon = { Icon(Icons.Default.Add, contentDescription = null) },
         text = { Text(stringResource(R.string.add_preset)) },
     )
@@ -275,27 +269,32 @@ fun PresetEditorDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .fillMaxHeight(0.88f),
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLargeIncreased,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
             Column(Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = preset.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.headlineSmallEmphasized,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = { showRename = true }) {
+                    IconButton(
+                        onClick = { showRename = true },
+                        shapes = IconButtonDefaults.shapes(),
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_edit_square),
                             contentDescription = stringResource(R.string.rename_preset),
                         )
                     }
                     if (!preset.isDefault) {
-                        IconButton(onClick = { showDelete = true }) {
+                        IconButton(
+                            onClick = { showDelete = true },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(
                                 Icons.Default.DeleteForever,
                                 contentDescription = stringResource(R.string.delete_preset),
@@ -408,12 +407,16 @@ fun PresetEditorDialog(
                         showRename = false
                     },
                     enabled = renameDraft.isNotBlank(),
+                    shapes = ButtonDefaults.shapes(),
                 ) {
                     Text(stringResource(R.string.confirm))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRename = false }) {
+                TextButton(
+                    onClick = { showRename = false },
+                    shapes = ButtonDefaults.shapes(),
+                ) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -471,12 +474,12 @@ private fun DeletePresetConfirmation(
         title = { Text(stringResource(R.string.delete_preset)) },
         text = { Text(stringResource(R.string.delete_preset_confirmation, name)) },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            TextButton(onClick = onConfirm, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.delete))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.cancel))
             }
         },

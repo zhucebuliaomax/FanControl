@@ -4,9 +4,9 @@ Use these rules for settings-style lists throughout the app.
 
 ## Standalone items
 
-- A one-row list uses `settingsSegmentedShapes`, which keeps all four idle
-  corners at 16 dp. This matches the outer corners of grouped lists and avoids
-  Material 3 resolving a one-row list to the 4 dp middle-item shape.
+- A one-row list uses `settingsSegmentedShapes`, which delegates to the current
+  Material 3 Expressive segmented-list shape tokens. Do not override its idle or
+  interaction shapes with fixed corner radii.
 
 ## Swipe-to-delete actions
 

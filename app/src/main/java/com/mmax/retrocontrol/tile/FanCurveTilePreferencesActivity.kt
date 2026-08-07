@@ -14,32 +14,32 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material3.Icon
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mmax.retrocontrol.MainActivity
 import com.mmax.retrocontrol.R
@@ -108,76 +108,92 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
                     )
                 }
                 Surface(
-                    modifier = Modifier.width(300.dp),
+                    modifier = Modifier.width(360.dp),
                     shape = MaterialTheme.shapes.extraLarge,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
-                    Column(Modifier.padding(top = 18.dp, bottom = 8.dp)) {
+                    Column(Modifier.padding(24.dp)) {
                         Text(
                             text = stringResource(
                                 if (joystickTile) R.string.select_joystick_profile
                                 else R.string.select_fan_curve
                             ),
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleLargeEmphasized,
                         )
-                        Spacer(Modifier.height(8.dp))
-                        Column(
-                            modifier = Modifier
-                                .heightIn(max = 360.dp)
-                                .verticalScroll(rememberScrollState()),
-                        ) {
+                        Spacer(Modifier.height(ListItemDefaults.SegmentedGap * 4))
+                        val sources = buildList {
                             if (joystickTile) {
-                                FanSourceRow(
-                                    name = stringResource(R.string.follow_profile),
-                                    selected = joystickSelection.source is
-                                        JoystickSelectionSource.FollowProfile,
-                                    onClick = ::selectFollowJoystickProfile,
+                                add(
+                                    TileSourceUi(
+                                        name = getString(R.string.follow_profile),
+                                        selected = joystickSelection.source is
+                                            JoystickSelectionSource.FollowProfile,
+                                        onClick = ::selectFollowJoystickProfile,
+                                    )
                                 )
-                                joystickCatalog.visibleProfiles.forEach { profile ->
-                                    FanSourceRow(
-                                        name = profile.name,
-                                        selected = (
-                                            joystickSelection.source as?
-                                                JoystickSelectionSource.DirectProfile
-                                        )?.profileId == profile.id,
-                                        onClick = { selectJoystick(profile.id) },
+                                joystickCatalog.profiles.forEach { profile ->
+                                    add(
+                                        TileSourceUi(
+                                            name = profile.name,
+                                            selected = (
+                                                joystickSelection.source as?
+                                                    JoystickSelectionSource.DirectProfile
+                                                )?.profileId == profile.id,
+                                            onClick = { selectJoystick(profile.id) },
+                                        )
                                     )
                                 }
                             } else {
-                                FanSourceRow(
-                                    name = stringResource(R.string.follow_profile),
-                                    selected = selection.source is FanSelectionSource.FollowPreset,
-                                    onClick = ::selectFollowPreset,
+                                add(
+                                    TileSourceUi(
+                                        name = getString(R.string.follow_profile),
+                                        selected = selection.source is FanSelectionSource.FollowPreset,
+                                        onClick = ::selectFollowPreset,
+                                    )
                                 )
-                                config.catalog.visibleProfiles.forEach { profile ->
-                                    FanSourceRow(
-                                        name = profile.displayName(
-                                            this@FanCurveTilePreferencesActivity
-                                        ),
-                                        selected = (
-                                            selection.source as? FanSelectionSource.DirectCurve
-                                        )?.profileId == profile.id,
-                                        onClick = { select(profile.id) },
+                                config.catalog.profiles.forEach { profile ->
+                                    add(
+                                        TileSourceUi(
+                                            name = profile.displayName(
+                                                this@FanCurveTilePreferencesActivity
+                                            ),
+                                            selected = (
+                                                selection.source as? FanSelectionSource.DirectCurve
+                                                )?.profileId == profile.id,
+                                            onClick = { select(profile.id) },
+                                        )
                                     )
                                 }
+                            }
+                        }
+                        Column(
+                            modifier = Modifier
+                                .heightIn(max = 360.dp)
+                                .verticalScroll(rememberScrollState())
+                                .selectableGroup(),
+                            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                        ) {
+                            sources.forEachIndexed { index, source ->
+                                FanSourceRow(
+                                    name = source.name,
+                                    selected = source.selected,
+                                    onClick = source.onClick,
+                                    index = index,
+                                    count = sources.size,
+                                )
                             }
                         }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(44.dp)
-                                .clickable { finish() }
-                                .padding(horizontal = 20.dp),
+                                .padding(top = 16.dp),
+                            horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Spacer(Modifier.weight(1f))
-                            Text(
-                                text = stringResource(R.string.cancel),
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium,
-                            )
+                            TextButton(
+                                onClick = { finish() },
+                                shapes = ButtonDefaults.shapes(),
+                            ) { Text(stringResource(R.string.cancel)) }
                         }
                     }
                 }
@@ -291,39 +307,26 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
     }
 }
 
+private data class TileSourceUi(
+    val name: String,
+    val selected: Boolean,
+    val onClick: () -> Unit,
+)
+
 @androidx.compose.runtime.Composable
 private fun FanSourceRow(
     name: String,
     selected: Boolean,
     onClick: () -> Unit,
+    index: Int,
+    count: Int,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(44.dp)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = if (selected) {
-                Icons.Default.RadioButtonChecked
-            } else {
-                Icons.Default.RadioButtonUnchecked
-            },
-            contentDescription = null,
-            tint = if (selected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            modifier = Modifier.size(21.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = name,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-        )
-    }
+    SegmentedListItem(
+        selected = selected,
+        onClick = onClick,
+        shapes = ListItemDefaults.segmentedShapes(index, count),
+        leadingContent = { RadioButton(selected = selected, onClick = null) },
+        content = { Text(text = name, maxLines = 1) },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }

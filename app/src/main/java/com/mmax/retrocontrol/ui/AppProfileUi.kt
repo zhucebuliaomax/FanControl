@@ -312,7 +312,11 @@ fun ChoiceDialog(
         showRadio = showRadio,
         addLabel = addLabel,
         onSelected = { index -> onSelected(choices[index].id) },
-        onItemClick = { index -> onItemClick(choices[index].id) },
+        onItemClick = { index ->
+            val id = choices[index].id
+            if (showRadio) onSelected(id)
+            onItemClick(id)
+        },
         onAdd = onAdd,
         emptyLabel = stringResource(R.string.no_options_available),
         cancelLabel = stringResource(R.string.cancel),

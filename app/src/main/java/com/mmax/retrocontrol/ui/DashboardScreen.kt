@@ -54,6 +54,7 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -186,12 +187,12 @@ fun DashboardScreen(
     var overlayPermissionGranted by remember {
         mutableStateOf(Settings.canDrawOverlays(context))
     }
-    val fanProfileIds = state.fanConfig.catalog.visibleProfiles.map { it.id }
+    val fanProfileIds = state.fanConfig.catalog.profiles.map { it.id }
     val fanProfileFocusRequesters = remember(fanProfileIds) {
         List(fanProfileIds.size + 1) { FocusRequester() }
     }
     val addCurveFocusRequester = remember { FocusRequester() }
-    val joystickProfileIds = state.joystickProfiles.visibleProfiles.map { it.id }
+    val joystickProfileIds = state.joystickProfiles.profiles.map { it.id }
     val joystickProfileFocusRequesters = remember(joystickProfileIds) {
         List(joystickProfileIds.size + 1) { FocusRequester() }
     }
@@ -364,6 +365,18 @@ fun DashboardScreen(
         }
     }
 
+    DisposableEffect(editingJoystickProfileId, context) {
+        val profileId = editingJoystickProfileId
+        if (profileId != null) {
+            SystemControlService.previewJoystickProfile(context, profileId)
+        }
+        onDispose {
+            if (profileId != null) {
+                SystemControlService.stopJoystickProfilePreview(context)
+            }
+        }
+    }
+
     fun temperatureUi(summary: TemperatureSummary): TemperatureTileUiState =
         TemperatureTileUiState(
             average = if (summary.count > 0) {
@@ -447,7 +460,7 @@ fun DashboardScreen(
         fanContent = {
             FanProfilesSection(
                 state = FanProfileSectionState(
-                    profiles = state.fanConfig.catalog.visibleProfiles.map { profile ->
+                    profiles = state.fanConfig.catalog.profiles.map { profile ->
                         FanProfileItemUiState(
                             id = profile.id,
                             name = profile.displayName(context),
@@ -508,7 +521,7 @@ fun DashboardScreen(
         },
         joystickContent = {
             JoystickProfilesSection(
-                profiles = state.joystickProfiles.visibleProfiles.map { profile ->
+                profiles = state.joystickProfiles.profiles.map { profile ->
                     JoystickProfileUiState(
                         id = profile.id,
                         name = profile.name,
@@ -661,10 +674,10 @@ fun DashboardScreen(
                 profileChoices = state.presetConfig.catalog.presets.map {
                     AppProfileChoice(it.id, it.name)
                 },
-                fanCurveChoices = state.fanConfig.catalog.visibleProfiles.map {
+                fanCurveChoices = state.fanConfig.catalog.profiles.map {
                     AppProfileChoice(it.id, it.displayName(context))
                 },
-                joystickChoices = state.joystickProfiles.visibleProfiles.map {
+                joystickChoices = state.joystickProfiles.profiles.map {
                     AppProfileChoice(it.id, it.name)
                 },
                 performanceChoices = state.performanceProfiles.profiles.map {
@@ -725,13 +738,13 @@ fun DashboardScreen(
                 },
                 fanCurveChoices = buildList {
                     add(AppProfileChoice(null, context.getString(R.string.follow_profile)))
-                    state.fanConfig.catalog.visibleProfiles.forEach { fanProfile ->
+                    state.fanConfig.catalog.profiles.forEach { fanProfile ->
                         add(AppProfileChoice(fanProfile.id, fanProfile.displayName(context)))
                     }
                 },
                 joystickChoices = buildList {
                     add(AppProfileChoice(null, context.getString(R.string.follow_profile)))
-                    state.joystickProfiles.visibleProfiles.forEach { joystickProfile ->
+                    state.joystickProfiles.profiles.forEach { joystickProfile ->
                         add(AppProfileChoice(joystickProfile.id, joystickProfile.name))
                     }
                 },
@@ -907,7 +920,7 @@ fun DashboardScreen(
             fanCurveName = fanCurveName(preset.fanCurveId),
             fanCurveChoices = buildList {
                 add(PresetFanCurveChoice(id = null, name = offName))
-                state.fanConfig.catalog.visibleProfiles.forEach { profile ->
+                state.fanConfig.catalog.profiles.forEach { profile ->
                     add(
                         PresetFanCurveChoice(
                             id = profile.id,
@@ -927,7 +940,7 @@ fun DashboardScreen(
             joystickProfileName = joystickProfileName(preset.joystickId),
             joystickChoices = buildList {
                 add(PresetJoystickChoice(id = null, name = joystickOffName))
-                state.joystickProfiles.visibleProfiles.forEach { profile ->
+                state.joystickProfiles.profiles.forEach { profile ->
                     add(PresetJoystickChoice(id = profile.id, name = profile.name))
                 }
             },
@@ -1098,7 +1111,7 @@ private fun ThermalDetailsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.close))
             }
         },

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -19,9 +18,11 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -126,7 +127,6 @@ fun AddPerformanceProfileButton(
     ExtendedFloatingActionButton(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
         icon = { Icon(Icons.Default.Add, contentDescription = null) },
         text = { Text(stringResource(R.string.add_performance_profile)) },
     )
@@ -157,7 +157,7 @@ fun PerformanceProfileEditorDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .fillMaxHeight(0.88f),
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLargeIncreased,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
             Column(Modifier.padding(20.dp)) {
@@ -170,7 +170,10 @@ fun PerformanceProfileEditorDialog(
                             label = { Text(stringResource(R.string.performance_profile_name)) },
                             modifier = Modifier.weight(1f),
                         )
-                        IconButton(onClick = { showDelete = true }) {
+                        IconButton(
+                            onClick = { showDelete = true },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(
                                 Icons.Default.DeleteForever,
                                 contentDescription = stringResource(R.string.delete_performance_profile),
@@ -180,8 +183,7 @@ fun PerformanceProfileEditorDialog(
                     } else {
                         Text(
                             text = profile.displayName(context),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.headlineSmallEmphasized,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -208,13 +210,14 @@ fun PerformanceProfileEditorDialog(
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth()) {
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onDismiss) {
+                    TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) {
                         Text(stringResource(R.string.cancel))
                     }
                     if (profile.isEditable) {
                         TextButton(
                             onClick = { onSave(name, values) },
                             enabled = name.isNotBlank(),
+                            shapes = ButtonDefaults.shapes(),
                         ) {
                             Text(stringResource(R.string.save))
                         }
@@ -232,7 +235,7 @@ fun PerformanceProfileEditorDialog(
                 Text(stringResource(R.string.delete_performance_profile_confirmation, name))
             },
             confirmButton = {
-                TextButton(onClick = onDelete) {
+                TextButton(onClick = onDelete, shapes = ButtonDefaults.shapes()) {
                     Text(
                         text = stringResource(R.string.delete),
                         color = MaterialTheme.colorScheme.error,
@@ -240,7 +243,10 @@ fun PerformanceProfileEditorDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDelete = false }) {
+                TextButton(
+                    onClick = { showDelete = false },
+                    shapes = ButtonDefaults.shapes(),
+                ) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -264,8 +270,7 @@ private fun FrequencyPolicyEditor(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = formatCpuRange(policy.cpuIds),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMediumEmphasized,
                 )
                 Text(
                     text = stringResource(R.string.performance_policy_number, policy.id),

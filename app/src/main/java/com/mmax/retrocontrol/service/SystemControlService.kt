@@ -70,11 +70,31 @@ class SystemControlService : Service() {
         const val ACTION_UPDATE = "com.mmax.retrocontrol.UPDATE"
         const val ACTION_SET_PROJECTION_INTENT =
             "com.mmax.retrocontrol.SET_PROJECTION_INTENT"
+        private const val ACTION_PREVIEW_JOYSTICK_PROFILE =
+            "com.mmax.retrocontrol.PREVIEW_JOYSTICK_PROFILE"
+        private const val ACTION_STOP_JOYSTICK_PROFILE_PREVIEW =
+            "com.mmax.retrocontrol.STOP_JOYSTICK_PROFILE_PREVIEW"
         const val EXTRA_PROJECTION_INTENT = "projection_intent"
+        private const val EXTRA_JOYSTICK_PROFILE_ID = "joystick_profile_id"
 
         fun startOrUpdate(context: Context) {
             context.startForegroundService(
                 Intent(context, SystemControlService::class.java).setAction(ACTION_UPDATE)
+            )
+        }
+
+        fun previewJoystickProfile(context: Context, profileId: String) {
+            context.startForegroundService(
+                Intent(context, SystemControlService::class.java)
+                    .setAction(ACTION_PREVIEW_JOYSTICK_PROFILE)
+                    .putExtra(EXTRA_JOYSTICK_PROFILE_ID, profileId)
+            )
+        }
+
+        fun stopJoystickProfilePreview(context: Context) {
+            context.startForegroundService(
+                Intent(context, SystemControlService::class.java)
+                    .setAction(ACTION_STOP_JOYSTICK_PROFILE_PREVIEW)
             )
         }
     }
@@ -99,6 +119,9 @@ class SystemControlService : Service() {
 
     @Volatile
     private var joystickProfile: JoystickProfile? = null
+
+    @Volatile
+    private var previewJoystickProfileId: String? = null
 
     @Volatile
     private var configRevision = 0L
@@ -224,6 +247,14 @@ class SystemControlService : Service() {
                     joystickEffects.setMediaProjectionIntent(token)
                 }
             }
+            ACTION_PREVIEW_JOYSTICK_PROFILE -> {
+                previewJoystickProfileId = intent.getStringExtra(EXTRA_JOYSTICK_PROFILE_ID)
+                loadJoystickPreferences(force = true)
+            }
+            ACTION_STOP_JOYSTICK_PROFILE_PREVIEW -> {
+                previewJoystickProfileId = null
+                loadJoystickPreferences(force = true)
+            }
         }
         return START_STICKY
     }
@@ -257,11 +288,13 @@ class SystemControlService : Service() {
     }
 
     private fun loadJoystickPreferences(force: Boolean = false) {
-        joystickProfile = JoystickProfilePreferences.resolveEffectiveProfile(
-            prefs = prefs,
-            foregroundPackageName = foregroundPackageName,
-            foregroundIsGame = AppProfilePreferences.isGame(this, foregroundPackageName),
-        )
+        val catalog = JoystickProfilePreferences.load(prefs)
+        joystickProfile = previewJoystickProfileId?.let(catalog::profile)
+            ?: JoystickProfilePreferences.resolveEffectiveProfile(
+                prefs = prefs,
+                foregroundPackageName = foregroundPackageName,
+                foregroundIsGame = AppProfilePreferences.isGame(this, foregroundPackageName),
+            )
         joystickEffects.apply(joystickProfile, force = force)
     }
 

@@ -37,6 +37,9 @@ object AppProfilePreferences {
         val normalized = decoded.mapValues { (_, profile) ->
             profile.copy(
                 presetId = profile.presetId?.takeIf(availablePresetIds::contains),
+                fanCurveId = profile.fanCurveId?.takeIf(availableFanCurveIds::contains),
+                joystickId = profile.joystickId
+                    ?.takeIf(availableJoystickProfileIds::contains),
                 performanceProfileId = if (availablePerformanceProfileIds == null) {
                     profile.performanceProfileId
                 } else {

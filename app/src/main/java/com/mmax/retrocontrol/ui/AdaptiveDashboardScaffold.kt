@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -44,10 +43,12 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
@@ -171,10 +172,10 @@ internal fun AdaptiveDashboardScaffold(
     val showTwoControlPanes = windowSizeClass.isWidthAtLeastBreakpoint(
         WIDTH_DP_EXPANDED_LOWER_BOUND
     )
-    val navigationSuiteType = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(
-        adaptiveInfo
-    )
-    val isNavigationBar = navigationSuiteType == NavigationSuiteType.NavigationBar
+    val navigationSuiteType = NavigationSuiteScaffoldDefaults.navigationSuiteType(adaptiveInfo)
+    val isNavigationBar = navigationSuiteType == NavigationSuiteType.NavigationBar ||
+        navigationSuiteType == NavigationSuiteType.ShortNavigationBarCompact ||
+        navigationSuiteType == NavigationSuiteType.ShortNavigationBarMedium
 
     NavigationSuiteScaffold(
         navigationItems = {
@@ -493,6 +494,7 @@ private fun ControlModuleRow(
     onClick: () -> Unit,
 ) {
     SegmentedListItem(
+        selected = selected,
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
@@ -501,34 +503,20 @@ private fun ControlModuleRow(
             index = index,
             count = count,
         ),
-        colors = ListItemDefaults.segmentedColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHighest
-            },
-        ),
         trailingContent = {
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = if (selected) {
-                    MaterialTheme.colorScheme.onSecondaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
             )
         },
         content = {
             Text(
                 text = stringResource(control.label),
-                color = if (selected) {
-                    MaterialTheme.colorScheme.onSecondaryContainer
+                style = if (selected) {
+                    MaterialTheme.typography.titleMediumEmphasized
                 } else {
-                    MaterialTheme.colorScheme.onSurface
+                    MaterialTheme.typography.titleMedium
                 },
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             )
         },
     )
@@ -553,7 +541,7 @@ private fun ControlDetailPane(
         modifier = modifier
             .fillMaxSize()
             .focusGroup(),
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.extraLargeIncreased,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         FocusScrollMargin {
@@ -576,7 +564,10 @@ private fun ControlDetailPane(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (onBack != null) {
-                            IconButton(onClick = onBack) {
+                            IconButton(
+                                onClick = onBack,
+                                shapes = IconButtonDefaults.shapes(),
+                            ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = stringResource(R.string.control_back),
@@ -778,7 +769,10 @@ private fun AppListPane(
                 scrollBehavior = scrollBehavior,
                 actions = {
                     Box {
-                        IconButton(onClick = { filterMenuExpanded = true }) {
+                        IconButton(
+                            onClick = { filterMenuExpanded = true },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_filter_alt),
                                 contentDescription = stringResource(R.string.filter_apps),
@@ -793,41 +787,27 @@ private fun AppListPane(
                             expanded = filterMenuExpanded,
                             onDismissRequest = { filterMenuExpanded = false },
                             modifier = Modifier.width(220.dp),
-                            shape = RoundedCornerShape(28.dp),
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         ) {
-                            listOf(
+                            val filters = listOf(
                                 AppListFilter.GAME to R.string.filter_games,
                                 AppListFilter.OTHER to R.string.filter_other,
                                 AppListFilter.ALL to R.string.filter_all,
-                            ).forEach { (filter, label) ->
+                            )
+                            filters.forEachIndexed { index, (filter, label) ->
                                 val selected = appFilter == filter
                                 DropdownMenuItem(
+                                    checked = selected,
                                     text = { Text(stringResource(label)) },
-                                    onClick = {
+                                    onCheckedChange = {
                                         appFilter = filter
                                         filterMenuExpanded = false
                                     },
-                                    modifier = Modifier
-                                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                                        .clip(MaterialTheme.shapes.large)
-                                        .background(
-                                            if (selected) {
-                                                MaterialTheme.colorScheme.secondaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.surfaceContainer
-                                            }
-                                        ),
-                                    leadingIcon = if (selected) {
-                                        {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            )
-                                        }
-                                    } else {
-                                        null
+                                    shapes = MenuDefaults.itemShape(index, filters.size),
+                                    checkedLeadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                        )
                                     },
                                 )
                             }
@@ -845,7 +825,6 @@ private fun AppListPane(
                     .padding(horizontal = 8.dp)
                     .onFocusChanged { searchFieldFocused = it.isFocused },
                 singleLine = true,
-                shape = MaterialTheme.shapes.extraLarge,
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = null)
                 },
@@ -859,6 +838,7 @@ private fun AppListPane(
                     .padding(horizontal = 8.dp),
             ) {
                 SegmentedListItem(
+                    selected = selectedApp == DEFAULT_PRESET_APP_KEY,
                     onClick = { onAppSelected(DEFAULT_PRESET_APP_KEY) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -868,21 +848,17 @@ private fun AppListPane(
                         index = 0,
                         count = 1,
                     ),
-                    colors = ListItemDefaults.segmentedColors(
-                        containerColor = if (selectedApp == DEFAULT_PRESET_APP_KEY) {
-                            MaterialTheme.colorScheme.secondaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainerHighest
-                        },
-                    ),
                     trailingContent = {
                         Icon(Icons.Default.ChevronRight, contentDescription = null)
                     },
                     content = {
                         Text(
                             text = stringResource(R.string.app_default_preset),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
+                            style = if (selectedApp == DEFAULT_PRESET_APP_KEY) {
+                                MaterialTheme.typography.titleMediumEmphasized
+                            } else {
+                                MaterialTheme.typography.titleMedium
+                            },
                         )
                     },
                 )
@@ -899,6 +875,7 @@ private fun AppListPane(
                     ) {
                         filteredApps.forEachIndexed { index, app ->
                             SegmentedListItem(
+                                selected = selectedApp == app.packageName,
                                 onClick = { onAppSelected(app.packageName) },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -906,13 +883,6 @@ private fun AppListPane(
                                 shapes = settingsSegmentedShapes(
                                     index = index,
                                     count = filteredApps.size,
-                                ),
-                                colors = ListItemDefaults.segmentedColors(
-                                    containerColor = if (selectedApp == app.packageName) {
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHighest
-                                    },
                                 ),
                                 leadingContent = {
                                     app.icon?.let { bitmap ->
@@ -938,8 +908,11 @@ private fun AppListPane(
                                 content = {
                                     Text(
                                         text = app.label,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
+                                        style = if (selectedApp == app.packageName) {
+                                            MaterialTheme.typography.titleMediumEmphasized
+                                        } else {
+                                            MaterialTheme.typography.titleMedium
+                                        },
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -966,7 +939,7 @@ private fun AppDetailPane(
         modifier = modifier
             .fillMaxSize()
             .focusGroup(),
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.extraLargeIncreased,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         FocusScrollMargin {
@@ -978,7 +951,10 @@ private fun AppDetailPane(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (onBack != null) {
-                        IconButton(onClick = onBack) {
+                        IconButton(
+                            onClick = onBack,
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.control_back),
@@ -1010,8 +986,8 @@ private fun CollapsingTopBar(
     }
     val collapsedFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
     val titleStyle = lerpTextStyle(
-        MaterialTheme.typography.displayMedium,
-        MaterialTheme.typography.titleLarge,
+        MaterialTheme.typography.displayMediumEmphasized,
+        MaterialTheme.typography.titleLargeEmphasized,
         collapsedFraction,
     )
 
@@ -1062,7 +1038,7 @@ private fun PageTitle(
         text = title,
         modifier = modifier,
         color = MaterialTheme.colorScheme.onSurface,
-        style = MaterialTheme.typography.titleLarge,
+        style = MaterialTheme.typography.titleLargeEmphasized,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )

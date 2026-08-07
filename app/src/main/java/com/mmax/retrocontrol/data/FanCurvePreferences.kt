@@ -25,7 +25,11 @@ object FanCurvePreferences {
         val activeId = resolveActiveId(rawSelection, catalog)
         val normalizedSelection = activeId ?: OFF
 
-        if (storedCatalog == null || rawSelection != normalizedSelection) {
+        if (
+            storedCatalog == null ||
+            hasLegacyArchivedField(storedCatalog) ||
+            rawSelection != normalizedSelection
+        ) {
             prefs.edit()
                 .putString(Prefs.FAN_CURVE_CATALOG, encodeCatalog(catalog))
                 .putString(Prefs.FAN_MODE, normalizedSelection)
@@ -110,12 +114,10 @@ object FanCurvePreferences {
     ): FanControlConfig {
         val current = load(prefs)
         if (current.catalog.profile(profileId) == null) return current
-        val catalog = current.catalog.archive(profileId)
-        val activeId = if (current.activeProfileId == profileId) {
-            catalog.visibleProfiles.firstOrNull()?.id
-        } else {
-            current.activeProfileId?.takeIf { catalog.profile(it) != null }
-        }
+        val catalog = current.catalog.remove(profileId)
+        val activeId = current.activeProfileId
+            ?.takeUnless { it == profileId }
+            ?.takeIf { catalog.profile(it) != null }
         val updated = FanControlConfig(catalog = catalog, activeProfileId = activeId)
         persist(prefs, updated)
         return updated
@@ -184,9 +186,12 @@ object FanCurvePreferences {
             "CUSTOM" -> BuiltInFanCurve.LEGACY_CUSTOM.id
             else -> raw
         }
-        return catalog.profile(migratedId)?.id
-            ?: catalog.profile(BuiltInFanCurve.NORMAL.id)?.id
-            ?: catalog.profiles.firstOrNull()?.id
+        return catalog.profile(migratedId)?.id ?: if (raw == null) {
+            catalog.profile(BuiltInFanCurve.NORMAL.id)?.id
+                ?: catalog.profiles.firstOrNull()?.id
+        } else {
+            null
+        }
     }
 
     private fun migrateLegacyCatalog(prefs: SharedPreferences): FanCurveCatalog {
@@ -236,7 +241,6 @@ object FanCurvePreferences {
                     }
                     .put("points", FanCurveSerializer.serialize(profile.points))
                     .put("defaultPoints", FanCurveSerializer.serialize(profile.defaultPoints))
-                    .put("archived", profile.archived)
             )
         }
         return JSONObject()
@@ -245,6 +249,13 @@ object FanCurvePreferences {
             .toString()
     }
 
+    private fun hasLegacyArchivedField(value: String): Boolean = runCatching {
+        val entries = JSONObject(value).getJSONArray("profiles")
+        (0 until entries.length()).any { index ->
+            entries.getJSONObject(index).has("archived")
+        }
+    }.getOrDefault(false)
+
     private fun decodeCatalog(value: String): FanCurveCatalog? = runCatching {
         val root = JSONObject(value)
         require(root.optInt("version") == FORMAT_VERSION)
@@ -252,6 +263,7 @@ object FanCurvePreferences {
         val profiles = buildList {
             repeat(entries.length()) { index ->
                 val item = entries.getJSONObject(index)
+                if (item.optBoolean("archived", false)) return@repeat
                 val id = item.getString("id")
                 val builtIn = BuiltInFanCurve.fromId(item.optString("builtIn"))
                 val fallback = builtIn?.factoryPoints ?: BuiltInFanCurve.NORMAL.factoryPoints
@@ -265,7 +277,6 @@ object FanCurvePreferences {
                             item.optString("defaultPoints"),
                             fallback,
                         ),
-                        archived = item.optBoolean("archived", false),
                     )
                 )
             }

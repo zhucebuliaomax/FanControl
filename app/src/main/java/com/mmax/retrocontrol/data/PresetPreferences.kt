@@ -21,9 +21,11 @@ object PresetPreferences {
                 else listOf(ControlPresetCatalog.defaultPreset()) + presets
             }
             .map { preset ->
-                if (availablePerformanceProfileIds == null) preset else preset.copy(
-                    performanceProfileId = preset.performanceProfileId
-                        ?.takeIf(availablePerformanceProfileIds::contains),
+                normalizeControlReferences(
+                    preset,
+                    availableFanCurveIds,
+                    availableJoystickProfileIds,
+                    availablePerformanceProfileIds,
                 )
             }
         val catalog = ControlPresetCatalog(normalizedPresets)
@@ -47,6 +49,27 @@ object PresetPreferences {
         }
         return config
     }
+
+    internal fun normalizeControlReferences(
+        preset: ControlPreset,
+        availableFanCurveIds: Set<String>,
+        availableJoystickProfileIds: Set<String>,
+        availablePerformanceProfileIds: Set<String>?,
+    ): ControlPreset = preset.copy(
+        fanCurveId = preset.fanCurveId?.takeIf(availableFanCurveIds::contains),
+        joystickId = preset.joystickId?.takeIf(availableJoystickProfileIds::contains),
+        performanceProfileId = when {
+            availablePerformanceProfileIds == null -> preset.performanceProfileId
+            preset.performanceProfileId == null -> null
+            preset.performanceProfileId in availablePerformanceProfileIds -> {
+                preset.performanceProfileId
+            }
+            BuiltInPerformanceProfile.STOCK.id in availablePerformanceProfileIds -> {
+                BuiltInPerformanceProfile.STOCK.id
+            }
+            else -> null
+        },
+    )
 
     fun select(
         prefs: SharedPreferences,

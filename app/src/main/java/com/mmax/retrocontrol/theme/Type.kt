@@ -64,4 +64,49 @@ val Typography =
     labelLarge = MaterialTypography.labelLarge.copy(fontFamily = GoogleSansFlexFamily),
     labelMedium = MaterialTypography.labelMedium.copy(fontFamily = GoogleSansFlexFamily),
     labelSmall = MaterialTypography.labelSmall.copy(fontFamily = GoogleSansFlexFamily),
+    displayLargeEmphasized = MaterialTypography.displayLargeEmphasized.copy(
+      fontFamily = RoundedGoogleSansFlexFamily,
+    ),
+    displayMediumEmphasized = MaterialTypography.displayMediumEmphasized.copy(
+      fontFamily = RoundedGoogleSansFlexFamily,
+    ),
+    displaySmallEmphasized = MaterialTypography.displaySmallEmphasized.copy(
+      fontFamily = RoundedGoogleSansFlexFamily,
+    ),
+    headlineLargeEmphasized = MaterialTypography.headlineLargeEmphasized.copy(
+      fontFamily = RoundedGoogleSansFlexFamily,
+    ),
+    headlineMediumEmphasized = MaterialTypography.headlineMediumEmphasized.copy(
+      fontFamily = RoundedGoogleSansFlexFamily,
+    ),
+    headlineSmallEmphasized = MaterialTypography.headlineSmallEmphasized.copy(
+      fontFamily = RoundedGoogleSansFlexFamily,
+    ),
+    titleLargeEmphasized = MaterialTypography.titleLargeEmphasized.copy(
+      fontFamily = RoundedGoogleSansFlexFamily,
+    ),
+    titleMediumEmphasized = MaterialTypography.titleMediumEmphasized.copy(
+      fontFamily = RoundedGoogleSansFlexFamily,
+    ),
+    titleSmallEmphasized = MaterialTypography.titleSmallEmphasized.copy(
+      fontFamily = RoundedGoogleSansFlexFamily,
+    ),
+    bodyLargeEmphasized = MaterialTypography.bodyLargeEmphasized.copy(
+      fontFamily = GoogleSansFlexFamily,
+    ),
+    bodyMediumEmphasized = MaterialTypography.bodyMediumEmphasized.copy(
+      fontFamily = GoogleSansFlexFamily,
+    ),
+    bodySmallEmphasized = MaterialTypography.bodySmallEmphasized.copy(
+      fontFamily = GoogleSansFlexFamily,
+    ),
+    labelLargeEmphasized = MaterialTypography.labelLargeEmphasized.copy(
+      fontFamily = GoogleSansFlexFamily,
+    ),
+    labelMediumEmphasized = MaterialTypography.labelMediumEmphasized.copy(
+      fontFamily = GoogleSansFlexFamily,
+    ),
+    labelSmallEmphasized = MaterialTypography.labelSmallEmphasized.copy(
+      fontFamily = GoogleSansFlexFamily,
+    ),
   )

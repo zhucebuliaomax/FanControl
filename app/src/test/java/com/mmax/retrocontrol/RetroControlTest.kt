@@ -1,6 +1,7 @@
 package com.mmax.retrocontrol
 
 import com.mmax.retrocontrol.data.BuiltInFanCurve
+import com.mmax.retrocontrol.data.BuiltInPerformanceProfile
 import com.mmax.retrocontrol.data.FanCurveCatalog
 import com.mmax.retrocontrol.data.FanCurvePoint
 import com.mmax.retrocontrol.data.FanCurveProfile
@@ -11,6 +12,7 @@ import com.mmax.retrocontrol.data.ControlPresetConfig
 import com.mmax.retrocontrol.data.FanSelectionConfig
 import com.mmax.retrocontrol.data.FanSelectionPreferences
 import com.mmax.retrocontrol.data.FanSelectionSource
+import com.mmax.retrocontrol.data.PresetPreferences
 import com.mmax.retrocontrol.hardware.FanResponseController
 import com.mmax.retrocontrol.hardware.ThermalReading
 import com.mmax.retrocontrol.hardware.ThermalSnapshot
@@ -89,14 +91,32 @@ class RetroControlTest {
     }
 
     @Test
-    fun archivedControl_isHiddenButStillResolvable() {
-        val catalog = FanCurveCatalog().archive(BuiltInFanCurve.NORMAL.id)
+    fun removedControl_isNoLongerResolvable() {
+        val catalog = FanCurveCatalog().remove(BuiltInFanCurve.NORMAL.id)
 
-        assertNull(catalog.visibleProfiles.firstOrNull { it.id == BuiltInFanCurve.NORMAL.id })
-        assertEquals(
-            BuiltInFanCurve.NORMAL.id,
-            catalog.profile(BuiltInFanCurve.NORMAL.id)?.id,
+        assertNull(catalog.profile(BuiltInFanCurve.NORMAL.id))
+    }
+
+    @Test
+    fun deletedControls_fallBackToPresetDefaults() {
+        val preset = ControlPreset(
+            id = "game",
+            name = "Game",
+            fanCurveId = "deleted-fan",
+            joystickId = "deleted-joystick",
+            performanceProfileId = "deleted-performance",
         )
+
+        val normalized = PresetPreferences.normalizeControlReferences(
+            preset = preset,
+            availableFanCurveIds = setOf(BuiltInFanCurve.NORMAL.id),
+            availableJoystickProfileIds = setOf("available-joystick"),
+            availablePerformanceProfileIds = setOf(BuiltInPerformanceProfile.STOCK.id),
+        )
+
+        assertNull(normalized.fanCurveId)
+        assertNull(normalized.joystickId)
+        assertEquals(BuiltInPerformanceProfile.STOCK.id, normalized.performanceProfileId)
     }
 
     @Test

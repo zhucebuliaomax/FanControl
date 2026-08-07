@@ -14,8 +14,6 @@ data class JoystickProfile(
     val green: Int = 100,
     val blue: Int = 0,
     val brightness: Int = 198,
-    /** Deleted controls stay archived while existing profiles still reference them. */
-    val archived: Boolean = false,
 ) {
     init {
         require(id.isNotBlank()) { "A joystick profile requires an id" }
@@ -52,14 +50,6 @@ data class JoystickProfileCatalog(
     fun remove(id: String): JoystickProfileCatalog =
         copy(profiles = profiles.filterNot { it.id == id })
 
-    fun archive(id: String): JoystickProfileCatalog = copy(
-        profiles = profiles.map { profile ->
-            if (profile.id == id) profile.copy(archived = true) else profile
-        }
-    )
-
-    val visibleProfiles: List<JoystickProfile>
-        get() = profiles.filterNot(JoystickProfile::archived)
 }
 
 sealed interface JoystickSelectionSource {
@@ -136,7 +126,9 @@ object JoystickProfilePreferences {
         val normalized = JoystickProfileCatalog(
             decoded.profiles.distinctBy(JoystickProfile::id).map(JoystickProfile::normalized)
         )
-        if (stored == null || decoded != normalized) persist(prefs, normalized)
+        if (stored == null || hasLegacyArchivedField(stored) || decoded != normalized) {
+            persist(prefs, normalized)
+        }
         return normalized
     }
 
@@ -182,7 +174,7 @@ object JoystickProfilePreferences {
     }
 
     fun delete(prefs: SharedPreferences, profileId: String): JoystickProfileCatalog {
-        val updated = load(prefs).archive(profileId)
+        val updated = load(prefs).remove(profileId)
         persist(prefs, updated)
         return updated
     }
@@ -244,17 +236,24 @@ object JoystickProfilePreferences {
                     .put("green", profile.green)
                     .put("blue", profile.blue)
                     .put("brightness", profile.brightness)
-                    .put("archived", profile.archived)
             )
         }
         return JSONObject().put("profiles", profiles).toString()
     }
+
+    private fun hasLegacyArchivedField(value: String): Boolean = runCatching {
+        val entries = JSONObject(value).getJSONArray("profiles")
+        (0 until entries.length()).any { index ->
+            entries.getJSONObject(index).has("archived")
+        }
+    }.getOrDefault(false)
 
     private fun decode(serialized: String): JoystickProfileCatalog = runCatching {
         val array = JSONObject(serialized).getJSONArray("profiles")
         val profiles = buildList {
             repeat(array.length()) { index ->
                 val item = array.getJSONObject(index)
+                if (item.optBoolean("archived", false)) return@repeat
                 val id = item.optString("id").takeIf(String::isNotBlank) ?: return@repeat
                 val name = item.optString("name").takeIf(String::isNotBlank) ?: return@repeat
                 val mode = runCatching {
@@ -269,7 +268,6 @@ object JoystickProfilePreferences {
                         green = item.optInt("green", 100),
                         blue = item.optInt("blue", 0),
                         brightness = item.optInt("brightness", 198),
-                        archived = item.optBoolean("archived", false),
                     ).normalized()
                 )
             }

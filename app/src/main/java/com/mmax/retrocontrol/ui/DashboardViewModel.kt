@@ -205,7 +205,23 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun deleteFanCurve(profileId: String) {
         val catalogConfig = FanCurvePreferences.delete(prefs, profileId)
         val curveIds = catalogConfig.catalog.profiles.mapTo(mutableSetOf()) { it.id }
-        PresetPreferences.load(prefs, curveIds, joystickProfileIds())
+        val joystickIds = joystickProfileIds()
+        val performanceIds = mutableState.value.performanceProfiles.profiles
+            .mapTo(mutableSetOf()) { it.id }
+            .takeIf { mutableState.value.performanceProfiles.policies.isNotEmpty() }
+        val presets = PresetPreferences.load(
+            prefs,
+            curveIds,
+            joystickIds,
+            performanceIds,
+        )
+        AppProfilePreferences.load(
+            prefs = prefs,
+            availablePresetIds = presets.catalog.presets.mapTo(mutableSetOf()) { it.id },
+            availableFanCurveIds = curveIds,
+            availableJoystickProfileIds = joystickIds,
+            availablePerformanceProfileIds = performanceIds,
+        )
         val config = FanSelectionPreferences.apply(prefs, catalogConfig)
         loadPreferences()
         SystemControlService.startOrUpdate(getApplication())

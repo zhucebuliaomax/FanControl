@@ -35,9 +35,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -171,7 +173,6 @@ fun AddJoystickProfileButton(
     ExtendedFloatingActionButton(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
         icon = { Icon(Icons.Default.Add, contentDescription = null) },
         text = { Text(stringResource(R.string.joystick_add_profile)) },
     )
@@ -201,26 +202,31 @@ fun JoystickProfileEditorDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .fillMaxHeight(0.88f),
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLargeIncreased,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
             Column(Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = profile.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.headlineSmallEmphasized,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = { showRename = true }) {
+                    IconButton(
+                        onClick = { showRename = true },
+                        shapes = IconButtonDefaults.shapes(),
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_edit_square),
                             contentDescription = stringResource(R.string.joystick_rename_profile),
                         )
                     }
-                    IconButton(onClick = { showDelete = true }) {
+                    IconButton(
+                        onClick = { showDelete = true },
+                        shapes = IconButtonDefaults.shapes(),
+                    ) {
                         Icon(
                             Icons.Default.DeleteForever,
                             contentDescription = stringResource(R.string.joystick_delete_profile),
@@ -297,10 +303,14 @@ fun JoystickProfileEditorDialog(
                         showRename = false
                     },
                     enabled = renameDraft.isNotBlank(),
+                    shapes = ButtonDefaults.shapes(),
                 ) { Text(stringResource(R.string.joystick_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showRename = false }) {
+                TextButton(
+                    onClick = { showRename = false },
+                    shapes = ButtonDefaults.shapes(),
+                ) {
                     Text(stringResource(R.string.joystick_cancel))
                 }
             },
@@ -352,6 +362,7 @@ private fun ColorPresetSetting(
                         green == profile.green && blue == profile.blue
                     val scale by animateFloatAsState(
                         targetValue = if (selected) 1.12f else 1f,
+                        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
                         label = "joystickColorPresetScale",
                     )
                     Box(
@@ -380,7 +391,7 @@ private fun ColorPresetSetting(
                 onClick = onCustomColorClick,
                 enabled = enabled,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.joystick_custom_color_picker)) }
         }
     }
@@ -523,14 +534,15 @@ private fun ColorPickerDialog(
                     )
                     onDismiss()
                 },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.joystick_select)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.joystick_cancel))
             }
         },
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.extraLarge,
     )
 }
 
@@ -585,12 +597,12 @@ private fun DeleteProfileConfirmation(
             Text(stringResource(R.string.joystick_delete_profile_confirmation, name))
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            TextButton(onClick = onConfirm, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.joystick_delete))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.joystick_cancel))
             }
         },

@@ -1,4 +1,7 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class,
+)
 
 package com.mmax.retrocontrol.designsystem
 
@@ -19,22 +22,20 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxState
@@ -52,12 +53,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -120,8 +121,7 @@ fun SettingsSectionTitle(
         text = text,
         modifier = modifier.padding(start = SettingsTokens.sectionTitleInset),
         color = MaterialTheme.colorScheme.primary,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
+        style = MaterialTheme.typography.titleSmallEmphasized,
     )
 }
 
@@ -180,6 +180,31 @@ fun SecondaryMenuListItem(
         onClick = onClick,
         shapes = shapes,
         colors = colors ?: ListItemDefaults.segmentedColors(),
+        trailingContent = trailingContent,
+        supportingContent = supportingContent,
+        content = content,
+        modifier = modifier
+            .fillMaxWidth()
+            .bringIntoViewOnFocus(),
+    )
+}
+
+/** Single-selection row with Material Expressive selected colors, semantics, and shape morphing. */
+@Composable
+fun SecondaryMenuSelectableListItem(
+    selected: Boolean,
+    index: Int,
+    count: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null,
+    supportingContent: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    SegmentedListItem(
+        selected = selected,
+        onClick = onClick,
+        shapes = settingsSegmentedShapes(index, count),
         trailingContent = trailingContent,
         supportingContent = supportingContent,
         content = content,
@@ -256,20 +281,9 @@ private fun secondaryMenuItemShapes(index: Int, count: Int): ListItemShapes =
         count = count,
     )
 
-/**
- * Material 3 currently resolves a one-item segmented list to its 4 dp middle
- * shape. A single item is both the first and last row, so keep all idle corners
- * at the same 16 dp radius used by the outer corners of a segmented group.
- */
 @Composable
-fun settingsSegmentedShapes(index: Int, count: Int): ListItemShapes {
-    val shapes = ListItemDefaults.segmentedShapes(index = index, count = count)
-    return if (count == 1) {
-        shapes.copy(shape = RoundedCornerShape(16.dp))
-    } else {
-        shapes
-    }
-}
+fun settingsSegmentedShapes(index: Int, count: Int): ListItemShapes =
+    ListItemDefaults.segmentedShapes(index = index, count = count)
 
 @Composable
 fun SettingsSegmentScope.SettingsPreferenceRow(
@@ -316,7 +330,7 @@ fun SettingsSegmentScope.SettingsPreferenceRow(
             Text(
                 text = title,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.bodyLargeEmphasized,
             )
         },
     )
@@ -339,114 +353,95 @@ fun SettingsListDialog(
     emptyLabel: String? = null,
     cancelLabel: String,
 ) {
-    Dialog(
+    BasicAlertDialog(
         onDismissRequest = onDismiss,
+        modifier = modifier
+            .width(360.dp)
+            .heightIn(max = 520.dp),
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         androidx.compose.material3.Surface(
-            modifier = modifier
-                .width(300.dp)
-                .heightIn(max = 480.dp),
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
-            Column(Modifier.padding(top = 18.dp, bottom = 8.dp)) {
+            Column(Modifier.padding(24.dp)) {
                 Text(
                     text = title,
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleLargeEmphasized,
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
                 Column(
                     Modifier
                         .weight(1f, fill = false)
                         .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
                 ) {
                     if (itemCount == 0 && emptyLabel != null) {
                         Text(
                             text = emptyLabel,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    val actionCount = itemCount + if (addLabel != null) 1 else 0
                     repeat(itemCount) { index ->
-                        Row(
+                        SegmentedListItem(
+                            onClick = { onItemClick(index) },
+                            shapes = ListItemDefaults.segmentedShapes(index, actionCount),
+                            leadingContent = if (showRadio) {
+                                {
+                                    RadioButton(
+                                        selected = index == selectedIndex,
+                                        onClick = { onSelected(index) },
+                                        modifier = Modifier.focusProperties { canFocus = false },
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                            content = {
+                                Text(
+                                    text = itemLabel(index),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (showRadio) {
-                                Icon(
-                                    imageVector = if (index == selectedIndex) {
-                                        Icons.Default.RadioButtonChecked
-                                    } else {
-                                        Icons.Default.RadioButtonUnchecked
-                                    },
-                                    contentDescription = null,
-                                    tint = if (index == selectedIndex) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                    modifier = Modifier
-                                        .clickable { onSelected(index) }
-                                        .padding(start = 20.dp, end = 12.dp),
-                                )
-                            }
-                            Text(
-                                text = itemLabel(index),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .clickable { onItemClick(index) }
-                                    .padding(
-                                        start = if (showRadio) 0.dp else 20.dp,
-                                        end = 20.dp,
-                                    )
-                                    .wrapContentHeight(Alignment.CenterVertically),
-                            )
-                        }
+                                .bringIntoViewOnFocus(),
+                        )
                     }
                     addLabel?.let { label ->
-                        Row(
+                        SegmentedListItem(
+                            onClick = onAdd,
+                            shapes = ListItemDefaults.segmentedShapes(
+                                index = actionCount - 1,
+                                count = actionCount,
+                            ),
+                            leadingContent = {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                )
+                            },
+                            content = { Text(label, fontWeight = FontWeight.Medium) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(44.dp)
-                                .clickable(onClick = onAdd),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 20.dp, end = 12.dp),
-                            )
-                            Text(
-                                text = label,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium,
-                            )
-                        }
+                                .bringIntoViewOnFocus(),
+                        )
                     }
                 }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp)
-                        .clickable(onClick = onDismiss)
-                        .padding(horizontal = 20.dp),
+                        .padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        text = cancelLabel,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
-                    )
+                    androidx.compose.material3.TextButton(
+                        onClick = onDismiss,
+                        shapes = ButtonDefaults.shapes(),
+                    ) { Text(cancelLabel) }
                 }
             }
         }
@@ -491,10 +486,10 @@ fun SwipeDeleteAction(
         if (isActionVisible) {
             Button(
                 onClick = onClick,
+                shapes = ButtonDefaults.shapes(shape = shape),
                 modifier = Modifier
                     .width(actionWidth)
                     .fillMaxHeight(),
-                shape = shape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
