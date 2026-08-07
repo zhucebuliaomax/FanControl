@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
@@ -250,10 +251,25 @@ fun SwipeToDeleteSecondaryMenuListItem(
 
 @Composable
 private fun secondaryMenuItemShapes(index: Int, count: Int): ListItemShapes =
-    ListItemDefaults.segmentedShapes(
+    settingsSegmentedShapes(
         index = index,
         count = count,
     )
+
+/**
+ * Material 3 currently resolves a one-item segmented list to its 4 dp middle
+ * shape. A single item is both the first and last row, so keep all idle corners
+ * at the same 16 dp radius used by the outer corners of a segmented group.
+ */
+@Composable
+fun settingsSegmentedShapes(index: Int, count: Int): ListItemShapes {
+    val shapes = ListItemDefaults.segmentedShapes(index = index, count = count)
+    return if (count == 1) {
+        shapes.copy(shape = RoundedCornerShape(16.dp))
+    } else {
+        shapes
+    }
+}
 
 @Composable
 fun SettingsSegmentScope.SettingsPreferenceRow(
@@ -272,7 +288,7 @@ fun SettingsSegmentScope.SettingsPreferenceRow(
         modifier = modifier
             .fillMaxWidth()
             .bringIntoViewOnFocus(),
-        shapes = ListItemDefaults.segmentedShapes(
+        shapes = settingsSegmentedShapes(
             index = index,
             count = count,
         ),

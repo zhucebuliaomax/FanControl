@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.data.AppControlProfile
 import com.mmax.retrocontrol.designsystem.SettingsListDialog
+import com.mmax.retrocontrol.designsystem.settingsSegmentedShapes
 import com.mmax.retrocontrol.designsystem.SettingsSectionTitle
 import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
 
@@ -280,7 +281,7 @@ private fun SettingRow(
 ) {
     SegmentedListItem(
         onClick = onClick,
-        shapes = ListItemDefaults.segmentedShapes(
+        shapes = settingsSegmentedShapes(
             index = index,
             count = count,
         ),

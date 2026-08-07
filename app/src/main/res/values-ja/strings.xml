@@ -3,6 +3,8 @@
     <string name="app_name">RetroControl</string>
     <string name="settings_summary">温度連動のファンカーブとテレメトリー</string>
 
+    <string name="control_preset">プロファイル</string>
+
     <string name="app_profile">プロファイル</string>
     <string name="app_profile_preset">プロファイル</string>
     <string name="app_default_preset">デフォルトプロファイル</string>

@@ -90,6 +90,7 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_L
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.designsystem.FocusScrollMargin
 import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
+import com.mmax.retrocontrol.designsystem.settingsSegmentedShapes
 
 private enum class AppListFilter {
     GAME,
@@ -496,7 +497,7 @@ private fun ControlModuleRow(
         modifier = modifier
             .fillMaxWidth()
             .bringIntoViewOnFocus(),
-        shapes = ListItemDefaults.segmentedShapes(
+        shapes = settingsSegmentedShapes(
             index = index,
             count = count,
         ),
@@ -863,7 +864,7 @@ private fun AppListPane(
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
                         .bringIntoViewOnFocus(),
-                    shapes = ListItemDefaults.segmentedShapes(
+                    shapes = settingsSegmentedShapes(
                         index = 0,
                         count = 1,
                     ),
@@ -902,7 +903,7 @@ private fun AppListPane(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .bringIntoViewOnFocus(),
-                                shapes = ListItemDefaults.segmentedShapes(
+                                shapes = settingsSegmentedShapes(
                                     index = index,
                                     count = filteredApps.size,
                                 ),

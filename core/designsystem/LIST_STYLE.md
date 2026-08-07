@@ -4,9 +4,9 @@ Use these rules for settings-style lists throughout the app.
 
 ## Standalone items
 
-- A one-row list uses the same default segmented shapes as every other list.
-- Do not replace its idle shape with `MaterialTheme.shapes.extraLarge`; that makes
-  a single profile card visibly rounder than the outer rows of grouped lists.
+- A one-row list uses `settingsSegmentedShapes`, which keeps all four idle
+  corners at 16 dp. This matches the outer corners of grouped lists and avoids
+  Material 3 resolving a one-row list to the 4 dp middle-item shape.
 
 ## Swipe-to-delete actions
 

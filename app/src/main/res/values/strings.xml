@@ -8,7 +8,7 @@
     <string name="nav_apps">Apps</string>
     <string name="nav_access">Access</string>
     <string name="control_title">Controls</string>
-    <string name="control_preset">Presets</string>
+    <string name="control_preset">Profiles</string>
     <string name="control_fan">Fan curves</string>
     <string name="control_joystick">Joysticks</string>
     <string name="control_button_layout">Button layout</string>

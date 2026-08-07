@@ -56,6 +56,7 @@ import com.mmax.retrocontrol.data.ControlPreset
 import com.mmax.retrocontrol.designsystem.SecondaryMenuList
 import com.mmax.retrocontrol.designsystem.SecondaryMenuListItem
 import com.mmax.retrocontrol.designsystem.SwipeToDeleteSecondaryMenuListItem
+import com.mmax.retrocontrol.designsystem.settingsSegmentedShapes
 import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
 
 data class PresetListItemUiState(
@@ -437,7 +438,7 @@ private fun ProfileControlSetting(
 ) {
     SegmentedListItem(
         onClick = onClick,
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        shapes = settingsSegmentedShapes(index = index, count = count),
         content = { Text(title) },
         supportingContent = summary.takeIf(String::isNotEmpty)?.let { value -> { Text(value) } },
         trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
@@ -453,7 +454,7 @@ private fun EmptyPresetSetting(
 ) {
     SegmentedListItem(
         onClick = {},
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        shapes = settingsSegmentedShapes(index = index, count = count),
         content = { Text(title) },
         modifier = Modifier.fillMaxWidth(),
     )

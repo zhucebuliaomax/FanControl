@@ -8,7 +8,7 @@
     <string name="nav_apps">应用</string>
     <string name="nav_access">授权</string>
     <string name="control_title">控制项</string>
-    <string name="control_preset">预设方案</string>
+    <string name="control_preset">配置</string>
     <string name="control_fan">风扇曲线</string>
     <string name="control_joystick">摇杆</string>
     <string name="control_button_layout">按键布局</string>
