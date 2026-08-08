@@ -127,8 +127,22 @@ class RetroControlTest {
 
         assertNull(normalized.fanCurveId)
         assertNull(normalized.joystickId)
-        assertEquals(ButtonLayoutProfileCatalog.NINTENDO_ID, normalized.buttonLayoutId)
+        assertNull(normalized.buttonLayoutId)
         assertEquals(BuiltInPerformanceProfile.STOCK.id, normalized.performanceProfileId)
+    }
+
+    @Test
+    fun legacyDefaultProfile_withoutFrequencyProfile_migratesToStock() {
+        val normalized = PresetPreferences.normalizeControlReferences(
+            preset = ControlPresetCatalog.defaultPreset().copy(performanceProfileId = null),
+            availableFanCurveIds = setOf(BuiltInFanCurve.NORMAL.id),
+            availableJoystickProfileIds = emptySet(),
+            availablePerformanceProfileIds = setOf(BuiltInPerformanceProfile.STOCK.id),
+            availableButtonLayoutProfileIds = emptySet(),
+        )
+
+        assertEquals(BuiltInPerformanceProfile.STOCK.id, normalized.performanceProfileId)
+        assertNull(normalized.buttonLayoutId)
     }
 
     @Test
@@ -288,40 +302,21 @@ class RetroControlTest {
     }
 
     @Test
-    fun buttonLayoutCatalog_hasStableXboxAndNintendoDefaults() {
+    fun buttonLayoutCatalog_startsWithFollowSystemAndNewLayoutsStayNintendo() {
         val catalog = ButtonLayoutProfileCatalog()
 
-        assertEquals(ButtonLayoutProfileCatalog.NINTENDO_ID, catalog.profiles.first().id)
+        assertTrue(catalog.profiles.isEmpty())
+        assertNull(ControlPresetCatalog.defaultPreset().buttonLayoutId)
         assertEquals(
-            ButtonLayoutProfileCatalog.NINTENDO_ID,
-            ControlPresetCatalog.defaultPreset().buttonLayoutId,
+            BuiltInPerformanceProfile.STOCK.id,
+            ControlPresetCatalog.defaultPreset().performanceProfileId,
         )
         assertEquals(FaceButtonLayout.NINTENDO, ButtonLayoutProfile("custom", "Custom").layout)
-        assertEquals(FaceButtonLayout.XBOX, catalog.profile(ButtonLayoutProfileCatalog.XBOX_ID)?.layout)
-        assertEquals(
-            GamepadTriggerMode.BOTH,
-            catalog.profile(ButtonLayoutProfileCatalog.XBOX_ID)?.triggerMode,
-        )
-        assertEquals(
-            FaceButtonLayout.NINTENDO,
-            catalog.profile(ButtonLayoutProfileCatalog.NINTENDO_ID)?.layout,
-        )
     }
 
     @Test
-    fun builtInButtonLayouts_keepIdentityAndCannotBeRemoved() {
-        val xbox = ButtonLayoutProfile(
-            id = ButtonLayoutProfileCatalog.XBOX_ID,
-            name = "Renamed",
-            layout = FaceButtonLayout.NINTENDO,
-        ).normalized()
-        val catalog = ButtonLayoutProfileCatalog(
-            ButtonLayoutProfileCatalog.factoryProfiles().take(1) + xbox,
-        ).remove(ButtonLayoutProfileCatalog.XBOX_ID)
-
-        assertEquals("Xbox", xbox.name)
-        assertEquals(FaceButtonLayout.XBOX, xbox.layout)
-        assertEquals(xbox, catalog.profile(ButtonLayoutProfileCatalog.XBOX_ID))
+    fun legacyBuiltInButtonLayouts_areNoLongerFactoryProfiles() {
+        assertTrue(ButtonLayoutProfileCatalog.factoryProfiles().isEmpty())
     }
 
     @Test
@@ -339,10 +334,12 @@ class RetroControlTest {
 
     @Test
     fun appButtonLayoutOverride_takesPriorityOverPreset() {
+        val presetButtons = ButtonLayoutProfile("preset-buttons", "Preset")
+        val appButtons = ButtonLayoutProfile("app-buttons", "App")
         val preset = ControlPreset(
             id = "game",
             name = "Game",
-            buttonLayoutId = ButtonLayoutProfileCatalog.XBOX_ID,
+            buttonLayoutId = presetButtons.id,
         )
         val config = ControlPresetConfig(
             catalog = ControlPresetCatalog(listOf(ControlPresetCatalog.defaultPreset(), preset)),
@@ -351,15 +348,15 @@ class RetroControlTest {
         )
         val app = AppControlProfile(
             packageName = "example.game",
-            buttonLayoutId = ButtonLayoutProfileCatalog.NINTENDO_ID,
+            buttonLayoutId = appButtons.id,
         )
 
         assertEquals(
-            ButtonLayoutProfileCatalog.NINTENDO_ID,
+            appButtons.id,
             ButtonLayoutProfilePreferences.resolveTargetProfileId(
                 app,
                 config,
-                ButtonLayoutProfileCatalog(),
+                ButtonLayoutProfileCatalog(listOf(presetButtons, appButtons)),
                 appIsGame = true,
             ),
         )
@@ -403,24 +400,26 @@ class RetroControlTest {
     @Test
     fun buttonLayoutTile_cyclesAllProfilesAndWraps() {
         val catalog = ButtonLayoutProfileCatalog(
-            ButtonLayoutProfileCatalog.factoryProfiles() +
-                ButtonLayoutProfile("custom", "Custom"),
+            listOf(
+                ButtonLayoutProfile("first", "First"),
+                ButtonLayoutProfile("second", "Second"),
+            ),
         )
 
         assertEquals(
-            ButtonLayoutProfileCatalog.NINTENDO_ID,
+            "first",
             ButtonLayoutTilePreferences.nextProfile(catalog, null)?.id,
         )
         assertEquals(
-            "custom",
+            "second",
             ButtonLayoutTilePreferences.nextProfile(
                 catalog,
-                ButtonLayoutProfileCatalog.XBOX_ID,
+                "first",
             )?.id,
         )
         assertEquals(
-            ButtonLayoutProfileCatalog.NINTENDO_ID,
-            ButtonLayoutTilePreferences.nextProfile(catalog, "custom")?.id,
+            "first",
+            ButtonLayoutTilePreferences.nextProfile(catalog, "second")?.id,
         )
     }
 }

@@ -7,8 +7,8 @@ data class ControlPreset(
     /** Null represents Off. */
     val fanCurveId: String? = BuiltInFanCurve.NORMAL.id,
     val joystickId: String? = null,
-    val buttonLayoutId: String? = ButtonLayoutProfileCatalog.NINTENDO_ID,
-    val performanceProfileId: String? = null,
+    val buttonLayoutId: String? = null,
+    val performanceProfileId: String? = BuiltInPerformanceProfile.STOCK.id,
 ) {
     init {
         require(id.isNotBlank()) { "A preset requires an id" }

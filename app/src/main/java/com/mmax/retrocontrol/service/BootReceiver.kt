@@ -34,7 +34,7 @@ class BootReceiver : BroadcastReceiver() {
         OverlayTileService.requestRefresh(appContext)
         ButtonLayoutQuickSettingsTile.requestRefresh(appContext)
 
-        if (!prefs.getBoolean(Prefs.AUTO_START_ENABLED, false)) {
+        if (!prefs.getBoolean(Prefs.AUTO_START_ENABLED, true)) {
             FanCurvePreferences.select(prefs, null)
             FanQuickSettingsTile.requestRefresh(appContext)
             Log.i(TAG, "Boot detected — automatic start is disabled")

@@ -102,10 +102,8 @@ data class ButtonLayoutProfileCatalog(
         const val NINTENDO_ID = "button-layout-nintendo"
         val factoryIds: Set<String> = setOf(XBOX_ID, NINTENDO_ID)
 
-        fun factoryProfiles(): List<ButtonLayoutProfile> = listOf(
-            ButtonLayoutProfile(NINTENDO_ID, "Nintendo", FaceButtonLayout.NINTENDO),
-            ButtonLayoutProfile(XBOX_ID, "Xbox", FaceButtonLayout.XBOX),
-        )
+        /** Legacy IDs are retained only so old built-in entries can be removed on migration. */
+        fun factoryProfiles(): List<ButtonLayoutProfile> = emptyList()
     }
 }
 
@@ -113,13 +111,12 @@ object ButtonLayoutProfilePreferences {
     fun load(prefs: SharedPreferences): ButtonLayoutProfileCatalog {
         val stored = prefs.getString(Prefs.BUTTON_LAYOUT_PROFILE_CATALOG, null)
         val decoded = stored?.let(::decode) ?: ButtonLayoutProfileCatalog()
-        val decodedProfiles = decoded.profiles.distinctBy(ButtonLayoutProfile::id)
+        val decodedProfiles = decoded.profiles
+            .filterNot { it.id in ButtonLayoutProfileCatalog.factoryIds }
+            .distinctBy(ButtonLayoutProfile::id)
             .map(ButtonLayoutProfile::normalized)
-        val decodedById = decodedProfiles.associateBy(ButtonLayoutProfile::id)
         val normalized = ButtonLayoutProfileCatalog(
-            ButtonLayoutProfileCatalog.factoryProfiles().map { factory ->
-                decodedById[factory.id] ?: factory
-            } + decodedProfiles.filterNot(ButtonLayoutProfile::isBuiltIn),
+            decodedProfiles.filterNot(ButtonLayoutProfile::isBuiltIn),
         )
         if (stored == null || decoded != normalized) persist(prefs, normalized)
         return normalized

@@ -35,10 +35,10 @@ RetroControl 不修改 Retroid 系统设置应用的 SharedPreferences。它只�
 - `FaceButtonLayout` 是布局枚举，其 `sysfsValue` 与驱动 ABI 一一对应。
 - `GamepadButtonMapping` 是可映射按键枚举，不接受任意字符串。
 - `ButtonLayoutProfile` 将布局、M1、M2 和 Trigger mode 组成可命名配置。
-- `ButtonLayoutProfileCatalog` 提供稳定 ID 的 Nintendo/Xbox 初始配置以及增删改查，Nintendo 是默认配置。两个内置配置的名称和 Layout 固定：Nintendo 始终使用 `nintendo`，Xbox 始终使用 `xbox`；它们不能重命名或删除。编辑内置配置时仍显示已选中的 Layout，但该行置灰，只允许修改 M1、M2 和 Trigger mode。用户创建的配置默认使用 Nintendo，可以重命名、删除，并可在 Nintendo/Xbox Layout 之间选择。
+- `ButtonLayoutProfileCatalog` 只保存用户创建的配置。Controls 列表顶部固定显示不可打开、不可删除的 `Follow system`，它对应空引用且不会写入硬件。用户创建的配置仍默认使用 Nintendo，可以重命名、删除，并可在 Nintendo/Xbox Layout 之间选择。旧版内置 Nintendo/Xbox 项会在读取 catalog 时移除。
 - `ButtonLayoutProfilePreferences` 使用 `button_layout_profile_catalog_v1` 保存配置库。
 
-所有 profile 在进入 catalog 前都会归一化名称。M1 与 M2 是互相独立的映射，允许选择相同按键。Xbox/Nintendo 工厂 profile、旧 catalog 和缺失 Trigger mode 的导入数据均使用 `Both`。
+所有 profile 在进入 catalog 前都会归一化名称。M1 与 M2 是互相独立的映射，允许选择相同按键。旧 catalog 和缺失 Trigger mode 的导入数据使用 `Both`。
 
 ## 配置解析优先级
 
@@ -47,9 +47,9 @@ Button Layout 与风扇、摇杆灯和性能配置使用相同的 profile/app �
 1. Quick Settings Tile 明确选择的 Button Layout profile；
 2. 当前前台应用的 `AppControlProfile.buttonLayoutId`；
 3. 当前应用选中的 profile，或对应“游戏/非游戏”默认 profile 的 `ControlPreset.buttonLayoutId`；
-4. 若最终为 `null`，则不管理硬件；已保存的非空失效引用会在加载时回退到 Nintendo。
+4. 若最终为 `null`，则跟随系统、不管理硬件；已保存的非空失效引用也会回到这一状态。
 
-应用覆盖只覆盖 Button Layout 自身，不会复制或改变其他控制项。删除一个用户 Button Layout profile 后，预设和应用中原本明确引用它的 Button Layout 选项会在同一操作内回退到内置 Nintendo；原本为 `null` 的“不管理/跟随 profile”值保持不变。
+应用覆盖只覆盖 Button Layout 自身，不会复制或改变其他控制项。删除一个用户 Button Layout profile 后，预设和应用中原本明确引用它的 Button Layout 选项会在同一操作内回到 `Follow system`；原本为 `null` 的值保持不变。
 
 ## 硬件写入流程
 
@@ -80,7 +80,7 @@ RetroControl 的开机行为仍由原有自动启动设置决定。它不会改�
 
 ## UI 与导入导出
 
-Controls 中的 Button Layout 页面是配置库入口，支持创建、重命名、编辑、滑动删除、导入和导出。Preset 编辑器和应用设置页都使用同一配置库；`Unmanaged`/`Follow profile` 项分别对应 preset 的 `null` 和应用覆盖的 `null`。
+Controls 中的 Button Layout 页面是配置库入口，支持创建、重命名、编辑、滑动删除、导入和导出。固定的 `Follow system` 项不可打开或删除。Profile 编辑器和应用设置页都使用同一配置库；`Follow system`/`Follow profile` 分别对应 profile 的 `null` 和应用覆盖的 `null`。
 
 Button Layout Quick Settings Tile 使用 `icon/sports_esports_24dp_E3E3E3_FILL1_wght400_GRAD0_opsz24.svg` 转换后的 Android Vector 图标。Tile 始终为 Active（配置库为空时为 Unavailable），短按按 catalog 顺序循环 Nintendo、Xbox 和全部用户 profile，末尾回到第一项；长按复用 Tile 选择弹窗，只显示当前 catalog 的 profile，不提供关闭项。Tile 选择会作为最高优先级覆盖应用/preset 自动化。
 

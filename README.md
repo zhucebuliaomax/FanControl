@@ -1,6 +1,6 @@
 # ![Icon](./assets/icon.svg) RetroControl
 
-RetroControl is an app for the **rooted** Retroid Pocket 6 that controls the cooling fan, joystick lighting, and CPU performance profiles.
+RetroControl is an app for the **rooted** Retroid Pocket 6 that controls the cooling fan, joystick lighting, and CPU frequency profiles.
 
 **Note:** Although it should work on other similar devices, it has only been tested on the RP6 running LineageOS 23.
 
@@ -8,7 +8,7 @@ RetroControl is an app for the **rooted** Retroid Pocket 6 that controls the coo
 
 RetroControl comes with three default fan profiles: Quiet, Normal, and Performance. Every profile can be fully customized, saved, or deleted, and you can create as many custom fan curves as you like.
 
-Performance profiles cap each detected CPU cluster through Linux cpufreq sysfs nodes. Stock, Balanced, Efficient, and Battery saver profiles are generated from the frequencies exposed by the running kernel; custom profiles can be assigned to presets or individual apps.
+Frequency profiles cap each detected CPU cluster through Linux cpufreq sysfs nodes. Stock follows the system defaults and is not exportable; Balanced, Eco, and Ultra eco are generated from the frequencies exposed by the running kernel. Custom profiles can be assigned to profiles or individual apps.
 
 ![Fan profiles](./assets/fan%20profiles.png)
 

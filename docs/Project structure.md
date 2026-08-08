@@ -2,7 +2,7 @@
 
 ## Purpose
 
-RetroControl is a root control application for Android handhelds. It reads CPU, GPU, memory, and battery temperatures from sysfs, calculates a target speed from the fan curve selected by the user, and writes the resulting output through a `pwm-fan` PWM node or thermal cooling device. Performance profiles independently cap each detected CPU cpufreq policy through `scaling_max_freq`. On RP6, named button-layout profiles also manage the face-button layout, M1/M2 mappings, and trigger mode.
+RetroControl is a root control application for Android handhelds. It reads CPU, GPU, memory, and battery temperatures from sysfs, calculates a target speed from the fan curve selected by the user, and writes the resulting output through a `pwm-fan` PWM node or thermal cooling device. Frequency profiles independently cap each detected CPU cpufreq policy through `scaling_max_freq`. On RP6, named button-layout profiles also manage the face-button layout, M1/M2 mappings, and trigger mode.
 
 The application does not disable kernel thermal control, change governors or GPU limits, or modify thermal-zone modes. CPU writes are limited to cpufreq minimum/maximum nodes and hardware writes remain isolated from Compose UI so that they are easy to review and adapt.
 
@@ -50,7 +50,7 @@ Application entry points and root-shell management live at the package root:
 5. `FanController` writes to `pwm1` when available and falls back to `cooling_device/cur_state` otherwise.
 6. `TelemetryRepository` provides the same runtime state to the dashboard, notification, and overlay.
 
-Performance control follows a separate event-driven path: `CpuFrequencyController` discovers cpufreq policies through the persistent root shell, `PerformanceProfileResolver` resolves preset and app overrides, and `SystemControlService` writes a new maximum only when the effective profile changes. Selecting Unmanaged after an applied profile restores the detected stock limits.
+Frequency control follows a separate event-driven path: `CpuFrequencyController` discovers cpufreq policies through the persistent root shell, `PerformanceProfileResolver` resolves profile and app overrides, and `SystemControlService` writes a new maximum only when the effective profile changes. Stock represents the detected system limits; it is the default and is omitted from frequency-profile exports.
 
 RP6 button-layout control is also event-driven. `ButtonLayoutProfilePreferences` resolves app and preset references, while `GamepadController` performs serialized, difference-only sysfs writes and read-back verification. See [`Button layout.md`](Button%20layout.md) for the device ABI and lifecycle details.
 

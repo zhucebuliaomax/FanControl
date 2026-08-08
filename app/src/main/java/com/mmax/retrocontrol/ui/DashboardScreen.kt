@@ -2,12 +2,10 @@
 
 package com.mmax.retrocontrol.ui
 
-import android.Manifest
 import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.os.SystemClock
@@ -102,7 +100,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -201,15 +198,6 @@ fun DashboardScreen(
             pendingExportFiles = emptyList()
         }
     }
-    var microphoneGranted by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-                PackageManager.PERMISSION_GRANTED
-        )
-    }
-    val microphonePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted -> microphoneGranted = granted }
     val lifecycleOwner = LocalLifecycleOwner.current
     var editingProfileId by remember { mutableStateOf<String?>(null) }
     var restoreFanCurveFocusId by remember { mutableStateOf<String?>(null) }
@@ -248,7 +236,7 @@ fun DashboardScreen(
     val addJoystickProfileFocusRequester = remember { FocusRequester() }
     val buttonLayoutProfileIds = state.buttonLayoutProfiles.profiles.map { it.id }
     val buttonLayoutProfileFocusRequesters = remember(buttonLayoutProfileIds) {
-        List(buttonLayoutProfileIds.size) { FocusRequester() }
+        List(buttonLayoutProfileIds.size + 1) { FocusRequester() }
     }
     val addButtonLayoutProfileFocusRequester = remember { FocusRequester() }
     val performanceProfileIds = state.performanceProfiles.profiles.map { it.id }
@@ -262,7 +250,7 @@ fun DashboardScreen(
     }
     val addPresetFocusRequester = remember { FocusRequester() }
     val appFocusRequester = remember { FocusRequester() }
-    val authorizationFocusRequesters = remember { List(10) { FocusRequester() } }
+    val authorizationFocusRequesters = remember { List(8) { FocusRequester() } }
     val githubFocusRequester = remember { FocusRequester() }
     val navigationFocusRequesters = remember {
         List(DashboardDestination.entries.size) { FocusRequester() }
@@ -277,9 +265,6 @@ fun DashboardScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 notificationsEnabled = context.areFanNotificationsEnabled()
                 overlayPermissionGranted = Settings.canDrawOverlays(context)
-                microphoneGranted = ContextCompat.checkSelfPermission(
-                    context, Manifest.permission.RECORD_AUDIO,
-                ) == PackageManager.PERMISSION_GRANTED
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -428,7 +413,7 @@ fun DashboardScreen(
             withFrameNanos { }
             buttonLayoutProfileIds.indexOf(restoreId)
                 .takeIf { it >= 0 }
-                ?.let { buttonLayoutProfileFocusRequesters[it].requestFocus() }
+                ?.let { buttonLayoutProfileFocusRequesters[it + 1].requestFocus() }
             restoreButtonLayoutFocusId = null
         }
     }
@@ -441,6 +426,18 @@ fun DashboardScreen(
         onDispose {
             if (profileId != null) {
                 SystemControlService.stopJoystickProfilePreview(context)
+            }
+        }
+    }
+
+    DisposableEffect(editingProfileId, context) {
+        val profileId = editingProfileId
+        if (profileId != null) {
+            SystemControlService.previewFanProfile(context, profileId)
+        }
+        onDispose {
+            if (profileId != null) {
+                SystemControlService.stopFanProfilePreview(context)
             }
         }
     }
@@ -593,21 +590,27 @@ fun DashboardScreen(
         buttonLayoutContent = {
             ButtonLayoutProfilesSection(
                 profiles = state.buttonLayoutProfiles.profiles,
+                followSystemName = unmanagedButtonLayoutName,
                 onProfileSelected = { editingButtonLayoutProfileId = it },
                 onDeleteProfile = vm::deleteButtonLayoutProfile,
+                followSystemModifier = Modifier
+                    .focusRequester(buttonLayoutProfileFocusRequesters[0])
+                    .focusProperties {
+                        up = FocusRequester.Default
+                        down = buttonLayoutProfileFocusRequesters.getOrNull(1)
+                            ?: addButtonLayoutProfileFocusRequester
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
+                    },
                 profileModifier = { index ->
                     Modifier
-                        .focusRequester(buttonLayoutProfileFocusRequesters[index])
+                        .focusRequester(buttonLayoutProfileFocusRequesters[index + 1])
                         .focusProperties {
-                            up = if (index == 0) {
-                                FocusRequester.Default
-                            } else {
-                                buttonLayoutProfileFocusRequesters[index - 1]
-                            }
+                            up = buttonLayoutProfileFocusRequesters[index]
                             down = if (index == buttonLayoutProfileIds.lastIndex) {
                                 addButtonLayoutProfileFocusRequester
                             } else {
-                                buttonLayoutProfileFocusRequesters[index + 1]
+                                buttonLayoutProfileFocusRequesters[index + 2]
                             }
                             left = FocusRequester.Default
                             right = FocusRequester.Default
@@ -726,7 +729,7 @@ fun DashboardScreen(
         },
         performanceAction = {
             ControlTransferFabMenu(
-                addLabel = stringResource(R.string.add_preset),
+                addLabel = stringResource(R.string.add_performance_profile),
                 onAdd = {
                     vm.addPerformanceProfile(
                         resources.getString(R.string.new_performance_profile)
@@ -850,7 +853,6 @@ fun DashboardScreen(
                     rootGranted = hasRoot,
                     overlayPermissionGranted = overlayPermissionGranted,
                     notificationsEnabled = notificationsEnabled,
-                    microphoneGranted = microphoneGranted,
                 ),
                 onTelemetryOverlayClick = {
                     if (!overlayPermissionGranted) {
@@ -878,13 +880,7 @@ fun DashboardScreen(
                 onOpenAppInfo = { context.openAppInfo() },
                 onOpenOverlaySettings = { context.openOverlaySettings() },
                 onOpenNotificationSettings = { context.openFanNotificationSettings() },
-                onRequestMicrophone = {
-                    microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                },
-                onRequestScreenCapture = {
-                    context.startActivity(MediaProjectionActivity.createIntent(context))
-                },
-                telemetryOverlayModifier = Modifier
+                autoStartModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[0])
                     .focusProperties {
                         up = FocusRequester.Default
@@ -892,7 +888,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                autoStartModifier = Modifier
+                rootModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[1])
                     .focusProperties {
                         up = authorizationFocusRequesters[0]
@@ -900,7 +896,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                profileSwitchNotificationsModifier = Modifier
+                kernelSuModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[2])
                     .focusProperties {
                         up = authorizationFocusRequesters[1]
@@ -908,7 +904,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                rootModifier = Modifier
+                telemetryOverlayModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[3])
                     .focusProperties {
                         up = authorizationFocusRequesters[2]
@@ -916,7 +912,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                kernelSuModifier = Modifier
+                overlayModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[4])
                     .focusProperties {
                         up = authorizationFocusRequesters[3]
@@ -932,7 +928,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                overlayModifier = Modifier
+                profileSwitchNotificationsModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[6])
                     .focusProperties {
                         up = authorizationFocusRequesters[5]
@@ -944,22 +940,6 @@ fun DashboardScreen(
                     .focusRequester(authorizationFocusRequesters[7])
                     .focusProperties {
                         up = authorizationFocusRequesters[6]
-                        down = authorizationFocusRequesters[8]
-                        left = FocusRequester.Default
-                        right = FocusRequester.Default
-                    },
-                microphoneModifier = Modifier
-                    .focusRequester(authorizationFocusRequesters[8])
-                    .focusProperties {
-                        up = authorizationFocusRequesters[7]
-                        down = authorizationFocusRequesters[9]
-                        left = FocusRequester.Default
-                        right = FocusRequester.Default
-                    },
-                screenCaptureModifier = Modifier
-                    .focusRequester(authorizationFocusRequesters[9])
-                    .focusProperties {
-                        up = authorizationFocusRequesters[8]
                         down = githubFocusRequester
                         left = FocusRequester.Default
                         right = FocusRequester.Default
@@ -971,7 +951,7 @@ fun DashboardScreen(
                 linkModifier = Modifier
                     .focusRequester(githubFocusRequester)
                     .focusProperties {
-                        up = authorizationFocusRequesters[9]
+                        up = authorizationFocusRequesters[7]
                         down = FocusRequester.Default
                         left = FocusRequester.Default
                         right = FocusRequester.Default
@@ -994,7 +974,9 @@ fun DashboardScreen(
             ExportListKind.BUTTON_LAYOUT -> state.buttonLayoutProfiles.profiles.map {
                 ExportChoice(it.id, it.name)
             }
-            ExportListKind.PERFORMANCE -> state.performanceProfiles.profiles.map {
+            ExportListKind.PERFORMANCE -> state.performanceProfiles.profiles
+                .filterNot { it.isStock }
+                .map {
                 ExportChoice(it.id, it.displayName(context))
             }
         }
@@ -1012,6 +994,7 @@ fun DashboardScreen(
                                 .profile(preset.buttonLayoutId)
                             val performance = state.performanceProfiles
                                 .profile(preset.performanceProfileId)
+                                ?.takeUnless { it.isStock }
                                 ?.let { it.displayName(context) to it }
                             PendingExportFile(
                                 preset.name,
@@ -1039,6 +1022,7 @@ fun DashboardScreen(
                             PendingExportFile(it.name, ControlItemJson.encodeButtonLayout(it))
                         }
                     ExportListKind.PERFORMANCE -> state.performanceProfiles.profiles
+                        .filterNot { it.isStock }
                         .filter { it.id in selectedIds }
                         .map {
                             val name = it.displayName(context)
@@ -1803,13 +1787,14 @@ private fun CurveGraph(
                     } else if (hit >= 0 && hit in points.indices) {
                         onSelectedIndexChanged(hit)
                         points[hit] = positionToPoint(dragStart.position, hit, size)
+                        onCommit()
                         drag(dragStart.id) { change ->
                             if (hit in points.indices) {
                                 points[hit] = positionToPoint(change.position, hit, size)
+                                onCommit()
                                 change.consume()
                             }
                         }
-                        onCommit()
                     }
                 }
             }
@@ -1994,8 +1979,8 @@ private fun ControlPointList(
                                 tempC = value.roundToInt().coerceIn(min, max)
                             )
                             onSelectedIndexChanged(index)
+                            onCommit()
                         },
-                        onValueChangeFinished = onCommit,
                         valueRange = 20f..100f,
                         modifier = Modifier.height(28.dp),
                     )
@@ -2009,8 +1994,8 @@ private fun ControlPointList(
                                     .coerceIn(0, 100)
                             )
                             onSelectedIndexChanged(index)
+                            onCommit()
                         },
-                        onValueChangeFinished = onCommit,
                         valueRange = 0f..100f,
                         steps = 19,
                         modifier = Modifier.height(28.dp),

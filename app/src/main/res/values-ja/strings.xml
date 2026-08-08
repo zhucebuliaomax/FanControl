@@ -5,12 +5,12 @@
 
     <string name="nav_controls">コントロール</string>
     <string name="nav_apps">アプリ</string>
-    <string name="nav_access">アクセス</string>
+    <string name="nav_access">設定</string>
     <string name="control_title">コントロール</string>
     <string name="control_fan">ファンカーブ</string>
     <string name="control_joystick">ジョイスティック</string>
     <string name="control_button_layout">ボタンレイアウト</string>
-    <string name="control_core">パフォーマンスプロファイル</string>
+    <string name="control_core">周波数プロファイル</string>
     <string name="control_back">コントロール一覧に戻る</string>
 
     <string name="control_preset">プロファイル</string>
@@ -23,7 +23,7 @@
     <string name="follow_profile">プロファイルに従う</string>
     <string name="follow_default">デフォルトに従う</string>
     <string name="select_joystick_profile">ジョイスティックプロファイルを選択</string>
-    <string name="select_performance_profile">パフォーマンスプロファイルを選択</string>
+    <string name="select_performance_profile">周波数プロファイルを選択</string>
     <string name="select_button_layout">ボタンレイアウトを選択</string>
     <string name="search_apps">アプリを検索</string>
     <string name="no_apps_found">アプリが見つかりません</string>
@@ -40,19 +40,19 @@
     <string name="delete_preset">プロファイルを削除</string>
     <string name="delete_preset_confirmation">「%1$s」を削除しますか？この操作は元に戻せません。</string>
     <string name="preset_fan_curve">ファンカーブ</string>
-    <string name="preset_performance_profile">パフォーマンスプロファイル</string>
+    <string name="preset_performance_profile">周波数プロファイル</string>
     <string name="follow_preset">プロファイルに従う</string>
     <string name="performance_unmanaged">管理しない</string>
     <string name="performance_stock">標準</string>
     <string name="performance_balanced">バランス</string>
-    <string name="performance_efficient">効率</string>
-    <string name="performance_battery_saver">省電力</string>
+    <string name="performance_efficient">Eco</string>
+    <string name="performance_battery_saver">Ultra eco</string>
     <string name="performance_policies_unavailable">CPU 周波数ポリシーを利用できません。Root 権限を付与して更新してください。</string>
     <string name="performance_policy_number">cpufreq policy%1$d</string>
-    <string name="performance_profile_name">パフォーマンスプロファイル名</string>
-    <string name="new_performance_profile">新しいパフォーマンスプロファイル</string>
-    <string name="add_performance_profile">パフォーマンスプロファイルを追加</string>
-    <string name="delete_performance_profile">パフォーマンスプロファイルを削除</string>
+    <string name="performance_profile_name">周波数プロファイル名</string>
+    <string name="new_performance_profile">新しい周波数プロファイル</string>
+    <string name="add_performance_profile">周波数プロファイルを追加</string>
+    <string name="delete_performance_profile">周波数プロファイルを削除</string>
     <string name="delete_performance_profile_confirmation">「%1$s」を削除しますか？この操作は元に戻せません。</string>
 
     <string name="notification_channel_name">ファン制御</string>
@@ -67,7 +67,7 @@
     <string name="tile_fan_label">ファンカーブ</string>
     <string name="tile_overlay_label">テレメトリー</string>
     <string name="tile_joystick_label">ジョイスティック</string>
-    <string name="tile_performance_label">パフォーマンスプロファイル</string>
+    <string name="tile_performance_label">周波数プロファイル</string>
     <string name="tile_button_layout_label">ボタンレイアウト</string>
     <string name="tile_on">オン</string>
     <string name="tile_off">オフ</string>
@@ -129,7 +129,8 @@
     <string name="delete_button_layout">ボタンレイアウトを削除</string>
     <string name="delete_button_layout_confirmation">「%1$s」を削除しますか？使用中のプロファイルはゲームパッドボタンを管理しなくなります。</string>
     <string name="button_layout_name">ボタンレイアウト名</string>
-    <string name="button_layout_unmanaged">管理しない</string>
+    <string name="button_layout_unmanaged">システムに従う</string>
+    <string name="button_layout_follow_system_summary">システムのボタン設定を使用します</string>
     <string name="button_layout_layout">レイアウト</string>
     <string name="button_layout_m1">M1</string>
     <string name="button_layout_m2">M2</string>

@@ -83,8 +83,13 @@ class SystemControlService : Service() {
             "com.mmax.retrocontrol.PREVIEW_JOYSTICK_PROFILE"
         private const val ACTION_STOP_JOYSTICK_PROFILE_PREVIEW =
             "com.mmax.retrocontrol.STOP_JOYSTICK_PROFILE_PREVIEW"
+        private const val ACTION_PREVIEW_FAN_PROFILE =
+            "com.mmax.retrocontrol.PREVIEW_FAN_PROFILE"
+        private const val ACTION_STOP_FAN_PROFILE_PREVIEW =
+            "com.mmax.retrocontrol.STOP_FAN_PROFILE_PREVIEW"
         const val EXTRA_PROJECTION_INTENT = "projection_intent"
         private const val EXTRA_JOYSTICK_PROFILE_ID = "joystick_profile_id"
+        private const val EXTRA_FAN_PROFILE_ID = "fan_profile_id"
 
         fun startOrUpdate(context: Context) {
             context.startForegroundService(
@@ -104,6 +109,21 @@ class SystemControlService : Service() {
             context.startForegroundService(
                 Intent(context, SystemControlService::class.java)
                     .setAction(ACTION_STOP_JOYSTICK_PROFILE_PREVIEW)
+            )
+        }
+
+        fun previewFanProfile(context: Context, profileId: String) {
+            context.startForegroundService(
+                Intent(context, SystemControlService::class.java)
+                    .setAction(ACTION_PREVIEW_FAN_PROFILE)
+                    .putExtra(EXTRA_FAN_PROFILE_ID, profileId)
+            )
+        }
+
+        fun stopFanProfilePreview(context: Context) {
+            context.startForegroundService(
+                Intent(context, SystemControlService::class.java)
+                    .setAction(ACTION_STOP_FAN_PROFILE_PREVIEW)
             )
         }
     }
@@ -132,6 +152,9 @@ class SystemControlService : Service() {
 
     @Volatile
     private var previewJoystickProfileId: String? = null
+
+    @Volatile
+    private var previewFanProfileId: String? = null
 
     @Volatile
     private var configRevision = 0L
@@ -291,6 +314,14 @@ class SystemControlService : Service() {
                 previewJoystickProfileId = null
                 loadJoystickPreferences(force = true)
             }
+            ACTION_PREVIEW_FAN_PROFILE -> {
+                previewFanProfileId = intent.getStringExtra(EXTRA_FAN_PROFILE_ID)
+                loadFanPreferences()
+            }
+            ACTION_STOP_FAN_PROFILE_PREVIEW -> {
+                previewFanProfileId = null
+                loadFanPreferences()
+            }
         }
         return START_STICKY
     }
@@ -316,12 +347,16 @@ class SystemControlService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun loadFanPreferences() {
-        fanConfig = FanSelectionPreferences.resolveEffectiveConfig(
+        val resolved = FanSelectionPreferences.resolveEffectiveConfig(
             prefs = prefs,
             suppliedFanConfig = FanCurvePreferences.load(prefs),
             foregroundPackageName = foregroundPackageName,
             foregroundIsGame = AppProfilePreferences.isGame(this, foregroundPackageName),
         )
+        fanConfig = previewFanProfileId
+            ?.takeIf { resolved.catalog.profile(it) != null }
+            ?.let { resolved.copy(activeProfileId = it) }
+            ?: resolved
         configRevision++
     }
 

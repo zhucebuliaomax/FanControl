@@ -64,7 +64,7 @@ data class DashboardState(
         enabled = true,
     ),
     val overlayEnabled: Boolean = false,
-    val autoStartEnabled: Boolean = false,
+    val autoStartEnabled: Boolean = true,
     val profileSwitchNotificationsEnabled: Boolean = true,
     val installedApps: List<InstalledAppInfo> = emptyList(),
     val appProfiles: Map<String, AppControlProfile> = emptyMap(),
@@ -167,7 +167,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     buttonLayoutIds,
                 ),
                 overlayEnabled = prefs.getBoolean(Prefs.OVERLAY_ENABLED, false),
-                autoStartEnabled = prefs.getBoolean(Prefs.AUTO_START_ENABLED, false),
+                autoStartEnabled = prefs.getBoolean(Prefs.AUTO_START_ENABLED, true),
                 profileSwitchNotificationsEnabled = prefs.getBoolean(
                     Prefs.PROFILE_SWITCH_NOTIFICATIONS_ENABLED,
                     true,

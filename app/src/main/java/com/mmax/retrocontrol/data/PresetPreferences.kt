@@ -62,17 +62,17 @@ object PresetPreferences {
     ): ControlPreset = preset.copy(
         fanCurveId = preset.fanCurveId?.takeIf(availableFanCurveIds::contains),
         joystickId = preset.joystickId?.takeIf(availableJoystickProfileIds::contains),
-        buttonLayoutId = when {
-            availableButtonLayoutProfileIds == null -> preset.buttonLayoutId
-            preset.buttonLayoutId == null -> null
-            preset.buttonLayoutId in availableButtonLayoutProfileIds -> preset.buttonLayoutId
-            ButtonLayoutProfileCatalog.NINTENDO_ID in availableButtonLayoutProfileIds -> {
-                ButtonLayoutProfileCatalog.NINTENDO_ID
-            }
-            else -> null
+        buttonLayoutId = if (availableButtonLayoutProfileIds == null) {
+            preset.buttonLayoutId
+        } else {
+            preset.buttonLayoutId?.takeIf(availableButtonLayoutProfileIds::contains)
         },
         performanceProfileId = when {
             availablePerformanceProfileIds == null -> preset.performanceProfileId
+            preset.performanceProfileId == null && preset.isDefault &&
+                BuiltInPerformanceProfile.STOCK.id in availablePerformanceProfileIds -> {
+                BuiltInPerformanceProfile.STOCK.id
+            }
             preset.performanceProfileId == null -> null
             preset.performanceProfileId in availablePerformanceProfileIds -> {
                 preset.performanceProfileId

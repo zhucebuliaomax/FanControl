@@ -743,7 +743,7 @@ private fun AppListPane(
             val matchesQuery = normalized.isEmpty() ||
                 app.label.contains(normalized, ignoreCase = true) ||
                 app.packageName.contains(normalized, ignoreCase = true)
-            matchesCategory && matchesQuery
+            matchesQuery && (normalized.isNotEmpty() || matchesCategory)
         }
     }
     BackHandler(enabled = searchFieldFocused) {

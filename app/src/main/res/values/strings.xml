@@ -5,13 +5,13 @@
 
     <string name="nav_controls">Controls</string>
     <string name="nav_apps">Apps</string>
-    <string name="nav_access">Access</string>
+    <string name="nav_access">Settings</string>
     <string name="control_title">Controls</string>
     <string name="control_preset">Profile</string>
     <string name="control_fan">Fan curve</string>
     <string name="control_joystick">Joystick</string>
     <string name="control_button_layout">Button layout</string>
-    <string name="control_core">Performance profile</string>
+    <string name="control_core">Frequency profile</string>
     <string name="control_back">Back to control modules</string>
     <string name="app_default_preset">Default profile</string>
     <string name="game_profile">Game profile</string>
@@ -33,24 +33,24 @@
     <string name="delete_preset">Delete profile</string>
     <string name="delete_preset_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="preset_fan_curve">Fan curve</string>
-    <string name="preset_performance_profile">Performance profile</string>
+    <string name="preset_performance_profile">Frequency profile</string>
     <string name="performance_unmanaged">Unmanaged</string>
     <string name="performance_stock">Stock</string>
     <string name="performance_balanced">Balanced</string>
-    <string name="performance_efficient">Efficient</string>
-    <string name="performance_battery_saver">Battery saver</string>
+    <string name="performance_efficient">Eco</string>
+    <string name="performance_battery_saver">Ultra eco</string>
     <string name="performance_policies_unavailable">CPU frequency policies are unavailable. Grant root access and refresh.</string>
     <string name="performance_policy_number">cpufreq policy%1$d</string>
-    <string name="performance_profile_name">Performance profile name</string>
-    <string name="new_performance_profile">New performance profile</string>
-    <string name="add_performance_profile">Add performance profile</string>
-    <string name="delete_performance_profile">Delete performance profile</string>
+    <string name="performance_profile_name">Frequency profile name</string>
+    <string name="new_performance_profile">New frequency profile</string>
+    <string name="add_performance_profile">Add frequency profile</string>
+    <string name="delete_performance_profile">Delete frequency profile</string>
     <string name="delete_performance_profile_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="follow_preset">Follow profile</string>
     <string name="follow_profile">Follow profile</string>
     <string name="follow_default">Follow default</string>
     <string name="select_joystick_profile">Select joystick profile</string>
-    <string name="select_performance_profile">Select performance profile</string>
+    <string name="select_performance_profile">Select frequency profile</string>
     <string name="select_button_layout">Select button layout</string>
 
     <string name="notification_channel_name">Fan control</string>
@@ -65,7 +65,7 @@
     <string name="tile_fan_label">Fan curve</string>
     <string name="tile_overlay_label">Telemetry</string>
     <string name="tile_joystick_label">Joysticks</string>
-    <string name="tile_performance_label">Performance profile</string>
+    <string name="tile_performance_label">Frequency profile</string>
     <string name="tile_button_layout_label">Button layout</string>
     <string name="tile_on">On</string>
     <string name="tile_off">Off</string>
@@ -127,7 +127,8 @@
     <string name="delete_button_layout">Delete button layout</string>
     <string name="delete_button_layout_confirmation">Delete “%1$s”? Profiles using it will stop managing gamepad buttons.</string>
     <string name="button_layout_name">Button layout name</string>
-    <string name="button_layout_unmanaged">Unmanaged</string>
+    <string name="button_layout_unmanaged">Follow system</string>
+    <string name="button_layout_follow_system_summary">Use the system button settings</string>
     <string name="button_layout_layout">Layout</string>
     <string name="button_layout_m1">M1</string>
     <string name="button_layout_m2">M2</string>

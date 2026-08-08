@@ -128,7 +128,7 @@ fun AddPerformanceProfileButton(
         onClick = onClick,
         modifier = modifier,
         icon = { Icon(Icons.Default.Add, contentDescription = null) },
-        text = { Text(stringResource(R.string.add_preset)) },
+        text = { Text(stringResource(R.string.add_performance_profile)) },
     )
 }
 

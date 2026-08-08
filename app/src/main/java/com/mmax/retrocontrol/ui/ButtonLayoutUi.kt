@@ -96,11 +96,23 @@ internal val GamepadTriggerMode.labelRes: Int
 @Composable
 fun ButtonLayoutProfilesSection(
     profiles: List<ButtonLayoutProfile>,
+    followSystemName: String,
     onProfileSelected: (String) -> Unit,
     onDeleteProfile: (String) -> Unit,
+    followSystemModifier: Modifier = Modifier,
     profileModifier: (Int) -> Modifier = { Modifier },
 ) {
     SecondaryMenuList {
+        SecondaryMenuListItem(
+            index = 0,
+            count = profiles.size + 1,
+            onClick = {},
+            modifier = followSystemModifier,
+            supportingContent = { Text(stringResource(R.string.button_layout_follow_system_summary)) },
+            content = {
+                Text(followSystemName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            },
+        )
         profiles.forEachIndexed { index, profile ->
             key(profile.id) {
                 var showDelete by remember(profile.id) { mutableStateOf(false) }
@@ -113,8 +125,8 @@ fun ButtonLayoutProfilesSection(
                 )
                 if (profile.isBuiltIn) {
                     SecondaryMenuListItem(
-                        index = index,
-                        count = profiles.size,
+                        index = index + 1,
+                        count = profiles.size + 1,
                         onClick = { onProfileSelected(profile.id) },
                         trailingContent = {
                             Icon(Icons.Default.ChevronRight, contentDescription = null)
@@ -127,8 +139,8 @@ fun ButtonLayoutProfilesSection(
                     )
                 } else {
                     SwipeToDeleteSecondaryMenuListItem(
-                        index = index,
-                        count = profiles.size,
+                        index = index + 1,
+                        count = profiles.size + 1,
                         onClick = { onProfileSelected(profile.id) },
                         onDeleteRequest = { showDelete = true },
                         deleteIcon = Icons.Default.Delete,
