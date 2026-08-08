@@ -1,7 +1,7 @@
 <resources>
     <string name="joystick_off">オフ</string>
     <string name="joystick_off_summary">ジョイスティック照明を無効化</string>
-    <string name="joystick_add_profile">プロファイル</string>
+    <string name="joystick_add_profile">プロファイルを追加</string>
     <string name="joystick_new_profile">新しいプロファイル</string>
     <string name="joystick_delete_profile">プロファイルを削除</string>
     <string name="joystick_delete_profile_confirmation">「%1$s」を削除しますか？</string>

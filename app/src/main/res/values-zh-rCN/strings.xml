@@ -3,7 +3,6 @@
     <string name="app_name">RetroControl</string>
     <string name="settings_summary">基于温度的风扇曲线与实时监控</string>
 
-    <string name="nav_telemetry">遥测</string>
     <string name="nav_controls">控制</string>
     <string name="nav_apps">应用</string>
     <string name="nav_access">授权</string>

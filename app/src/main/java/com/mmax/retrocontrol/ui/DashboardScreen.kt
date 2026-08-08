@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -124,22 +123,15 @@ import com.mmax.retrocontrol.feature.authorization.AuthorizationUiState
 import com.mmax.retrocontrol.feature.fan.FanProfileItemUiState
 import com.mmax.retrocontrol.feature.fan.FanProfileSectionState
 import com.mmax.retrocontrol.feature.fan.FanProfilesSection
-import com.mmax.retrocontrol.feature.fan.FanTelemetrySection
-import com.mmax.retrocontrol.feature.fan.FanTelemetrySectionState
-import com.mmax.retrocontrol.feature.fan.TemperatureTileUiState
 import com.mmax.retrocontrol.feature.joystick.JoystickProfileEditorDialog
 import com.mmax.retrocontrol.feature.joystick.JoystickProfileUiState
 import com.mmax.retrocontrol.feature.joystick.JoystickProfilesSection
 import com.mmax.retrocontrol.feature.joystick.JoystickRgbMode
 import com.mmax.retrocontrol.feature.joystick.R as JoystickR
-import com.mmax.retrocontrol.hardware.TemperatureSummary
-import com.mmax.retrocontrol.hardware.ThermalKind
-import com.mmax.retrocontrol.hardware.ThermalReading
 import com.mmax.retrocontrol.service.SystemControlService
 import com.mmax.retrocontrol.service.MediaProjectionActivity
 import com.mmax.retrocontrol.tile.OverlayPermissionActivity
 import com.mmax.retrocontrol.util.formatFanPercent
-import com.mmax.retrocontrol.util.formatTemperature
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -228,9 +220,8 @@ fun DashboardScreen(
     var restoreButtonLayoutFocusId by remember { mutableStateOf<String?>(null) }
     var editingPerformanceProfileId by remember { mutableStateOf<String?>(null) }
     var restorePerformanceFocusId by remember { mutableStateOf<String?>(null) }
-    var detailKind by remember { mutableStateOf<ThermalKind?>(null) }
     var selectedDestination by rememberSaveable {
-        mutableStateOf(DashboardDestination.TELEMETRY)
+        mutableStateOf(DashboardDestination.CONTROLS)
     }
     var selectedControl by rememberSaveable { mutableStateOf<ControlModule?>(null) }
     var selectedApp by rememberSaveable { mutableStateOf<String?>(null) }
@@ -267,9 +258,7 @@ fun DashboardScreen(
     }
     val addPresetFocusRequester = remember { FocusRequester() }
     val appFocusRequester = remember { FocusRequester() }
-    val overlayFocusRequester = remember { FocusRequester() }
-    val telemetryFocusRequester = remember { FocusRequester() }
-    val authorizationFocusRequesters = remember { List(8) { FocusRequester() } }
+    val authorizationFocusRequesters = remember { List(9) { FocusRequester() } }
     val githubFocusRequester = remember { FocusRequester() }
     val navigationFocusRequesters = remember {
         List(DashboardDestination.entries.size) { FocusRequester() }
@@ -294,7 +283,6 @@ fun DashboardScreen(
     }
 
     val thermal = state.telemetry.thermal
-    val unavailable = stringResource(R.string.not_available)
     val pressBackAgainToExit = stringResource(R.string.press_back_again_to_exit)
     val offName = stringResource(R.string.fan_mode_off)
     val joystickOffName = stringResource(JoystickR.string.joystick_off)
@@ -453,20 +441,6 @@ fun DashboardScreen(
         }
     }
 
-    fun temperatureUi(summary: TemperatureSummary): TemperatureTileUiState =
-        TemperatureTileUiState(
-            average = if (summary.count > 0) {
-                formatTemperature(summary.averageC)
-            } else {
-                unavailable
-            },
-            hottest = if (summary.count > 0) {
-                "${summary.hottest?.name ?: unavailable}  ${formatTemperature(summary.maxC)}"
-            } else {
-                unavailable
-            },
-        )
-
     AdaptiveDashboardScaffold(
         selectedDestination = selectedDestination,
         onDestinationSelected = {
@@ -483,56 +457,6 @@ fun DashboardScreen(
         controlFocusRequesters = controlFocusRequesters,
         appFocusRequester = appFocusRequester,
         emptyDetailFocusRequester = emptyDetailFocusRequester,
-        telemetryContent = {
-            FanTelemetrySection(
-                state = FanTelemetrySectionState(
-                    overlayEnabled = state.overlayEnabled,
-                    overlayPermissionGranted = overlayPermissionGranted,
-                    cpu = temperatureUi(thermal.cpuSummary),
-                    gpu = temperatureUi(thermal.gpuSummary),
-                    memoryTemperature = thermal.ddr?.let { formatTemperature(it.tempC) }
-                        ?: unavailable,
-                    batteryTemperature = thermal.battery?.let { formatTemperature(it.tempC) }
-                        ?: unavailable,
-                ),
-                onOverlayClick = {
-                    if (!overlayPermissionGranted) {
-                        context.startActivity(
-                            Intent(context, OverlayPermissionActivity::class.java)
-                        )
-                    } else {
-                        vm.setOverlayEnabled(!state.overlayEnabled)
-                    }
-                },
-                onOverlayEnabledChange = { checked ->
-                    if (checked && !overlayPermissionGranted) {
-                        context.startActivity(
-                            Intent(context, OverlayPermissionActivity::class.java)
-                        )
-                    } else {
-                        vm.setOverlayEnabled(checked)
-                    }
-                },
-                onCpuClick = { detailKind = ThermalKind.CPU },
-                onGpuClick = { detailKind = ThermalKind.GPU },
-                overlayModifier = Modifier
-                    .focusRequester(overlayFocusRequester)
-                    .focusProperties {
-                        up = FocusRequester.Default
-                        down = telemetryFocusRequester
-                        left = FocusRequester.Default
-                        right = FocusRequester.Default
-                    },
-                telemetryPanelModifier = Modifier
-                    .focusRequester(telemetryFocusRequester)
-                    .focusProperties {
-                        up = overlayFocusRequester
-                        down = FocusRequester.Default
-                        left = FocusRequester.Default
-                        right = FocusRequester.Default
-                    },
-            )
-        },
         fanContent = {
             FanProfilesSection(
                 state = FanProfileSectionState(
@@ -915,12 +839,31 @@ fun DashboardScreen(
         accessContent = {
             AuthorizationManagementSection(
                 state = AuthorizationUiState(
+                    telemetryOverlayEnabled = state.overlayEnabled,
                     autoStartEnabled = state.autoStartEnabled,
                     rootGranted = hasRoot,
                     overlayPermissionGranted = overlayPermissionGranted,
                     notificationsEnabled = notificationsEnabled,
                     microphoneGranted = microphoneGranted,
                 ),
+                onTelemetryOverlayClick = {
+                    if (!overlayPermissionGranted) {
+                        context.startActivity(
+                            Intent(context, OverlayPermissionActivity::class.java)
+                        )
+                    } else {
+                        vm.setOverlayEnabled(!state.overlayEnabled)
+                    }
+                },
+                onTelemetryOverlayEnabledChange = { checked ->
+                    if (checked && !overlayPermissionGranted) {
+                        context.startActivity(
+                            Intent(context, OverlayPermissionActivity::class.java)
+                        )
+                    } else {
+                        vm.setOverlayEnabled(checked)
+                    }
+                },
                 onAutoStartEnabledChange = vm::setAutoStartEnabled,
                 onRefreshRoot = onRefreshRoot,
                 onOpenKernelSu = { context.openKernelSu() },
@@ -933,7 +876,7 @@ fun DashboardScreen(
                 onRequestScreenCapture = {
                     context.startActivity(MediaProjectionActivity.createIntent(context))
                 },
-                autoStartModifier = Modifier
+                telemetryOverlayModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[0])
                     .focusProperties {
                         up = FocusRequester.Default
@@ -941,7 +884,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                rootModifier = Modifier
+                autoStartModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[1])
                     .focusProperties {
                         up = authorizationFocusRequesters[0]
@@ -949,7 +892,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                kernelSuModifier = Modifier
+                rootModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[2])
                     .focusProperties {
                         up = authorizationFocusRequesters[1]
@@ -957,7 +900,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                appInfoModifier = Modifier
+                kernelSuModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[3])
                     .focusProperties {
                         up = authorizationFocusRequesters[2]
@@ -965,7 +908,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                overlayModifier = Modifier
+                appInfoModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[4])
                     .focusProperties {
                         up = authorizationFocusRequesters[3]
@@ -973,7 +916,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                notificationsModifier = Modifier
+                overlayModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[5])
                     .focusProperties {
                         up = authorizationFocusRequesters[4]
@@ -981,7 +924,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                microphoneModifier = Modifier
+                notificationsModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[6])
                     .focusProperties {
                         up = authorizationFocusRequesters[5]
@@ -989,10 +932,18 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                screenCaptureModifier = Modifier
+                microphoneModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[7])
                     .focusProperties {
                         up = authorizationFocusRequesters[6]
+                        down = authorizationFocusRequesters[8]
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
+                    },
+                screenCaptureModifier = Modifier
+                    .focusRequester(authorizationFocusRequesters[8])
+                    .focusProperties {
+                        up = authorizationFocusRequesters[7]
                         down = githubFocusRequester
                         left = FocusRequester.Default
                         right = FocusRequester.Default
@@ -1004,7 +955,7 @@ fun DashboardScreen(
                 linkModifier = Modifier
                     .focusRequester(githubFocusRequester)
                     .focusProperties {
-                        up = authorizationFocusRequesters[7]
+                        up = authorizationFocusRequesters[8]
                         down = FocusRequester.Default
                         left = FocusRequester.Default
                         right = FocusRequester.Default
@@ -1270,100 +1221,6 @@ fun DashboardScreen(
         )
     }
 
-    detailKind?.let { kind ->
-        val readings = when (kind) {
-            ThermalKind.CPU -> thermal.cpu
-            ThermalKind.GPU -> thermal.gpu
-            else -> emptyList()
-        }
-        ThermalDetailsDialog(
-            title = if (kind == ThermalKind.CPU) {
-                stringResource(R.string.cpu)
-            } else {
-                stringResource(R.string.gpu)
-            },
-            readings = readings,
-            onDismiss = { detailKind = null },
-        )
-    }
-}
-
-@Composable
-private fun ThermalDetailsDialog(
-    title: String,
-    readings: List<ThermalReading>,
-    onDismiss: () -> Unit,
-) {
-    val summary = remember(readings) {
-        if (readings.isEmpty()) {
-            TemperatureSummary()
-        } else {
-            val hottest = readings.maxBy { it.tempC }
-            TemperatureSummary(
-                averageC = readings.map { it.tempC }.average(),
-                maxC = hottest.tempC,
-                count = readings.size,
-                hottest = hottest,
-            )
-        }
-    }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.thermal_details_title, title)) },
-        text = {
-            if (readings.isEmpty()) {
-                Text(stringResource(R.string.no_thermal_readings))
-            } else {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 460.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    DetailRow(
-                        stringResource(R.string.thermal_average),
-                        formatTemperature(summary.averageC),
-                    )
-                    DetailRow(
-                        stringResource(R.string.thermal_hottest),
-                        "${summary.hottest?.name}  ${formatTemperature(summary.maxC)}",
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.all_hotspots),
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    readings.forEach { reading ->
-                        DetailRow(reading.name, formatTemperature(reading.tempC))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) {
-                Text(stringResource(R.string.close))
-            }
-        },
-    )
-}
-
-@Composable
-private fun DetailRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(
-            text = label,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Spacer(Modifier.width(16.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
 }
 
 @Composable

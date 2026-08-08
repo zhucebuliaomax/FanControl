@@ -16,6 +16,7 @@ import com.mmax.retrocontrol.designsystem.SettingsSegmentGroup
 import com.mmax.retrocontrol.designsystem.SettingsTokens
 
 data class AuthorizationUiState(
+    val telemetryOverlayEnabled: Boolean,
     val autoStartEnabled: Boolean,
     val rootGranted: Boolean,
     val overlayPermissionGranted: Boolean,
@@ -30,6 +31,8 @@ data class AuthorizationUiState(
 @Composable
 fun AuthorizationManagementSection(
     state: AuthorizationUiState,
+    onTelemetryOverlayClick: () -> Unit,
+    onTelemetryOverlayEnabledChange: (Boolean) -> Unit,
     onAutoStartEnabledChange: (Boolean) -> Unit,
     onRefreshRoot: () -> Unit,
     onOpenKernelSu: () -> Unit,
@@ -39,6 +42,7 @@ fun AuthorizationManagementSection(
     onRequestMicrophone: () -> Unit,
     onRequestScreenCapture: () -> Unit,
     modifier: Modifier = Modifier,
+    telemetryOverlayModifier: Modifier = Modifier,
     autoStartModifier: Modifier = Modifier,
     rootModifier: Modifier = Modifier,
     kernelSuModifier: Modifier = Modifier,
@@ -55,7 +59,28 @@ fun AuthorizationManagementSection(
     SettingsSegmentGroup {
         SettingsPreferenceRow(
             index = 0,
-            count = 8,
+            count = 9,
+            title = stringResource(R.string.authorization_telemetry_overlay),
+            summary = stringResource(
+                if (state.overlayPermissionGranted) {
+                    R.string.authorization_telemetry_overlay_summary
+                } else {
+                    R.string.authorization_telemetry_overlay_permission_missing
+                }
+            ),
+            onClick = onTelemetryOverlayClick,
+            modifier = telemetryOverlayModifier,
+            trailingContent = {
+                Switch(
+                    checked = state.telemetryOverlayEnabled && state.overlayPermissionGranted,
+                    onCheckedChange = onTelemetryOverlayEnabledChange,
+                    modifier = Modifier.focusProperties { canFocus = false },
+                )
+            },
+        )
+        SettingsPreferenceRow(
+            index = 1,
+            count = 9,
             title = stringResource(R.string.authorization_auto_start),
             onClick = { onAutoStartEnabledChange(!state.autoStartEnabled) },
             modifier = autoStartModifier,
@@ -68,8 +93,8 @@ fun AuthorizationManagementSection(
             },
         )
         SettingsPreferenceRow(
-            index = 1,
-            count = 8,
+            index = 2,
+            count = 9,
             title = stringResource(R.string.authorization_root),
             summary = stringResource(
                 if (state.rootGranted) {
@@ -87,8 +112,8 @@ fun AuthorizationManagementSection(
             },
         )
         SettingsPreferenceRow(
-            index = 2,
-            count = 8,
+            index = 3,
+            count = 9,
             title = stringResource(R.string.authorization_kernelsu),
             summary = stringResource(R.string.authorization_kernelsu_summary),
             onClick = onOpenKernelSu,
@@ -96,8 +121,8 @@ fun AuthorizationManagementSection(
             trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
         )
         SettingsPreferenceRow(
-            index = 3,
-            count = 8,
+            index = 4,
+            count = 9,
             title = stringResource(R.string.authorization_app_info),
             summary = stringResource(R.string.authorization_app_info_summary),
             onClick = onOpenAppInfo,
@@ -105,8 +130,8 @@ fun AuthorizationManagementSection(
             trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
         )
         SettingsPreferenceRow(
-            index = 4,
-            count = 8,
+            index = 5,
+            count = 9,
             title = stringResource(R.string.authorization_overlay),
             summary = stringResource(
                 if (state.overlayPermissionGranted) {
@@ -120,8 +145,8 @@ fun AuthorizationManagementSection(
             trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
         )
         SettingsPreferenceRow(
-            index = 5,
-            count = 8,
+            index = 6,
+            count = 9,
             title = stringResource(R.string.authorization_notifications),
             summary = stringResource(
                 if (state.notificationsEnabled) {
@@ -135,8 +160,8 @@ fun AuthorizationManagementSection(
             trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
         )
         SettingsPreferenceRow(
-            index = 6,
-            count = 8,
+            index = 7,
+            count = 9,
             title = stringResource(R.string.authorization_microphone),
             summary = stringResource(
                 if (state.microphoneGranted) {
@@ -154,8 +179,8 @@ fun AuthorizationManagementSection(
             },
         )
         SettingsPreferenceRow(
-            index = 7,
-            count = 8,
+            index = 8,
+            count = 9,
             title = stringResource(R.string.authorization_screen_capture),
             summary = stringResource(R.string.authorization_screen_capture_summary),
             onClick = onRequestScreenCapture,

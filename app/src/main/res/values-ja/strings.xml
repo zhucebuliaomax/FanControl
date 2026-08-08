@@ -3,7 +3,6 @@
     <string name="app_name">RetroControl</string>
     <string name="settings_summary">温度連動のファンカーブとテレメトリー</string>
 
-    <string name="nav_telemetry">テレメトリー</string>
     <string name="nav_controls">コントロール</string>
     <string name="nav_apps">アプリ</string>
     <string name="nav_access">アクセス</string>

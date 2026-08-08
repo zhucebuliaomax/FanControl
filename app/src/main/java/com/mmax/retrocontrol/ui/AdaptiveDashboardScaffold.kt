@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -48,11 +49,11 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -74,6 +75,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.asImageBitmap
@@ -104,11 +106,6 @@ internal enum class DashboardDestination(
     @param:DrawableRes val outlinedIcon: Int,
     @param:DrawableRes val filledIcon: Int,
 ) {
-    TELEMETRY(
-        R.string.nav_telemetry,
-        R.drawable.nav_telemetry_outlined,
-        R.drawable.nav_telemetry_filled,
-    ),
     CONTROLS(
         R.string.nav_controls,
         R.drawable.nav_controls_outlined,
@@ -151,7 +148,6 @@ internal fun AdaptiveDashboardScaffold(
     controlFocusRequesters: List<FocusRequester>,
     appFocusRequester: FocusRequester,
     emptyDetailFocusRequester: FocusRequester,
-    telemetryContent: @Composable () -> Unit,
     fanContent: @Composable () -> Unit,
     fanAction: @Composable () -> Unit,
     joystickContent: @Composable () -> Unit,
@@ -239,11 +235,6 @@ internal fun AdaptiveDashboardScaffold(
                 .background(MaterialTheme.colorScheme.surfaceContainerLow)
         ) {
             when (selectedDestination) {
-                DashboardDestination.TELEMETRY -> DashboardPage(
-                    title = stringResource(R.string.nav_telemetry),
-                    content = telemetryContent,
-                )
-
                 DashboardDestination.CONTROLS -> ControlsPage(
                     selectedControl = selectedControl,
                     onControlSelected = onControlSelected,
@@ -735,7 +726,7 @@ private fun AppListPane(
     modifier: Modifier = Modifier,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    var appFilter by rememberSaveable { mutableStateOf(AppListFilter.ALL) }
+    var appFilter by rememberSaveable { mutableStateOf(AppListFilter.GAME) }
     var filterMenuExpanded by remember { mutableStateOf(false) }
     var searchFieldFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -796,21 +787,43 @@ private fun AppListPane(
                                 AppListFilter.OTHER to R.string.filter_other,
                                 AppListFilter.ALL to R.string.filter_all,
                             )
-                            filters.forEachIndexed { index, (filter, label) ->
+                            filters.forEach { (filter, label) ->
                                 val selected = appFilter == filter
                                 DropdownMenuItem(
-                                    checked = selected,
-                                    text = { Text(stringResource(label)) },
-                                    onCheckedChange = {
+                                    text = {
+                                        Text(
+                                            text = stringResource(label),
+                                            color = if (selected) {
+                                                MaterialTheme.colorScheme.onSecondaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                        )
+                                    },
+                                    onClick = {
                                         appFilter = filter
                                         filterMenuExpanded = false
                                     },
-                                    shapes = MenuDefaults.itemShape(index, filters.size),
-                                    checkedLeadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = null,
-                                        )
+                                    modifier = Modifier
+                                        .padding(horizontal = 8.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(
+                                            if (selected) {
+                                                MaterialTheme.colorScheme.secondaryContainer
+                                            } else {
+                                                Color.Transparent
+                                            }
+                                        ),
+                                    leadingIcon = if (selected) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            )
+                                        }
+                                    } else {
+                                        null
                                     },
                                 )
                             }
@@ -820,7 +833,7 @@ private fun AppListPane(
                 actionsEndPadding = 8.dp,
             )
             Spacer(Modifier.size(8.dp))
-            OutlinedTextField(
+            TextField(
                 value = query,
                 onValueChange = { query = it },
                 modifier = Modifier
@@ -832,6 +845,15 @@ private fun AppListPane(
                     Icon(Icons.Default.Search, contentDescription = null)
                 },
                 placeholder = { Text(stringResource(R.string.search_apps)) },
+                shape = RoundedCornerShape(16.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                ),
             )
             Spacer(Modifier.size(12.dp))
             Column(

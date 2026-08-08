@@ -3,16 +3,15 @@
     <string name="app_name">RetroControl</string>
     <string name="settings_summary">Temperature-based fan curves and telemetry</string>
 
-    <string name="nav_telemetry">Telemetry</string>
     <string name="nav_controls">Controls</string>
     <string name="nav_apps">Apps</string>
     <string name="nav_access">Access</string>
     <string name="control_title">Controls</string>
-    <string name="control_preset">Profiles</string>
-    <string name="control_fan">Fan curves</string>
-    <string name="control_joystick">Joysticks</string>
+    <string name="control_preset">Profile</string>
+    <string name="control_fan">Fan curve</string>
+    <string name="control_joystick">Joystick</string>
     <string name="control_button_layout">Button layout</string>
-    <string name="control_core">Performance profiles</string>
+    <string name="control_core">Performance profile</string>
     <string name="control_back">Back to control modules</string>
     <string name="app_default_preset">Default profile</string>
     <string name="game_profile">Game profile</string>

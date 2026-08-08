@@ -15,14 +15,4 @@
         <item quantity="one">%1$s • %2$d control point</item>
         <item quantity="other">%1$s • %2$d control points</item>
     </plurals>
-    <string name="fanfeature_live_telemetry">Live telemetry</string>
-    <string name="fanfeature_overlay">Telemetry overlay</string>
-    <string name="fanfeature_overlay_summary">Tap the data area to cycle layouts; detailed layout can adjust and preview the active curve</string>
-    <string name="fanfeature_overlay_permission_missing">Permission not granted</string>
-    <string name="fanfeature_cpu">CPU</string>
-    <string name="fanfeature_gpu">GPU</string>
-    <string name="fanfeature_memory">Memory temperature</string>
-    <string name="fanfeature_battery">Battery temperature</string>
-    <string name="fanfeature_average">Avg %1$s</string>
-    <string name="fanfeature_maximum">Max: %1$s</string>
 </resources>
