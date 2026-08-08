@@ -42,6 +42,7 @@ fun DefaultProfileSection(
     profileChoices: List<AppProfileChoice>,
     fanCurveChoices: List<AppProfileChoice>,
     joystickChoices: List<AppProfileChoice>,
+    buttonLayoutChoices: List<AppProfileChoice>,
     performanceChoices: List<AppProfileChoice>,
     onDefaultProfileSelected: (Boolean, String) -> Unit,
     onProfileEdit: (String) -> Unit,
@@ -50,6 +51,8 @@ fun DefaultProfileSection(
     onAddFanCurve: () -> Unit,
     onJoystickEdit: (String) -> Unit,
     onAddJoystick: () -> Unit,
+    onButtonLayoutEdit: (String) -> Unit,
+    onAddButtonLayout: () -> Unit,
     onPerformanceEdit: (String) -> Unit,
     onAddPerformance: () -> Unit,
     modifier: Modifier = Modifier,
@@ -131,8 +134,11 @@ fun DefaultProfileSection(
             )
             DefaultPicker.BUTTON -> ChoiceDialog(
                 title = stringResource(R.string.control_button_layout),
-                choices = emptyList(),
+                choices = buttonLayoutChoices.filter { it.id != null },
                 showRadio = false,
+                addLabel = stringResource(R.string.add_button_layout),
+                onItemClick = { id -> id?.let(onButtonLayoutEdit) },
+                onAdd = onAddButtonLayout,
                 onDismiss = { picker = null },
             )
         }
@@ -145,14 +151,17 @@ fun AppProfileSection(
     selectedProfileName: String,
     selectedFanCurveName: String,
     selectedJoystickProfileName: String,
+    selectedButtonLayoutName: String,
     selectedPerformanceProfileName: String,
     profileChoices: List<AppProfileChoice>,
     fanCurveChoices: List<AppProfileChoice>,
     joystickChoices: List<AppProfileChoice>,
+    buttonLayoutChoices: List<AppProfileChoice>,
     performanceChoices: List<AppProfileChoice>,
     onProfileSelected: (String?) -> Unit,
     onFanCurveSelected: (String?) -> Unit,
     onJoystickSelected: (String?) -> Unit,
+    onButtonLayoutSelected: (String?) -> Unit,
     onPerformanceSelected: (String?) -> Unit,
     onProfileEdit: (String) -> Unit,
     onAddProfile: () -> Unit,
@@ -160,6 +169,8 @@ fun AppProfileSection(
     onAddFanCurve: () -> Unit,
     onJoystickEdit: (String) -> Unit,
     onAddJoystick: () -> Unit,
+    onButtonLayoutEdit: (String) -> Unit,
+    onAddButtonLayout: () -> Unit,
     onPerformanceEdit: (String) -> Unit,
     onAddPerformance: () -> Unit,
     modifier: Modifier = Modifier,
@@ -181,7 +192,7 @@ fun AppProfileSection(
         ControlsCard(
             fanSummary = selectedFanCurveName,
             joystickSummary = selectedJoystickProfileName,
-            buttonSummary = stringResource(R.string.follow_profile),
+            buttonSummary = selectedButtonLayoutName,
             performanceSummary = selectedPerformanceProfileName,
             onFanClick = { picker = AppPicker.FAN },
             onJoystickClick = { picker = AppPicker.JOYSTICK },
@@ -238,9 +249,13 @@ fun AppProfileSection(
             )
             AppPicker.BUTTON -> ChoiceDialog(
                 title = stringResource(R.string.control_button_layout),
-                choices = emptyList(),
-                selectedId = null,
+                choices = buttonLayoutChoices,
+                selectedId = profile?.buttonLayoutId,
                 showRadio = true,
+                addLabel = stringResource(R.string.add_button_layout),
+                onSelected = onButtonLayoutSelected,
+                onItemClick = { id -> id?.let(onButtonLayoutEdit) },
+                onAdd = onAddButtonLayout,
                 onDismiss = { picker = null },
             )
         }

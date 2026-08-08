@@ -65,6 +65,7 @@ data class PresetListItemUiState(
     val isDefault: Boolean,
     val fanCurveName: String,
     val joystickProfileName: String,
+    val buttonLayoutName: String,
     val performanceProfileName: String,
 )
 
@@ -83,8 +84,13 @@ data class PresetPerformanceChoice(
     val name: String,
 )
 
+data class PresetButtonLayoutChoice(
+    val id: String?,
+    val name: String,
+)
+
 private val PresetListItemUiState.summary: String
-    get() = "$fanCurveName · $joystickProfileName · $performanceProfileName"
+    get() = "$fanCurveName · $joystickProfileName · $buttonLayoutName · $performanceProfileName"
 
 @Composable
 fun PresetManagementSection(
@@ -247,6 +253,11 @@ fun PresetEditorDialog(
     onJoystickSelected: (String?) -> Unit,
     onJoystickEdit: (String) -> Unit,
     onAddJoystick: () -> Unit,
+    buttonLayoutName: String,
+    buttonLayoutChoices: List<PresetButtonLayoutChoice>,
+    onButtonLayoutSelected: (String?) -> Unit,
+    onButtonLayoutEdit: (String) -> Unit,
+    onAddButtonLayout: () -> Unit,
     performanceProfileName: String,
     performanceChoices: List<PresetPerformanceChoice>,
     onPerformanceSelected: (String?) -> Unit,
@@ -326,7 +337,7 @@ fun PresetEditorDialog(
                     )
                     ProfileControlSetting(
                         title = stringResource(R.string.control_button_layout),
-                        summary = "",
+                        summary = buttonLayoutName,
                         onClick = { controlPicker = "button" },
                         index = 2,
                         count = 4,
@@ -380,8 +391,13 @@ fun PresetEditorDialog(
             )
             else -> ChoiceDialog(
                 title = stringResource(R.string.control_button_layout),
-                choices = emptyList(),
+                choices = buttonLayoutChoices.map { AppProfileChoice(it.id, it.name) },
+                selectedId = preset.buttonLayoutId,
                 showRadio = true,
+                addLabel = stringResource(R.string.add_button_layout),
+                onSelected = onButtonLayoutSelected,
+                onItemClick = { id -> id?.let(onButtonLayoutEdit) },
+                onAdd = onAddButtonLayout,
                 onDismiss = { controlPicker = null },
             )
         }

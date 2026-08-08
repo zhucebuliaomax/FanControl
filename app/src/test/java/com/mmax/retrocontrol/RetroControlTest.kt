@@ -2,6 +2,14 @@ package com.mmax.retrocontrol
 
 import com.mmax.retrocontrol.data.BuiltInFanCurve
 import com.mmax.retrocontrol.data.BuiltInPerformanceProfile
+import com.mmax.retrocontrol.data.AppControlProfile
+import com.mmax.retrocontrol.data.ButtonLayoutProfile
+import com.mmax.retrocontrol.data.ButtonLayoutProfileCatalog
+import com.mmax.retrocontrol.data.ButtonLayoutProfilePreferences
+import com.mmax.retrocontrol.data.ButtonLayoutTilePreferences
+import com.mmax.retrocontrol.data.FaceButtonLayout
+import com.mmax.retrocontrol.data.GamepadButtonMapping
+import com.mmax.retrocontrol.data.GamepadTriggerMode
 import com.mmax.retrocontrol.data.FanCurveCatalog
 import com.mmax.retrocontrol.data.FanCurvePoint
 import com.mmax.retrocontrol.data.FanCurveProfile
@@ -14,6 +22,7 @@ import com.mmax.retrocontrol.data.FanSelectionPreferences
 import com.mmax.retrocontrol.data.FanSelectionSource
 import com.mmax.retrocontrol.data.PresetPreferences
 import com.mmax.retrocontrol.hardware.FanResponseController
+import com.mmax.retrocontrol.hardware.GamepadController
 import com.mmax.retrocontrol.hardware.ThermalReading
 import com.mmax.retrocontrol.hardware.ThermalSnapshot
 import com.mmax.retrocontrol.hardware.ThermalKind
@@ -104,6 +113,7 @@ class RetroControlTest {
             name = "Game",
             fanCurveId = "deleted-fan",
             joystickId = "deleted-joystick",
+            buttonLayoutId = "deleted-buttons",
             performanceProfileId = "deleted-performance",
         )
 
@@ -112,10 +122,12 @@ class RetroControlTest {
             availableFanCurveIds = setOf(BuiltInFanCurve.NORMAL.id),
             availableJoystickProfileIds = setOf("available-joystick"),
             availablePerformanceProfileIds = setOf(BuiltInPerformanceProfile.STOCK.id),
+            availableButtonLayoutProfileIds = setOf(ButtonLayoutProfileCatalog.XBOX_ID),
         )
 
         assertNull(normalized.fanCurveId)
         assertNull(normalized.joystickId)
+        assertNull(normalized.buttonLayoutId)
         assertEquals(BuiltInPerformanceProfile.STOCK.id, normalized.performanceProfileId)
     }
 
@@ -273,5 +285,120 @@ class RetroControlTest {
         assertEquals(44.75, thermal.cpuSummary.averageC, 0.001)
         assertEquals(47.5, thermal.cpuSummary.maxC, 0.001)
         assertEquals("cpu-1-1", thermal.cpuSummary.hottest?.name)
+    }
+
+    @Test
+    fun buttonLayoutCatalog_hasStableXboxAndNintendoDefaults() {
+        val catalog = ButtonLayoutProfileCatalog()
+
+        assertEquals(FaceButtonLayout.XBOX, catalog.profile(ButtonLayoutProfileCatalog.XBOX_ID)?.layout)
+        assertEquals(
+            GamepadTriggerMode.BOTH,
+            catalog.profile(ButtonLayoutProfileCatalog.XBOX_ID)?.triggerMode,
+        )
+        assertEquals(
+            FaceButtonLayout.NINTENDO,
+            catalog.profile(ButtonLayoutProfileCatalog.NINTENDO_ID)?.layout,
+        )
+    }
+
+    @Test
+    fun duplicateBackButtonMapping_isAllowed() {
+        val profile = ButtonLayoutProfile(
+            id = "buttons",
+            name = "Buttons",
+            m1 = GamepadButtonMapping.START,
+            m2 = GamepadButtonMapping.START,
+        ).normalized()
+
+        assertEquals(GamepadButtonMapping.START, profile.m1)
+        assertEquals(GamepadButtonMapping.START, profile.m2)
+    }
+
+    @Test
+    fun appButtonLayoutOverride_takesPriorityOverPreset() {
+        val preset = ControlPreset(
+            id = "game",
+            name = "Game",
+            buttonLayoutId = ButtonLayoutProfileCatalog.XBOX_ID,
+        )
+        val config = ControlPresetConfig(
+            catalog = ControlPresetCatalog(listOf(ControlPresetCatalog.defaultPreset(), preset)),
+            selectedPresetId = preset.id,
+            selectedNonGamePresetId = preset.id,
+        )
+        val app = AppControlProfile(
+            packageName = "example.game",
+            buttonLayoutId = ButtonLayoutProfileCatalog.NINTENDO_ID,
+        )
+
+        assertEquals(
+            ButtonLayoutProfileCatalog.NINTENDO_ID,
+            ButtonLayoutProfilePreferences.resolveTargetProfileId(
+                app,
+                config,
+                ButtonLayoutProfileCatalog(),
+                appIsGame = true,
+            ),
+        )
+    }
+
+    @Test
+    fun gamepadStateParser_usesDriverValues() {
+        assertEquals(
+            GamepadController.State(
+                FaceButtonLayout.NINTENDO,
+                GamepadButtonMapping.L2,
+                GamepadButtonMapping.RIGHT,
+                GamepadTriggerMode.DIGITAL,
+            ),
+            GamepadController.parseState(listOf("nintendo", "l2", "right", "digital")),
+        )
+    }
+
+    @Test
+    fun gamepadApplyScript_writesBackButtonsBeforeHotpluggingLayout() {
+        val current = GamepadController.State(
+            FaceButtonLayout.XBOX,
+            GamepadButtonMapping.NONE,
+            GamepadButtonMapping.NONE,
+            GamepadTriggerMode.BOTH,
+        )
+        val target = GamepadController.State(
+            FaceButtonLayout.NINTENDO,
+            GamepadButtonMapping.A,
+            GamepadButtonMapping.B,
+            GamepadTriggerMode.DIGITAL,
+        )
+        val lines = GamepadController.buildApplyScript(current, target).lines()
+
+        assertTrue(lines[0].contains("m0_function"))
+        assertTrue(lines[1].contains("m1_function"))
+        assertTrue(lines[2].contains("/triggers"))
+        assertTrue(lines[3].contains("/layout"))
+    }
+
+    @Test
+    fun buttonLayoutTile_cyclesAllProfilesAndWraps() {
+        val catalog = ButtonLayoutProfileCatalog(
+            ButtonLayoutProfileCatalog.factoryProfiles() +
+                ButtonLayoutProfile("custom", "Custom"),
+        )
+
+        assertEquals(
+            ButtonLayoutProfileCatalog.XBOX_ID,
+            ButtonLayoutTilePreferences.nextProfile(catalog, null)?.id,
+        )
+        assertEquals(
+            "custom",
+            ButtonLayoutTilePreferences.nextProfile(
+                catalog,
+                ButtonLayoutProfileCatalog.NINTENDO_ID,
+            )?.id,
+        )
+        assertEquals(
+            ButtonLayoutProfileCatalog.XBOX_ID,
+            ButtonLayoutTilePreferences.nextProfile(catalog, "custom")?.id,
+        )
     }
 }

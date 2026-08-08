@@ -52,6 +52,7 @@
     <string name="follow_default">Follow default</string>
     <string name="select_joystick_profile">Select joystick profile</string>
     <string name="select_performance_profile">Select performance profile</string>
+    <string name="select_button_layout">Select button layout</string>
 
     <string name="notification_channel_name">Fan control</string>
     <string name="notification_channel_description">Shows the active curve, fan percentage, and CPU/GPU temperatures</string>
@@ -61,6 +62,7 @@
     <string name="tile_overlay_label">Telemetry</string>
     <string name="tile_joystick_label">Joysticks</string>
     <string name="tile_performance_label">Performance profile</string>
+    <string name="tile_button_layout_label">Button layout</string>
     <string name="tile_on">On</string>
     <string name="tile_off">Off</string>
 
@@ -115,6 +117,44 @@
     <string name="kernelsu_not_found">KernelSU manager not found</string>
 
     <string name="press_back_again_to_exit">Press Back again to exit</string>
+    <string name="add_button_layout">Add button layout</string>
+    <string name="new_button_layout">New button layout</string>
+    <string name="rename_button_layout">Rename button layout</string>
+    <string name="delete_button_layout">Delete button layout</string>
+    <string name="delete_button_layout_confirmation">Delete “%1$s”? Profiles using it will stop managing gamepad buttons.</string>
+    <string name="button_layout_name">Button layout name</string>
+    <string name="button_layout_unmanaged">Unmanaged</string>
+    <string name="button_layout_layout">Layout</string>
+    <string name="button_layout_m1">M1</string>
+    <string name="button_layout_m2">M2</string>
+    <string name="button_layout_xbox" translatable="false">Xbox</string>
+    <string name="button_layout_nintendo" translatable="false">Nintendo</string>
+    <string name="button_layout_summary">%1$s · M1: %2$s · M2: %3$s · Trigger: %4$s</string>
+    <string name="trigger_mode_title">Trigger mode</string>
+    <string name="trigger_mode_both">Both</string>
+    <string name="trigger_mode_analog">Analog</string>
+    <string name="trigger_mode_digital">Digital</string>
+    <string name="trigger_mode_analog_summary">Linear output follows trigger depth</string>
+    <string name="trigger_mode_digital_summary">On/off output; pressed means 100%</string>
+    <string name="button_mapping_none">None</string>
+    <string name="button_mapping_home">Home</string>
+    <string name="button_mapping_select">Select</string>
+    <string name="button_mapping_start">Start</string>
+    <string name="button_mapping_back">Back</string>
+    <string name="button_mapping_a" translatable="false">A</string>
+    <string name="button_mapping_b" translatable="false">B</string>
+    <string name="button_mapping_x" translatable="false">X</string>
+    <string name="button_mapping_y" translatable="false">Y</string>
+    <string name="button_mapping_l1" translatable="false">L1</string>
+    <string name="button_mapping_l2" translatable="false">L2</string>
+    <string name="button_mapping_l3" translatable="false">L3</string>
+    <string name="button_mapping_r1" translatable="false">R1</string>
+    <string name="button_mapping_r2" translatable="false">R2</string>
+    <string name="button_mapping_r3" translatable="false">R3</string>
+    <string name="button_mapping_down">Down</string>
+    <string name="button_mapping_up">Up</string>
+    <string name="button_mapping_left">Left</string>
+    <string name="button_mapping_right">Right</string>
     <string name="close">Close</string>
     <string name="delete">Delete</string>
     <string name="save">Save</string>

@@ -143,7 +143,7 @@ import com.mmax.retrocontrol.util.formatTemperature
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
-private enum class ExportListKind { PRESET, FAN, JOYSTICK, PERFORMANCE }
+private enum class ExportListKind { PRESET, FAN, JOYSTICK, BUTTON_LAYOUT, PERFORMANCE }
 
 private data class PendingExportFile(
     val itemName: String,
@@ -224,6 +224,8 @@ fun DashboardScreen(
     var restorePresetFocusId by remember { mutableStateOf<String?>(null) }
     var editingJoystickProfileId by remember { mutableStateOf<String?>(null) }
     var restoreJoystickFocusId by remember { mutableStateOf<String?>(null) }
+    var editingButtonLayoutProfileId by remember { mutableStateOf<String?>(null) }
+    var restoreButtonLayoutFocusId by remember { mutableStateOf<String?>(null) }
     var editingPerformanceProfileId by remember { mutableStateOf<String?>(null) }
     var restorePerformanceFocusId by remember { mutableStateOf<String?>(null) }
     var detailKind by remember { mutableStateOf<ThermalKind?>(null) }
@@ -249,6 +251,11 @@ fun DashboardScreen(
         List(joystickProfileIds.size + 1) { FocusRequester() }
     }
     val addJoystickProfileFocusRequester = remember { FocusRequester() }
+    val buttonLayoutProfileIds = state.buttonLayoutProfiles.profiles.map { it.id }
+    val buttonLayoutProfileFocusRequesters = remember(buttonLayoutProfileIds) {
+        List(buttonLayoutProfileIds.size) { FocusRequester() }
+    }
+    val addButtonLayoutProfileFocusRequester = remember { FocusRequester() }
     val performanceProfileIds = state.performanceProfiles.profiles.map { it.id }
     val performanceProfileFocusRequesters = remember(performanceProfileIds) {
         List(performanceProfileIds.size) { FocusRequester() }
@@ -300,6 +307,10 @@ fun DashboardScreen(
     fun joystickProfileName(profileId: String?): String = profileId
         ?.let { state.joystickProfiles.profile(it)?.name }
         ?: joystickOffName
+    val unmanagedButtonLayoutName = stringResource(R.string.button_layout_unmanaged)
+    fun buttonLayoutProfileName(profileId: String?): String = profileId
+        ?.let { state.buttonLayoutProfiles.profile(it)?.name }
+        ?: unmanagedButtonLayoutName
     val unmanagedPerformanceName = stringResource(R.string.performance_unmanaged)
     fun performanceProfileName(profileId: String?): String = profileId
         ?.let { state.performanceProfiles.profile(it)?.displayName(context) }
@@ -323,6 +334,7 @@ fun DashboardScreen(
             isDefault = preset.isDefault,
             fanCurveName = fanCurveName(preset.fanCurveId),
             joystickProfileName = joystickProfileName(preset.joystickId),
+            buttonLayoutName = buttonLayoutProfileName(preset.buttonLayoutId),
             performanceProfileName = performanceProfileName(preset.performanceProfileId),
         )
     }
@@ -337,7 +349,7 @@ fun DashboardScreen(
             add(effectivePreset.name)
             profile?.fanCurveId?.let { add(fanCurveName(it)) }
             profile?.joystickId?.let { add(joystickProfileName(it)) }
-            profile?.buttonLayoutId?.let(::add)
+            profile?.buttonLayoutId?.let { add(buttonLayoutProfileName(it)) }
             profile?.performanceProfileId?.let { add(performanceProfileName(it)) }
         }.joinToString(" · ")
         app.copy(profileSummary = summary)
@@ -414,6 +426,21 @@ fun DashboardScreen(
                 ?: 0
             joystickProfileFocusRequesters[index].requestFocus()
             restoreJoystickFocusId = null
+        }
+    }
+
+    LaunchedEffect(
+        editingButtonLayoutProfileId,
+        restoreButtonLayoutFocusId,
+        buttonLayoutProfileIds,
+    ) {
+        val restoreId = restoreButtonLayoutFocusId
+        if (editingButtonLayoutProfileId == null && restoreId != null) {
+            withFrameNanos { }
+            buttonLayoutProfileIds.indexOf(restoreId)
+                .takeIf { it >= 0 }
+                ?.let { buttonLayoutProfileFocusRequesters[it].requestFocus() }
+            restoreButtonLayoutFocusId = null
         }
     }
 
@@ -638,6 +665,52 @@ fun DashboardScreen(
                     },
             )
         },
+        buttonLayoutContent = {
+            ButtonLayoutProfilesSection(
+                profiles = state.buttonLayoutProfiles.profiles,
+                onProfileSelected = { editingButtonLayoutProfileId = it },
+                onDeleteProfile = vm::deleteButtonLayoutProfile,
+                profileModifier = { index ->
+                    Modifier
+                        .focusRequester(buttonLayoutProfileFocusRequesters[index])
+                        .focusProperties {
+                            up = if (index == 0) {
+                                FocusRequester.Default
+                            } else {
+                                buttonLayoutProfileFocusRequesters[index - 1]
+                            }
+                            down = if (index == buttonLayoutProfileIds.lastIndex) {
+                                addButtonLayoutProfileFocusRequester
+                            } else {
+                                buttonLayoutProfileFocusRequesters[index + 1]
+                            }
+                            left = FocusRequester.Default
+                            right = FocusRequester.Default
+                        }
+                },
+            )
+        },
+        buttonLayoutAction = {
+            ControlTransferFabMenu(
+                addLabel = stringResource(R.string.add_button_layout),
+                onAdd = {
+                    editingButtonLayoutProfileId = vm.addButtonLayoutProfile(
+                        resources.getString(R.string.new_button_layout),
+                    )
+                },
+                onImport = { importItemsLauncher.launch(controlItemsImportIntent()) },
+                onExport = { exportListKind = ExportListKind.BUTTON_LAYOUT },
+                modifier = Modifier
+                    .focusRequester(addButtonLayoutProfileFocusRequester)
+                    .focusProperties {
+                        up = buttonLayoutProfileFocusRequesters.lastOrNull()
+                            ?: FocusRequester.Default
+                        down = FocusRequester.Default
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
+                    },
+            )
+        },
         presetContent = {
             PresetManagementSection(
                 presets = presetItems,
@@ -744,6 +817,9 @@ fun DashboardScreen(
                 joystickChoices = state.joystickProfiles.profiles.map {
                     AppProfileChoice(it.id, it.name)
                 },
+                buttonLayoutChoices = state.buttonLayoutProfiles.profiles.map {
+                    AppProfileChoice(it.id, it.name)
+                },
                 performanceChoices = state.performanceProfiles.profiles.map {
                     AppProfileChoice(it.id, it.displayName(context))
                 },
@@ -763,6 +839,12 @@ fun DashboardScreen(
                 onAddJoystick = {
                     editingJoystickProfileId = vm.addJoystickProfile(
                         resources.getString(JoystickR.string.joystick_new_profile)
+                    )
+                },
+                onButtonLayoutEdit = { editingButtonLayoutProfileId = it },
+                onAddButtonLayout = {
+                    editingButtonLayoutProfileId = vm.addButtonLayoutProfile(
+                        resources.getString(R.string.new_button_layout),
                     )
                 },
                 onPerformanceEdit = { editingPerformanceProfileId = it },
@@ -791,6 +873,9 @@ fun DashboardScreen(
                 selectedJoystickProfileName = profile?.joystickId
                     ?.let(::joystickProfileName)
                     ?: resources.getString(R.string.follow_profile),
+                selectedButtonLayoutName = profile?.buttonLayoutId
+                    ?.let(::buttonLayoutProfileName)
+                    ?: resources.getString(R.string.follow_profile),
                 selectedPerformanceProfileName = profile?.performanceProfileId
                     ?.let(::performanceProfileName)
                     ?: resources.getString(R.string.follow_profile),
@@ -812,6 +897,12 @@ fun DashboardScreen(
                         add(AppProfileChoice(joystickProfile.id, joystickProfile.name))
                     }
                 },
+                buttonLayoutChoices = buildList {
+                    add(AppProfileChoice(null, resources.getString(R.string.follow_profile)))
+                    state.buttonLayoutProfiles.profiles.forEach { buttonLayout ->
+                        add(AppProfileChoice(buttonLayout.id, buttonLayout.name))
+                    }
+                },
                 performanceChoices = buildList {
                     add(AppProfileChoice(null, resources.getString(R.string.follow_profile)))
                     state.performanceProfiles.profiles.forEach { performanceProfile ->
@@ -829,6 +920,7 @@ fun DashboardScreen(
                     if (it != null) onFanCurveSelected(true)
                 },
                 onJoystickSelected = { vm.setAppJoystickProfile(packageName, it) },
+                onButtonLayoutSelected = { vm.setAppButtonLayout(packageName, it) },
                 onPerformanceSelected = { vm.setAppPerformanceProfile(packageName, it) },
                 onProfileEdit = { editingPresetId = it },
                 onAddProfile = {
@@ -842,6 +934,12 @@ fun DashboardScreen(
                 onAddJoystick = {
                     editingJoystickProfileId = vm.addJoystickProfile(
                         resources.getString(JoystickR.string.joystick_new_profile)
+                    )
+                },
+                onButtonLayoutEdit = { editingButtonLayoutProfileId = it },
+                onAddButtonLayout = {
+                    editingButtonLayoutProfileId = vm.addButtonLayoutProfile(
+                        resources.getString(R.string.new_button_layout),
                     )
                 },
                 onPerformanceEdit = { editingPerformanceProfileId = it },
@@ -964,6 +1062,9 @@ fun DashboardScreen(
             ExportListKind.JOYSTICK -> state.joystickProfiles.profiles.map {
                 ExportChoice(it.id, it.name)
             }
+            ExportListKind.BUTTON_LAYOUT -> state.buttonLayoutProfiles.profiles.map {
+                ExportChoice(it.id, it.name)
+            }
             ExportListKind.PERFORMANCE -> state.performanceProfiles.profiles.map {
                 ExportChoice(it.id, it.displayName(context))
             }
@@ -978,6 +1079,8 @@ fun DashboardScreen(
                             val fanCurve = state.fanConfig.catalog.profile(preset.fanCurveId)
                                 ?.let { it.displayName(context) to it }
                             val joystick = state.joystickProfiles.profile(preset.joystickId)
+                            val buttonLayout = state.buttonLayoutProfiles
+                                .profile(preset.buttonLayoutId)
                             val performance = state.performanceProfiles
                                 .profile(preset.performanceProfileId)
                                 ?.let { it.displayName(context) to it }
@@ -987,6 +1090,7 @@ fun DashboardScreen(
                                     preset = preset,
                                     fanCurve = fanCurve,
                                     joystick = joystick,
+                                    buttonLayout = buttonLayout,
                                     performance = performance,
                                 ),
                             )
@@ -1000,6 +1104,11 @@ fun DashboardScreen(
                     ExportListKind.JOYSTICK -> state.joystickProfiles.profiles
                         .filter { it.id in selectedIds }
                         .map { PendingExportFile(it.name, ControlItemJson.encodeJoystick(it)) }
+                    ExportListKind.BUTTON_LAYOUT -> state.buttonLayoutProfiles.profiles
+                        .filter { it.id in selectedIds }
+                        .map {
+                            PendingExportFile(it.name, ControlItemJson.encodeButtonLayout(it))
+                        }
                     ExportListKind.PERFORMANCE -> state.performanceProfiles.profiles
                         .filter { it.id in selectedIds }
                         .map {
@@ -1076,6 +1185,20 @@ fun DashboardScreen(
                     resources.getString(JoystickR.string.joystick_new_profile)
                 )
             },
+            buttonLayoutName = buttonLayoutProfileName(preset.buttonLayoutId),
+            buttonLayoutChoices = buildList {
+                add(PresetButtonLayoutChoice(null, unmanagedButtonLayoutName))
+                state.buttonLayoutProfiles.profiles.forEach { profile ->
+                    add(PresetButtonLayoutChoice(profile.id, profile.name))
+                }
+            },
+            onButtonLayoutSelected = { vm.setPresetButtonLayout(preset.id, it) },
+            onButtonLayoutEdit = { editingButtonLayoutProfileId = it },
+            onAddButtonLayout = {
+                editingButtonLayoutProfileId = vm.addButtonLayoutProfile(
+                    resources.getString(R.string.new_button_layout),
+                )
+            },
             performanceProfileName = performanceProfileName(preset.performanceProfileId),
             performanceChoices = buildList {
                 add(
@@ -1133,6 +1256,27 @@ fun DashboardScreen(
             onDismiss = {
                 restorePerformanceFocusId = profile.id
                 editingPerformanceProfileId = null
+            },
+        )
+    }
+
+    editingButtonLayoutProfileId?.let { profileId ->
+        val profile = state.buttonLayoutProfiles.profile(profileId) ?: return@let
+        ButtonLayoutProfileEditorDialog(
+            profile = profile,
+            onLayoutSelected = { vm.setButtonLayout(profile.id, it) },
+            onM1Selected = { vm.setButtonLayoutM1(profile.id, it) },
+            onM2Selected = { vm.setButtonLayoutM2(profile.id, it) },
+            onTriggerModeSelected = { vm.setButtonLayoutTriggerMode(profile.id, it) },
+            onRename = { vm.renameButtonLayoutProfile(profile.id, it) },
+            onDelete = {
+                vm.deleteButtonLayoutProfile(profile.id)
+                restoreButtonLayoutFocusId = profile.id
+                editingButtonLayoutProfileId = null
+            },
+            onDismiss = {
+                restoreButtonLayoutFocusId = profile.id
+                editingButtonLayoutProfileId = null
             },
         )
     }

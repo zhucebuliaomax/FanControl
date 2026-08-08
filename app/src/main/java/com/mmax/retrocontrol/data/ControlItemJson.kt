@@ -17,6 +17,7 @@ object ControlItemJson {
             val value: ControlPreset,
             val fanCurve: FanCurve? = null,
             val joystick: Joystick? = null,
+            val buttonLayout: ButtonLayout? = null,
             val performance: Performance? = null,
         ) : Item
 
@@ -31,6 +32,11 @@ object ControlItemJson {
             val value: JoystickProfile,
         ) : Item
 
+        data class ButtonLayout(
+            override val name: String,
+            val value: ButtonLayoutProfile,
+        ) : Item
+
         data class Performance(
             override val name: String,
             val maxFrequencies: Map<Int, Int>,
@@ -41,6 +47,7 @@ object ControlItemJson {
         preset: ControlPreset,
         fanCurve: Pair<String, FanCurveProfile>? = null,
         joystick: JoystickProfile? = null,
+        buttonLayout: ButtonLayoutProfile? = null,
         performance: Pair<String, PerformanceProfile>? = null,
     ): String {
         val data = JSONObject()
@@ -52,6 +59,7 @@ object ControlItemJson {
             data.put("fanCurve", encodeFanCurveData(name, profile))
         }
         joystick?.let { data.put("joystick", encodeJoystickData(it)) }
+        buttonLayout?.let { data.put("buttonLayout", encodeButtonLayoutData(it)) }
         performance?.let { (name, profile) ->
             data.put("performance", encodePerformanceData(name, profile))
         }
@@ -68,6 +76,12 @@ object ControlItemJson {
         type = "joystick-profile",
         name = profile.name,
         data = encodeJoystickData(profile),
+    )
+
+    fun encodeButtonLayout(profile: ButtonLayoutProfile): String = root(
+        type = "button-layout-profile",
+        name = profile.name,
+        data = encodeButtonLayoutData(profile),
     )
 
     fun encodePerformance(name: String, profile: PerformanceProfile): String {
@@ -106,6 +120,8 @@ object ControlItemJson {
                     value = value,
                     fanCurve = data.optJSONObject("fanCurve")?.let { decodeFanCurveData(it) },
                     joystick = data.optJSONObject("joystick")?.let { decodeJoystickData(it) },
+                    buttonLayout = data.optJSONObject("buttonLayout")
+                        ?.let { decodeButtonLayoutData(it) },
                     performance = data.optJSONObject("performance")
                         ?.let { decodePerformanceData(it) },
                 )
@@ -114,6 +130,7 @@ object ControlItemJson {
                 decodeFanCurveData(data, name)
             }
             "joystick-profile" -> decodeJoystickData(data, name)
+            "button-layout-profile" -> decodeButtonLayoutData(data, name)
             "performance-profile" -> decodePerformanceData(data, name)
             else -> error("Unsupported control item type")
         }
@@ -140,6 +157,13 @@ object ControlItemJson {
         .put("green", profile.green)
         .put("blue", profile.blue)
         .put("brightness", profile.brightness)
+
+    private fun encodeButtonLayoutData(profile: ButtonLayoutProfile): JSONObject = JSONObject()
+        .put("name", profile.name)
+        .put("layout", profile.layout.sysfsValue)
+        .put("m1", profile.m1.sysfsValue)
+        .put("m2", profile.m2.sysfsValue)
+        .put("triggerMode", profile.triggerMode.sysfsValue)
 
     private fun encodePerformanceData(
         name: String,
@@ -204,6 +228,34 @@ object ControlItemJson {
         }
         require(frequencies.isNotEmpty()) { "A performance profile requires frequencies" }
         return Item.Performance(name, frequencies)
+    }
+
+    private fun decodeButtonLayoutData(
+        data: JSONObject,
+        fallbackName: String? = null,
+    ): Item.ButtonLayout {
+        val name = data.optString("name").trim().take(40)
+            .ifBlank { fallbackName?.trim()?.take(40).orEmpty() }
+            .ifBlank { "Button layout" }
+        val layout = FaceButtonLayout.entries.firstOrNull {
+            it.sysfsValue == data.optString("layout")
+        } ?: error("Unsupported face button layout")
+        val m1 = GamepadButtonMapping.entries.firstOrNull {
+            it.sysfsValue == data.optString("m1", GamepadButtonMapping.NONE.sysfsValue)
+        } ?: error("Unsupported M1 mapping")
+        val m2 = GamepadButtonMapping.entries.firstOrNull {
+            it.sysfsValue == data.optString("m2", GamepadButtonMapping.NONE.sysfsValue)
+        } ?: error("Unsupported M2 mapping")
+        val triggerMode = GamepadTriggerMode.entries.firstOrNull {
+            it.sysfsValue == data.optString(
+                "triggerMode",
+                GamepadTriggerMode.BOTH.sysfsValue,
+            )
+        } ?: error("Unsupported trigger mode")
+        return Item.ButtonLayout(
+            name,
+            ButtonLayoutProfile("imported", name, layout, m1, m2, triggerMode).normalized(),
+        )
     }
 
     private fun encodePoints(points: List<FanCurvePoint>): JSONArray = JSONArray().also { array ->

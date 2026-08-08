@@ -46,6 +46,8 @@ import com.mmax.retrocontrol.MainActivity
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.RootAccessManager
 import com.mmax.retrocontrol.data.FanCurvePreferences
+import com.mmax.retrocontrol.data.ButtonLayoutProfilePreferences
+import com.mmax.retrocontrol.data.ButtonLayoutTilePreferences
 import com.mmax.retrocontrol.data.FanSelectionPreferences
 import com.mmax.retrocontrol.data.FanSelectionSource
 import com.mmax.retrocontrol.data.Prefs
@@ -63,7 +65,7 @@ import com.mmax.retrocontrol.service.SystemControlService
 import com.mmax.retrocontrol.theme.RetroControlTheme
 import androidx.core.content.ContextCompat
 
-/** Routes Quick Settings long presses and renders the fan chooser as a real dialog window. */
+/** Routes Quick Settings long presses and renders the matching chooser as a dialog window. */
 class FanCurveTilePreferencesActivity : ComponentActivity() {
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -95,6 +97,8 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
             JoystickQuickSettingsTile::class.java.name
         val performanceTile = originatingTile()?.className ==
             PerformanceQuickSettingsTile::class.java.name
+        val buttonLayoutTile = originatingTile()?.className ==
+            ButtonLayoutQuickSettingsTile::class.java.name
         setContent {
             RetroControlTheme {
                 val config by remember { mutableStateOf(currentConfig()) }
@@ -126,6 +130,19 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
                         }
                     )
                 }
+                val buttonLayoutCatalog by remember {
+                    mutableStateOf(
+                        ButtonLayoutProfilePreferences.load(
+                            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE),
+                        ),
+                    )
+                }
+                val selectedButtonLayoutId = remember(buttonLayoutCatalog) {
+                    ButtonLayoutTilePreferences.selectedProfileId(
+                        getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE),
+                        buttonLayoutCatalog,
+                    )
+                }
                 val selectedPerformanceProfileId = remember(performanceConfig) {
                     currentPerformanceProfileId(performanceConfig)
                 }
@@ -146,6 +163,7 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
                             text = stringResource(
                                 when {
                                     performanceTile -> R.string.select_performance_profile
+                                    buttonLayoutTile -> R.string.select_button_layout
                                     joystickTile -> R.string.select_joystick_profile
                                     else -> R.string.select_fan_curve
                                 }
@@ -164,6 +182,16 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
                                             selected = selectedPerformanceProfileId == profile.id,
                                             onClick = { selectPerformanceProfile(profile.id) },
                                         )
+                                    )
+                                }
+                            } else if (buttonLayoutTile) {
+                                buttonLayoutCatalog.profiles.forEach { profile ->
+                                    add(
+                                        TileSourceUi(
+                                            name = profile.name,
+                                            selected = selectedButtonLayoutId == profile.id,
+                                            onClick = { selectButtonLayout(profile.id) },
+                                        ),
                                     )
                                 }
                             } else if (joystickTile) {
@@ -325,6 +353,20 @@ class FanCurveTilePreferencesActivity : ComponentActivity() {
             profileId,
         )
         PerformanceQuickSettingsTile.requestRefresh(this)
+        RootAccessManager.ensureRoot {
+            SystemControlService.startOrUpdate(applicationContext)
+            if (!requestNotificationPermissionIfNeeded()) {
+                finish()
+            }
+        }
+    }
+
+    private fun selectButtonLayout(profileId: String) {
+        ButtonLayoutTilePreferences.select(
+            getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE),
+            profileId,
+        )
+        ButtonLayoutQuickSettingsTile.requestRefresh(this)
         RootAccessManager.ensureRoot {
             SystemControlService.startOrUpdate(applicationContext)
             if (!requestNotificationPermissionIfNeeded()) {

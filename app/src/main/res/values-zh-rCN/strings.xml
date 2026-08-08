@@ -52,6 +52,7 @@
     <string name="follow_default">跟随默认配置</string>
     <string name="select_joystick_profile">选择摇杆配置</string>
     <string name="select_performance_profile">选择性能方案</string>
+    <string name="select_button_layout">选择按键布局</string>
 
     <string name="notification_channel_name">风扇控制</string>
     <string name="notification_channel_description">显示当前曲线、风扇百分比和 CPU/GPU 温度</string>
@@ -61,6 +62,7 @@
     <string name="tile_overlay_label">温度浮窗</string>
     <string name="tile_joystick_label">摇杆</string>
     <string name="tile_performance_label">性能方案</string>
+    <string name="tile_button_layout_label">按键布局</string>
     <string name="tile_on">开启</string>
     <string name="tile_off">关闭</string>
 
@@ -115,6 +117,32 @@
     <string name="kernelsu_not_found">未找到 KernelSU 管理器</string>
 
     <string name="press_back_again_to_exit">再按一次返回键退出</string>
+    <string name="add_button_layout">添加按键布局</string>
+    <string name="new_button_layout">新按键布局</string>
+    <string name="rename_button_layout">重命名按键布局</string>
+    <string name="delete_button_layout">删除按键布局</string>
+    <string name="delete_button_layout_confirmation">确定删除“%1$s”吗？使用它的配置将停止管理手柄按键。</string>
+    <string name="button_layout_name">按键布局名称</string>
+    <string name="button_layout_unmanaged">不管理</string>
+    <string name="button_layout_layout">布局</string>
+    <string name="button_layout_m1">M1</string>
+    <string name="button_layout_m2">M2</string>
+    <string name="button_layout_summary">%1$s · M1：%2$s · M2：%3$s · 扳机：%4$s</string>
+    <string name="trigger_mode_title">扳机模式</string>
+    <string name="trigger_mode_both">两者</string>
+    <string name="trigger_mode_analog">模拟</string>
+    <string name="trigger_mode_digital">数字</string>
+    <string name="trigger_mode_analog_summary">按压深度对应渐进式线性输出</string>
+    <string name="trigger_mode_digital_summary">只有开关状态，触发即输出 100%</string>
+    <string name="button_mapping_none">无</string>
+    <string name="button_mapping_home">主页</string>
+    <string name="button_mapping_select">选择</string>
+    <string name="button_mapping_start">开始</string>
+    <string name="button_mapping_back">返回</string>
+    <string name="button_mapping_down">下</string>
+    <string name="button_mapping_up">上</string>
+    <string name="button_mapping_left">左</string>
+    <string name="button_mapping_right">右</string>
     <string name="close">关闭</string>
     <string name="delete">删除</string>
     <string name="save">保存</string>

@@ -12,6 +12,7 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): ControlPresetConfig {
         val stored = prefs.getString(Prefs.PRESET_CATALOG, null)
         val decoded = stored?.let(::decodeCatalog) ?: ControlPresetCatalog()
@@ -27,6 +28,7 @@ object PresetPreferences {
                     availableFanCurveIds,
                     availableJoystickProfileIds,
                     availablePerformanceProfileIds,
+                    availableButtonLayoutProfileIds,
                 )
             }
         val catalog = ControlPresetCatalog(normalizedPresets)
@@ -56,9 +58,15 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>?,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): ControlPreset = preset.copy(
         fanCurveId = preset.fanCurveId?.takeIf(availableFanCurveIds::contains),
         joystickId = preset.joystickId?.takeIf(availableJoystickProfileIds::contains),
+        buttonLayoutId = if (availableButtonLayoutProfileIds == null) {
+            preset.buttonLayoutId
+        } else {
+            preset.buttonLayoutId?.takeIf(availableButtonLayoutProfileIds::contains)
+        },
         performanceProfileId = when {
             availablePerformanceProfileIds == null -> preset.performanceProfileId
             preset.performanceProfileId == null -> null
@@ -78,12 +86,14 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): ControlPresetConfig {
         val current = load(
             prefs,
             availableFanCurveIds,
             availableJoystickProfileIds,
             availablePerformanceProfileIds,
+            availableButtonLayoutProfileIds,
         )
         val selectedId = presetId.takeIf { current.catalog.preset(it) != null }
             ?: current.selectedPresetId
@@ -97,12 +107,14 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): ControlPresetConfig {
         val current = load(
             prefs,
             availableFanCurveIds,
             availableJoystickProfileIds,
             availablePerformanceProfileIds,
+            availableButtonLayoutProfileIds,
         )
         val selectedId = presetId.takeIf { current.catalog.preset(it) != null }
             ?: return current
@@ -119,12 +131,14 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): Pair<ControlPresetConfig, String> {
         val current = load(
             prefs,
             availableFanCurveIds,
             availableJoystickProfileIds,
             availablePerformanceProfileIds,
+            availableButtonLayoutProfileIds,
         )
         val template = current.selectedPreset
         val id = "preset-${UUID.randomUUID()}"
@@ -144,12 +158,14 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): ControlPresetConfig {
         val current = load(
             prefs,
             availableFanCurveIds,
             availableJoystickProfileIds,
             availablePerformanceProfileIds,
+            availableButtonLayoutProfileIds,
         )
         val imported = normalizeControlReferences(
             preset.copy(
@@ -160,6 +176,7 @@ object PresetPreferences {
             availableFanCurveIds,
             availableJoystickProfileIds,
             availablePerformanceProfileIds,
+            availableButtonLayoutProfileIds,
         )
         return current.copy(catalog = current.catalog.plus(imported)).also {
             persist(prefs, it)
@@ -173,9 +190,11 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): ControlPresetConfig = update(
         prefs, presetId, availableFanCurveIds, availableJoystickProfileIds,
         availablePerformanceProfileIds,
+        availableButtonLayoutProfileIds,
     ) {
         it.renamed(name)
     }
@@ -187,9 +206,11 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): ControlPresetConfig = update(
         prefs, presetId, availableFanCurveIds, availableJoystickProfileIds,
         availablePerformanceProfileIds,
+        availableButtonLayoutProfileIds,
     ) {
         it.copy(fanCurveId = fanCurveId?.takeIf(availableFanCurveIds::contains))
     }
@@ -201,12 +222,36 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): ControlPresetConfig = update(
         prefs, presetId, availableFanCurveIds, availableJoystickProfileIds,
         availablePerformanceProfileIds,
+        availableButtonLayoutProfileIds,
     ) {
         it.copy(
             joystickId = joystickProfileId?.takeIf(availableJoystickProfileIds::contains)
+        )
+    }
+
+    fun setButtonLayout(
+        prefs: SharedPreferences,
+        presetId: String,
+        buttonLayoutProfileId: String?,
+        availableFanCurveIds: Set<String>,
+        availableJoystickProfileIds: Set<String>,
+        availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>,
+    ): ControlPresetConfig = update(
+        prefs,
+        presetId,
+        availableFanCurveIds,
+        availableJoystickProfileIds,
+        availablePerformanceProfileIds,
+        availableButtonLayoutProfileIds,
+    ) {
+        it.copy(
+            buttonLayoutId = buttonLayoutProfileId
+                ?.takeIf(availableButtonLayoutProfileIds::contains),
         )
     }
 
@@ -217,12 +262,14 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): ControlPresetConfig = update(
         prefs,
         presetId,
         availableFanCurveIds,
         availableJoystickProfileIds,
         availablePerformanceProfileIds,
+        availableButtonLayoutProfileIds,
     ) {
         it.copy(
             performanceProfileId = performanceProfileId
@@ -236,12 +283,14 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): ControlPresetConfig {
         val current = load(
             prefs,
             availableFanCurveIds,
             availableJoystickProfileIds,
             availablePerformanceProfileIds,
+            availableButtonLayoutProfileIds,
         )
         val target = current.catalog.preset(presetId) ?: return current
         if (target.isDefault) return current
@@ -261,6 +310,7 @@ object PresetPreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>?,
+        availableButtonLayoutProfileIds: Set<String>?,
         transform: (ControlPreset) -> ControlPreset,
     ): ControlPresetConfig {
         val current = load(
@@ -268,6 +318,7 @@ object PresetPreferences {
             availableFanCurveIds,
             availableJoystickProfileIds,
             availablePerformanceProfileIds,
+            availableButtonLayoutProfileIds,
         )
         val target = current.catalog.preset(presetId) ?: return current
         val updated = current.copy(catalog = current.catalog.replace(transform(target)))

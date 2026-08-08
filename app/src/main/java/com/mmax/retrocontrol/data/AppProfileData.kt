@@ -32,6 +32,7 @@ object AppProfilePreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): Map<String, AppControlProfile> {
         val stored = prefs.getString(Prefs.APP_PROFILE_CATALOG, null) ?: return emptyMap()
         val decoded = decode(stored)
@@ -41,6 +42,11 @@ object AppProfilePreferences {
                 fanCurveId = profile.fanCurveId?.takeIf(availableFanCurveIds::contains),
                 joystickId = profile.joystickId
                     ?.takeIf(availableJoystickProfileIds::contains),
+                buttonLayoutId = if (availableButtonLayoutProfileIds == null) {
+                    profile.buttonLayoutId
+                } else {
+                    profile.buttonLayoutId?.takeIf(availableButtonLayoutProfileIds::contains)
+                },
                 performanceProfileId = if (availablePerformanceProfileIds == null) {
                     profile.performanceProfileId
                 } else {
@@ -61,6 +67,7 @@ object AppProfilePreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): Map<String, AppControlProfile> = update(
         prefs,
         packageName,
@@ -68,6 +75,7 @@ object AppProfilePreferences {
         availableFanCurveIds,
         availableJoystickProfileIds,
         availablePerformanceProfileIds,
+        availableButtonLayoutProfileIds,
     ) { profile ->
         profile.copy(presetId = presetId?.takeIf(availablePresetIds::contains))
     }
@@ -80,6 +88,7 @@ object AppProfilePreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): Map<String, AppControlProfile> = update(
         prefs,
         packageName,
@@ -87,6 +96,7 @@ object AppProfilePreferences {
         availableFanCurveIds,
         availableJoystickProfileIds,
         availablePerformanceProfileIds,
+        availableButtonLayoutProfileIds,
     ) { profile ->
         profile.copy(fanCurveId = fanCurveId?.takeIf(availableFanCurveIds::contains))
     }
@@ -99,6 +109,7 @@ object AppProfilePreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): Map<String, AppControlProfile> = update(
         prefs,
         packageName,
@@ -106,9 +117,34 @@ object AppProfilePreferences {
         availableFanCurveIds,
         availableJoystickProfileIds,
         availablePerformanceProfileIds,
+        availableButtonLayoutProfileIds,
     ) { profile ->
         profile.copy(
             joystickId = joystickProfileId?.takeIf(availableJoystickProfileIds::contains)
+        )
+    }
+
+    fun setButtonLayout(
+        prefs: SharedPreferences,
+        packageName: String,
+        buttonLayoutProfileId: String?,
+        availablePresetIds: Set<String>,
+        availableFanCurveIds: Set<String>,
+        availableJoystickProfileIds: Set<String>,
+        availablePerformanceProfileIds: Set<String>? = null,
+        availableButtonLayoutProfileIds: Set<String>,
+    ): Map<String, AppControlProfile> = update(
+        prefs,
+        packageName,
+        availablePresetIds,
+        availableFanCurveIds,
+        availableJoystickProfileIds,
+        availablePerformanceProfileIds,
+        availableButtonLayoutProfileIds,
+    ) { profile ->
+        profile.copy(
+            buttonLayoutId = buttonLayoutProfileId
+                ?.takeIf(availableButtonLayoutProfileIds::contains),
         )
     }
 
@@ -120,6 +156,7 @@ object AppProfilePreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>,
+        availableButtonLayoutProfileIds: Set<String>? = null,
     ): Map<String, AppControlProfile> = update(
         prefs,
         packageName,
@@ -127,6 +164,7 @@ object AppProfilePreferences {
         availableFanCurveIds,
         availableJoystickProfileIds,
         availablePerformanceProfileIds,
+        availableButtonLayoutProfileIds,
     ) { profile ->
         profile.copy(
             performanceProfileId = performanceProfileId
@@ -148,6 +186,7 @@ object AppProfilePreferences {
         availableFanCurveIds: Set<String>,
         availableJoystickProfileIds: Set<String>,
         availablePerformanceProfileIds: Set<String>?,
+        availableButtonLayoutProfileIds: Set<String>?,
         transform: (AppControlProfile) -> AppControlProfile,
     ): Map<String, AppControlProfile> {
         if (packageName.isBlank()) {
@@ -157,6 +196,7 @@ object AppProfilePreferences {
                 availableFanCurveIds,
                 availableJoystickProfileIds,
                 availablePerformanceProfileIds,
+                availableButtonLayoutProfileIds,
             )
         }
         val current = load(
@@ -165,6 +205,7 @@ object AppProfilePreferences {
             availableFanCurveIds,
             availableJoystickProfileIds,
             availablePerformanceProfileIds,
+            availableButtonLayoutProfileIds,
         )
         val updatedProfile = transform(
             current[packageName] ?: AppControlProfile(packageName = packageName)

@@ -10,6 +10,7 @@ import com.mmax.retrocontrol.data.FanCurvePreferences
 import com.mmax.retrocontrol.data.Prefs
 import com.mmax.retrocontrol.tile.FanQuickSettingsTile
 import com.mmax.retrocontrol.tile.OverlayTileService
+import com.mmax.retrocontrol.tile.ButtonLayoutQuickSettingsTile
 
 /**
  * Restores hardware profiles after boot only when the user opted in.
@@ -31,6 +32,7 @@ class BootReceiver : BroadcastReceiver() {
         // Overlay visibility is intentionally never restored across a reboot.
         prefs.edit { putBoolean(Prefs.OVERLAY_ENABLED, false) }
         OverlayTileService.requestRefresh(appContext)
+        ButtonLayoutQuickSettingsTile.requestRefresh(appContext)
 
         if (!prefs.getBoolean(Prefs.AUTO_START_ENABLED, false)) {
             FanCurvePreferences.select(prefs, null)
@@ -54,6 +56,7 @@ class BootReceiver : BroadcastReceiver() {
             }
             FanQuickSettingsTile.requestRefresh(appContext)
             OverlayTileService.requestRefresh(appContext)
+            ButtonLayoutQuickSettingsTile.requestRefresh(appContext)
             pendingResult.finish()
         }
     }

@@ -22,6 +22,8 @@ import com.mmax.retrocontrol.MainActivity
 import com.mmax.retrocontrol.R
 import com.mmax.retrocontrol.data.FanCurvePreferences
 import com.mmax.retrocontrol.data.AppProfilePreferences
+import com.mmax.retrocontrol.data.ButtonLayoutProfile
+import com.mmax.retrocontrol.data.ButtonLayoutProfilePreferences
 import com.mmax.retrocontrol.data.FanSelectionPreferences
 import com.mmax.retrocontrol.data.FanControlConfig
 import com.mmax.retrocontrol.data.FanCurveSerializer
@@ -37,6 +39,7 @@ import com.mmax.retrocontrol.hardware.FanController
 import com.mmax.retrocontrol.hardware.FanResponseController
 import com.mmax.retrocontrol.hardware.CpuFrequencyController
 import com.mmax.retrocontrol.hardware.JoystickEffectEngine
+import com.mmax.retrocontrol.hardware.GamepadController
 import com.mmax.retrocontrol.hardware.TelemetryRepository
 import com.mmax.retrocontrol.hardware.ThermalSensorReader
 import com.mmax.retrocontrol.hardware.ThermalSnapshot
@@ -45,6 +48,7 @@ import com.mmax.retrocontrol.tile.FanQuickSettingsTile
 import com.mmax.retrocontrol.tile.OverlayTileService
 import com.mmax.retrocontrol.tile.JoystickQuickSettingsTile
 import com.mmax.retrocontrol.tile.PerformanceQuickSettingsTile
+import com.mmax.retrocontrol.tile.ButtonLayoutQuickSettingsTile
 import com.mmax.retrocontrol.util.formatTemperature
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +61,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * The foreground service owns fan, joystick RGB, and CPU frequency-profile writes
+ * The foreground service owns fan, gamepad, joystick RGB, and CPU frequency-profile writes
  * plus telemetry polling.
  *
  * CPU writes are limited to cpufreq policy minimum/maximum nodes. It never changes
@@ -109,6 +113,7 @@ class SystemControlService : Service() {
     private var foregroundJob: Job? = null
     private var screenOffJob: Job? = null
     private var performanceJob: Job? = null
+    private var buttonLayoutJob: Job? = null
     private var overlay: TelemetryOverlay? = null
     private lateinit var joystickEffects: JoystickEffectEngine
     private var lastNotificationUpdateMs = 0L
@@ -140,6 +145,12 @@ class SystemControlService : Service() {
 
     @Volatile
     private var lastRequestedPerformanceProfileId: String? = null
+
+    @Volatile
+    private var buttonLayoutRequestInitialized = false
+
+    @Volatile
+    private var lastRequestedButtonLayoutProfile: ButtonLayoutProfile? = null
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -175,7 +186,16 @@ class SystemControlService : Service() {
             Prefs.FAN_TILE_ENABLED -> {
                 loadFanPreferences()
                 loadJoystickPreferences()
+                applyButtonLayout()
                 applyPerformanceProfile()
+            }
+            Prefs.BUTTON_LAYOUT_PROFILE_CATALOG -> {
+                applyButtonLayout(force = true)
+                ButtonLayoutQuickSettingsTile.requestRefresh(applicationContext)
+            }
+            Prefs.BUTTON_LAYOUT_TILE_PROFILE -> {
+                applyButtonLayout(force = true)
+                ButtonLayoutQuickSettingsTile.requestRefresh(applicationContext)
             }
             Prefs.PERFORMANCE_PROFILE_CATALOG -> {
                 applyPerformanceProfile(force = true)
@@ -225,6 +245,7 @@ class SystemControlService : Service() {
 
         startOrdinaryForeground()
         loadJoystickPreferences()
+        applyButtonLayout(force = true)
         applyPerformanceProfile(force = true)
         startForegroundAppMonitor()
         startFanLoop()
@@ -232,6 +253,7 @@ class SystemControlService : Service() {
         FanQuickSettingsTile.requestRefresh(applicationContext)
         JoystickQuickSettingsTile.requestRefresh(applicationContext)
         PerformanceQuickSettingsTile.requestRefresh(applicationContext)
+        ButtonLayoutQuickSettingsTile.requestRefresh(applicationContext)
         OverlayTileService.requestRefresh(applicationContext)
         if (!getSystemService(PowerManager::class.java).isInteractive) {
             scheduleScreenOffSuspend()
@@ -244,6 +266,7 @@ class SystemControlService : Service() {
             ACTION_UPDATE -> {
                 loadFanPreferences()
                 loadJoystickPreferences(force = true)
+                applyButtonLayout(force = true)
                 applyPerformanceProfile(force = true)
             }
             ACTION_SET_PROJECTION_INTENT -> {
@@ -278,7 +301,9 @@ class SystemControlService : Service() {
         }
         screenOffJob?.cancel()
         foregroundJob?.cancel()
+        fanJob?.cancel()
         performanceJob?.cancel()
+        buttonLayoutJob?.cancel()
         overlay?.hide()
         overlay = null
         joystickEffects.destroy()
@@ -311,6 +336,41 @@ class SystemControlService : Service() {
 
     private fun loadOverlayPreference() {
         overlayEnabled = prefs.getBoolean(Prefs.OVERLAY_ENABLED, false)
+    }
+
+    private fun applyButtonLayout(force: Boolean = false) {
+        buttonLayoutJob?.cancel()
+        buttonLayoutJob = scope.launch {
+            val target = ButtonLayoutProfilePreferences.resolveEffectiveProfile(
+                prefs = prefs,
+                foregroundPackageName = foregroundPackageName,
+                foregroundIsGame = AppProfilePreferences.isGame(
+                    this@SystemControlService,
+                    foregroundPackageName,
+                ),
+            )
+            if (target == null) {
+                buttonLayoutRequestInitialized = true
+                lastRequestedButtonLayoutProfile = null
+                return@launch
+            }
+            if (
+                !force && buttonLayoutRequestInitialized &&
+                target == lastRequestedButtonLayoutProfile
+            ) {
+                return@launch
+            }
+            GamepadController.applyProfile(target)
+                .onSuccess { state ->
+                    buttonLayoutRequestInitialized = true
+                    lastRequestedButtonLayoutProfile = target
+                    Log.i(TAG, "Applied button layout profile ${target.id}: $state")
+                }
+                .onFailure { error ->
+                    buttonLayoutRequestInitialized = false
+                    Log.e(TAG, "Unable to apply button layout profile ${target.id}", error)
+                }
+        }
     }
 
     private fun applyPerformanceProfile(force: Boolean = false) {
@@ -403,12 +463,14 @@ class SystemControlService : Service() {
                     foregroundPackageName = foreground
                     loadFanPreferences()
                     loadJoystickPreferences()
+                    applyButtonLayout()
                     applyPerformanceProfile()
                     Log.i(
                         TAG,
                         "Foreground changed: package=$foreground, " +
                             "fan=${fanConfig.activeProfile?.id ?: "off"}, " +
                             "joystick=${joystickProfile?.id ?: "off"}, " +
+                            "buttons=${lastRequestedButtonLayoutProfile?.id ?: "unmanaged"}, " +
                             "performance=${lastRequestedPerformanceProfileId ?: "unmanaged"}",
                     )
                 }

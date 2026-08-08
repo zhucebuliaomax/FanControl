@@ -158,6 +158,8 @@ internal fun AdaptiveDashboardScaffold(
     fanAction: @Composable () -> Unit,
     joystickContent: @Composable () -> Unit,
     joystickAction: @Composable () -> Unit,
+    buttonLayoutContent: @Composable () -> Unit,
+    buttonLayoutAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
     performanceContent: @Composable () -> Unit,
@@ -255,6 +257,8 @@ internal fun AdaptiveDashboardScaffold(
                     fanAction = fanAction,
                     joystickContent = joystickContent,
                     joystickAction = joystickAction,
+                    buttonLayoutContent = buttonLayoutContent,
+                    buttonLayoutAction = buttonLayoutAction,
                     presetContent = presetContent,
                     presetAction = presetAction,
                     performanceContent = performanceContent,
@@ -329,6 +333,8 @@ private fun ControlsPage(
     fanAction: @Composable () -> Unit,
     joystickContent: @Composable () -> Unit,
     joystickAction: @Composable () -> Unit,
+    buttonLayoutContent: @Composable () -> Unit,
+    buttonLayoutAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
     performanceContent: @Composable () -> Unit,
@@ -357,6 +363,8 @@ private fun ControlsPage(
                     fanAction = fanAction,
                     joystickContent = joystickContent,
                     joystickAction = joystickAction,
+                    buttonLayoutContent = buttonLayoutContent,
+                    buttonLayoutAction = buttonLayoutAction,
                     presetContent = presetContent,
                     presetAction = presetAction,
                     performanceContent = performanceContent,
@@ -390,6 +398,8 @@ private fun ControlsPage(
             fanAction = fanAction,
             joystickContent = joystickContent,
             joystickAction = joystickAction,
+            buttonLayoutContent = buttonLayoutContent,
+            buttonLayoutAction = buttonLayoutAction,
             presetContent = presetContent,
             presetAction = presetAction,
             performanceContent = performanceContent,
@@ -532,6 +542,8 @@ private fun ControlDetailPane(
     fanAction: @Composable () -> Unit,
     joystickContent: @Composable () -> Unit,
     joystickAction: @Composable () -> Unit,
+    buttonLayoutContent: @Composable () -> Unit,
+    buttonLayoutAction: @Composable () -> Unit,
     presetContent: @Composable () -> Unit,
     presetAction: @Composable () -> Unit,
     performanceContent: @Composable () -> Unit,
@@ -560,6 +572,7 @@ private fun ControlDetailPane(
                             bottom = if (
                                 control == ControlModule.FAN ||
                                     control == ControlModule.JOYSTICK ||
+                                    control == ControlModule.BUTTON_LAYOUT ||
                                     control == ControlModule.PRESET ||
                                     control == ControlModule.CORE
                             ) 112.dp else 30.dp,
@@ -589,6 +602,9 @@ private fun ControlDetailPane(
                     } else if (control == ControlModule.PRESET) {
                         Spacer(Modifier.size(18.dp))
                         presetContent()
+                    } else if (control == ControlModule.BUTTON_LAYOUT) {
+                        Spacer(Modifier.size(18.dp))
+                        buttonLayoutContent()
                     } else if (control == ControlModule.CORE) {
                         Spacer(Modifier.size(18.dp))
                         performanceContent()
@@ -624,6 +640,14 @@ private fun ControlDetailPane(
                             .padding(30.dp),
                     ) {
                         presetAction()
+                    }
+                } else if (control == ControlModule.BUTTON_LAYOUT) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(30.dp),
+                    ) {
+                        buttonLayoutAction()
                     }
                 } else if (control == ControlModule.CORE) {
                     Box(

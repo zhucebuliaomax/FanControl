@@ -14,6 +14,11 @@ import com.mmax.retrocontrol.RootAccessManager
 import com.mmax.retrocontrol.data.AppControlProfile
 import com.mmax.retrocontrol.data.AppProfilePreferences
 import com.mmax.retrocontrol.data.BuiltInFanCurve
+import com.mmax.retrocontrol.data.ButtonLayoutProfileCatalog
+import com.mmax.retrocontrol.data.ButtonLayoutProfilePreferences
+import com.mmax.retrocontrol.data.FaceButtonLayout
+import com.mmax.retrocontrol.data.GamepadButtonMapping
+import com.mmax.retrocontrol.data.GamepadTriggerMode
 import com.mmax.retrocontrol.data.ControlPresetConfig
 import com.mmax.retrocontrol.data.ControlItemJson
 import com.mmax.retrocontrol.data.FanControlConfig
@@ -52,6 +57,7 @@ data class DashboardState(
     val fanConfig: FanControlConfig = FanControlConfig(),
     val presetConfig: ControlPresetConfig = ControlPresetConfig(),
     val joystickProfiles: JoystickProfileCatalog = JoystickProfileCatalog(),
+    val buttonLayoutProfiles: ButtonLayoutProfileCatalog = ButtonLayoutProfileCatalog(),
     val performanceProfiles: PerformanceProfileConfig = PerformanceProfileConfig(),
     val fanSelection: FanSelectionConfig = FanSelectionConfig(
         source = com.mmax.retrocontrol.data.FanSelectionSource.FollowPreset,
@@ -126,6 +132,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val curveIds = fanConfig.catalog.profiles.mapTo(mutableSetOf()) { it.id }
         val joystickProfiles = JoystickProfilePreferences.load(prefs)
         val joystickIds = joystickProfiles.profiles.mapTo(mutableSetOf()) { it.id }
+        val buttonLayoutProfiles = ButtonLayoutProfilePreferences.load(prefs)
+        val buttonLayoutIds = buttonLayoutProfiles.profiles.mapTo(mutableSetOf()) { it.id }
         val performanceProfiles = PerformanceProfilePreferences.load(
             prefs,
             mutableState.value.performanceProfiles.policies,
@@ -138,6 +146,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             curveIds,
             joystickIds,
             performanceIds,
+            buttonLayoutIds,
         )
         val presetIds = presetConfig.catalog.presets.mapTo(mutableSetOf()) { it.id }
         mutableState.update {
@@ -145,6 +154,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 fanConfig = fanConfig,
                 presetConfig = presetConfig,
                 joystickProfiles = joystickProfiles,
+                buttonLayoutProfiles = buttonLayoutProfiles,
                 performanceProfiles = performanceProfiles,
                 fanSelection = FanSelectionPreferences.load(prefs, fanConfig),
                 appProfiles = AppProfilePreferences.load(
@@ -153,6 +163,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     curveIds,
                     joystickIds,
                     performanceIds,
+                    buttonLayoutIds,
                 ),
                 overlayEnabled = prefs.getBoolean(Prefs.OVERLAY_ENABLED, false),
                 autoStartEnabled = prefs.getBoolean(Prefs.AUTO_START_ENABLED, false),
@@ -186,6 +197,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                         prefs = prefs,
                         profile = item.value,
                     )
+                    is ControlItemJson.Item.ButtonLayout -> {
+                        ButtonLayoutProfilePreferences.addImported(prefs, item.value)
+                    }
                     is ControlItemJson.Item.Performance -> PerformanceProfilePreferences.addImported(
                         prefs = prefs,
                         policies = mutableState.value.performanceProfiles.policies,
@@ -211,6 +225,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                             )
                             preset = preset.copy(joystickId = catalog.profiles.last().id)
                         }
+                        item.buttonLayout?.let { buttonLayout ->
+                            val catalog = ButtonLayoutProfilePreferences.addImported(
+                                prefs,
+                                buttonLayout.value,
+                            )
+                            preset = preset.copy(buttonLayoutId = catalog.profiles.last().id)
+                        }
                         item.performance?.let { performance ->
                             val config = PerformanceProfilePreferences.addImported(
                                 prefs = prefs,
@@ -230,6 +251,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                             prefs,
                             current.performanceProfiles.policies,
                         ).profiles.mapTo(mutableSetOf()) { it.id }
+                        val buttonLayoutIds = ButtonLayoutProfilePreferences.load(prefs).profiles
+                            .mapTo(mutableSetOf()) { it.id }
                         PresetPreferences.addImported(
                             prefs = prefs,
                             preset = preset,
@@ -237,6 +260,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                             availableJoystickProfileIds = joystickIds,
                             availablePerformanceProfileIds = performanceIds
                                 .takeIf { current.performanceProfiles.policies.isNotEmpty() },
+                            availableButtonLayoutProfileIds = buttonLayoutIds,
                         )
                     }
                 }
@@ -465,6 +489,108 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         SystemControlService.startOrUpdate(getApplication())
     }
 
+    fun addButtonLayoutProfile(name: String): String {
+        val (_, id) = ButtonLayoutProfilePreferences.add(prefs, name)
+        loadPreferences()
+        return id
+    }
+
+    fun renameButtonLayoutProfile(profileId: String, name: String) {
+        ButtonLayoutProfilePreferences.rename(prefs, profileId, name)
+        loadPreferences()
+    }
+
+    fun setButtonLayout(profileId: String, layout: FaceButtonLayout) {
+        ButtonLayoutProfilePreferences.setLayout(prefs, profileId, layout)
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun setButtonLayoutM1(profileId: String, mapping: GamepadButtonMapping) {
+        ButtonLayoutProfilePreferences.setM1(prefs, profileId, mapping)
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun setButtonLayoutM2(profileId: String, mapping: GamepadButtonMapping) {
+        ButtonLayoutProfilePreferences.setM2(prefs, profileId, mapping)
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun setButtonLayoutTriggerMode(profileId: String, triggerMode: GamepadTriggerMode) {
+        ButtonLayoutProfilePreferences.setTriggerMode(prefs, profileId, triggerMode)
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun deleteButtonLayoutProfile(profileId: String) {
+        val catalog = ButtonLayoutProfilePreferences.delete(prefs, profileId)
+        val state = mutableState.value
+        val buttonLayoutIds = catalog.profiles.mapTo(mutableSetOf()) { it.id }
+        val fanIds = state.fanConfig.catalog.profiles.mapTo(mutableSetOf()) { it.id }
+        val joystickIds = state.joystickProfiles.profiles.mapTo(mutableSetOf()) { it.id }
+        val performanceIds = state.performanceProfiles.profiles.mapTo(mutableSetOf()) { it.id }
+            .takeIf { state.performanceProfiles.policies.isNotEmpty() }
+        val presets = PresetPreferences.load(
+            prefs,
+            fanIds,
+            joystickIds,
+            performanceIds,
+            buttonLayoutIds,
+        )
+        AppProfilePreferences.load(
+            prefs = prefs,
+            availablePresetIds = presets.catalog.presets.mapTo(mutableSetOf()) { it.id },
+            availableFanCurveIds = fanIds,
+            availableJoystickProfileIds = joystickIds,
+            availablePerformanceProfileIds = performanceIds,
+            availableButtonLayoutProfileIds = buttonLayoutIds,
+        )
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun setPresetButtonLayout(presetId: String, profileId: String?) {
+        val state = mutableState.value
+        PresetPreferences.setButtonLayout(
+            prefs = prefs,
+            presetId = presetId,
+            buttonLayoutProfileId = profileId,
+            availableFanCurveIds = state.fanConfig.catalog.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availableJoystickProfileIds = state.joystickProfiles.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availablePerformanceProfileIds = state.performanceProfiles.profiles
+                .mapTo(mutableSetOf()) { it.id }
+                .takeIf { state.performanceProfiles.policies.isNotEmpty() },
+            availableButtonLayoutProfileIds = buttonLayoutProfileIds(),
+        )
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
+    fun setAppButtonLayout(packageName: String, profileId: String?) {
+        val state = mutableState.value
+        AppProfilePreferences.setButtonLayout(
+            prefs = prefs,
+            packageName = packageName,
+            buttonLayoutProfileId = profileId,
+            availablePresetIds = state.presetConfig.catalog.presets
+                .mapTo(mutableSetOf()) { it.id },
+            availableFanCurveIds = state.fanConfig.catalog.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availableJoystickProfileIds = state.joystickProfiles.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availablePerformanceProfileIds = state.performanceProfiles.profiles
+                .mapTo(mutableSetOf()) { it.id }
+                .takeIf { state.performanceProfiles.policies.isNotEmpty() },
+            availableButtonLayoutProfileIds = buttonLayoutProfileIds(),
+        )
+        loadPreferences()
+        SystemControlService.startOrUpdate(getApplication())
+    }
+
     fun addPerformanceProfile(name: String): String? {
         val policies = mutableState.value.performanceProfiles.policies
         val result = PerformanceProfilePreferences.add(prefs, policies, name) ?: return null
@@ -583,6 +709,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun joystickProfileIds(): Set<String> =
         mutableState.value.joystickProfiles.profiles.mapTo(mutableSetOf()) { it.id }
+
+    private fun buttonLayoutProfileIds(): Set<String> =
+        mutableState.value.buttonLayoutProfiles.profiles.mapTo(mutableSetOf()) { it.id }
 
     private fun refreshPerformancePolicies() {
         viewModelScope.launch(Dispatchers.IO) {

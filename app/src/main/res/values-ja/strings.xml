@@ -25,6 +25,7 @@
     <string name="follow_default">デフォルトに従う</string>
     <string name="select_joystick_profile">ジョイスティックプロファイルを選択</string>
     <string name="select_performance_profile">パフォーマンスプロファイルを選択</string>
+    <string name="select_button_layout">ボタンレイアウトを選択</string>
     <string name="search_apps">アプリを検索</string>
     <string name="no_apps_found">アプリが見つかりません</string>
     <string name="filter_apps">アプリを絞り込む</string>
@@ -63,6 +64,7 @@
     <string name="tile_overlay_label">テレメトリー</string>
     <string name="tile_joystick_label">ジョイスティック</string>
     <string name="tile_performance_label">パフォーマンスプロファイル</string>
+    <string name="tile_button_layout_label">ボタンレイアウト</string>
     <string name="tile_on">オン</string>
     <string name="tile_off">オフ</string>
 
@@ -117,6 +119,32 @@
     <string name="kernelsu_not_found">KernelSU マネージャーが見つかりません</string>
 
     <string name="press_back_again_to_exit">もう一度戻るを押すと終了します</string>
+    <string name="add_button_layout">ボタンレイアウトを追加</string>
+    <string name="new_button_layout">新しいボタンレイアウト</string>
+    <string name="rename_button_layout">ボタンレイアウト名を変更</string>
+    <string name="delete_button_layout">ボタンレイアウトを削除</string>
+    <string name="delete_button_layout_confirmation">「%1$s」を削除しますか？使用中のプロファイルはゲームパッドボタンを管理しなくなります。</string>
+    <string name="button_layout_name">ボタンレイアウト名</string>
+    <string name="button_layout_unmanaged">管理しない</string>
+    <string name="button_layout_layout">レイアウト</string>
+    <string name="button_layout_m1">M1</string>
+    <string name="button_layout_m2">M2</string>
+    <string name="button_layout_summary">%1$s · M1: %2$s · M2: %3$s · トリガー: %4$s</string>
+    <string name="trigger_mode_title">トリガーモード</string>
+    <string name="trigger_mode_both">両方</string>
+    <string name="trigger_mode_analog">アナログ</string>
+    <string name="trigger_mode_digital">デジタル</string>
+    <string name="trigger_mode_analog_summary">押し込み量に応じたリニア出力</string>
+    <string name="trigger_mode_digital_summary">オン／オフ出力。押下時は 100%</string>
+    <string name="button_mapping_none">なし</string>
+    <string name="button_mapping_home">ホーム</string>
+    <string name="button_mapping_select">セレクト</string>
+    <string name="button_mapping_start">スタート</string>
+    <string name="button_mapping_back">戻る</string>
+    <string name="button_mapping_down">下</string>
+    <string name="button_mapping_up">上</string>
+    <string name="button_mapping_left">左</string>
+    <string name="button_mapping_right">右</string>
     <string name="close">閉じる</string>
     <string name="delete">削除</string>
     <string name="save">保存</string>
