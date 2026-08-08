@@ -258,7 +258,7 @@ fun DashboardScreen(
     }
     val addPresetFocusRequester = remember { FocusRequester() }
     val appFocusRequester = remember { FocusRequester() }
-    val authorizationFocusRequesters = remember { List(9) { FocusRequester() } }
+    val authorizationFocusRequesters = remember { List(10) { FocusRequester() } }
     val githubFocusRequester = remember { FocusRequester() }
     val navigationFocusRequesters = remember {
         List(DashboardDestination.entries.size) { FocusRequester() }
@@ -841,6 +841,8 @@ fun DashboardScreen(
                 state = AuthorizationUiState(
                     telemetryOverlayEnabled = state.overlayEnabled,
                     autoStartEnabled = state.autoStartEnabled,
+                    profileSwitchNotificationsEnabled =
+                        state.profileSwitchNotificationsEnabled,
                     rootGranted = hasRoot,
                     overlayPermissionGranted = overlayPermissionGranted,
                     notificationsEnabled = notificationsEnabled,
@@ -865,6 +867,8 @@ fun DashboardScreen(
                     }
                 },
                 onAutoStartEnabledChange = vm::setAutoStartEnabled,
+                onProfileSwitchNotificationsEnabledChange =
+                    vm::setProfileSwitchNotificationsEnabled,
                 onRefreshRoot = onRefreshRoot,
                 onOpenKernelSu = { context.openKernelSu() },
                 onOpenAppInfo = { context.openAppInfo() },
@@ -892,7 +896,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                rootModifier = Modifier
+                profileSwitchNotificationsModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[2])
                     .focusProperties {
                         up = authorizationFocusRequesters[1]
@@ -900,7 +904,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                kernelSuModifier = Modifier
+                rootModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[3])
                     .focusProperties {
                         up = authorizationFocusRequesters[2]
@@ -908,7 +912,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                appInfoModifier = Modifier
+                kernelSuModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[4])
                     .focusProperties {
                         up = authorizationFocusRequesters[3]
@@ -916,7 +920,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                overlayModifier = Modifier
+                appInfoModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[5])
                     .focusProperties {
                         up = authorizationFocusRequesters[4]
@@ -924,7 +928,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                notificationsModifier = Modifier
+                overlayModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[6])
                     .focusProperties {
                         up = authorizationFocusRequesters[5]
@@ -932,7 +936,7 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                microphoneModifier = Modifier
+                notificationsModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[7])
                     .focusProperties {
                         up = authorizationFocusRequesters[6]
@@ -940,10 +944,18 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-                screenCaptureModifier = Modifier
+                microphoneModifier = Modifier
                     .focusRequester(authorizationFocusRequesters[8])
                     .focusProperties {
                         up = authorizationFocusRequesters[7]
+                        down = authorizationFocusRequesters[9]
+                        left = FocusRequester.Default
+                        right = FocusRequester.Default
+                    },
+                screenCaptureModifier = Modifier
+                    .focusRequester(authorizationFocusRequesters[9])
+                    .focusProperties {
+                        up = authorizationFocusRequesters[8]
                         down = githubFocusRequester
                         left = FocusRequester.Default
                         right = FocusRequester.Default
@@ -955,7 +967,7 @@ fun DashboardScreen(
                 linkModifier = Modifier
                     .focusRequester(githubFocusRequester)
                     .focusProperties {
-                        up = authorizationFocusRequesters[8]
+                        up = authorizationFocusRequesters[9]
                         down = FocusRequester.Default
                         left = FocusRequester.Default
                         right = FocusRequester.Default

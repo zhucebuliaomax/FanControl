@@ -18,6 +18,7 @@ import com.mmax.retrocontrol.designsystem.SettingsTokens
 data class AuthorizationUiState(
     val telemetryOverlayEnabled: Boolean,
     val autoStartEnabled: Boolean,
+    val profileSwitchNotificationsEnabled: Boolean,
     val rootGranted: Boolean,
     val overlayPermissionGranted: Boolean,
     val notificationsEnabled: Boolean,
@@ -34,6 +35,7 @@ fun AuthorizationManagementSection(
     onTelemetryOverlayClick: () -> Unit,
     onTelemetryOverlayEnabledChange: (Boolean) -> Unit,
     onAutoStartEnabledChange: (Boolean) -> Unit,
+    onProfileSwitchNotificationsEnabledChange: (Boolean) -> Unit,
     onRefreshRoot: () -> Unit,
     onOpenKernelSu: () -> Unit,
     onOpenAppInfo: () -> Unit,
@@ -44,6 +46,7 @@ fun AuthorizationManagementSection(
     modifier: Modifier = Modifier,
     telemetryOverlayModifier: Modifier = Modifier,
     autoStartModifier: Modifier = Modifier,
+    profileSwitchNotificationsModifier: Modifier = Modifier,
     rootModifier: Modifier = Modifier,
     kernelSuModifier: Modifier = Modifier,
     appInfoModifier: Modifier = Modifier,
@@ -59,7 +62,7 @@ fun AuthorizationManagementSection(
     SettingsSegmentGroup {
         SettingsPreferenceRow(
             index = 0,
-            count = 9,
+            count = 10,
             title = stringResource(R.string.authorization_telemetry_overlay),
             summary = stringResource(
                 if (state.overlayPermissionGranted) {
@@ -80,7 +83,7 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 1,
-            count = 9,
+            count = 10,
             title = stringResource(R.string.authorization_auto_start),
             onClick = { onAutoStartEnabledChange(!state.autoStartEnabled) },
             modifier = autoStartModifier,
@@ -94,7 +97,28 @@ fun AuthorizationManagementSection(
         )
         SettingsPreferenceRow(
             index = 2,
-            count = 9,
+            count = 10,
+            title = stringResource(R.string.authorization_profile_switch_notifications),
+            summary = stringResource(
+                R.string.authorization_profile_switch_notifications_summary
+            ),
+            onClick = {
+                onProfileSwitchNotificationsEnabledChange(
+                    !state.profileSwitchNotificationsEnabled
+                )
+            },
+            modifier = profileSwitchNotificationsModifier,
+            trailingContent = {
+                Switch(
+                    checked = state.profileSwitchNotificationsEnabled,
+                    onCheckedChange = onProfileSwitchNotificationsEnabledChange,
+                    modifier = Modifier.focusProperties { canFocus = false },
+                )
+            },
+        )
+        SettingsPreferenceRow(
+            index = 3,
+            count = 10,
             title = stringResource(R.string.authorization_root),
             summary = stringResource(
                 if (state.rootGranted) {
@@ -112,8 +136,8 @@ fun AuthorizationManagementSection(
             },
         )
         SettingsPreferenceRow(
-            index = 3,
-            count = 9,
+            index = 4,
+            count = 10,
             title = stringResource(R.string.authorization_kernelsu),
             summary = stringResource(R.string.authorization_kernelsu_summary),
             onClick = onOpenKernelSu,
@@ -121,8 +145,8 @@ fun AuthorizationManagementSection(
             trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
         )
         SettingsPreferenceRow(
-            index = 4,
-            count = 9,
+            index = 5,
+            count = 10,
             title = stringResource(R.string.authorization_app_info),
             summary = stringResource(R.string.authorization_app_info_summary),
             onClick = onOpenAppInfo,
@@ -130,8 +154,8 @@ fun AuthorizationManagementSection(
             trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
         )
         SettingsPreferenceRow(
-            index = 5,
-            count = 9,
+            index = 6,
+            count = 10,
             title = stringResource(R.string.authorization_overlay),
             summary = stringResource(
                 if (state.overlayPermissionGranted) {
@@ -145,8 +169,8 @@ fun AuthorizationManagementSection(
             trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
         )
         SettingsPreferenceRow(
-            index = 6,
-            count = 9,
+            index = 7,
+            count = 10,
             title = stringResource(R.string.authorization_notifications),
             summary = stringResource(
                 if (state.notificationsEnabled) {
@@ -160,8 +184,8 @@ fun AuthorizationManagementSection(
             trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
         )
         SettingsPreferenceRow(
-            index = 7,
-            count = 9,
+            index = 8,
+            count = 10,
             title = stringResource(R.string.authorization_microphone),
             summary = stringResource(
                 if (state.microphoneGranted) {
@@ -179,8 +203,8 @@ fun AuthorizationManagementSection(
             },
         )
         SettingsPreferenceRow(
-            index = 8,
-            count = 9,
+            index = 9,
+            count = 10,
             title = stringResource(R.string.authorization_screen_capture),
             summary = stringResource(R.string.authorization_screen_capture_summary),
             onClick = onRequestScreenCapture,

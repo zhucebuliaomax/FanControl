@@ -65,6 +65,7 @@ data class DashboardState(
     ),
     val overlayEnabled: Boolean = false,
     val autoStartEnabled: Boolean = false,
+    val profileSwitchNotificationsEnabled: Boolean = true,
     val installedApps: List<InstalledAppInfo> = emptyList(),
     val appProfiles: Map<String, AppControlProfile> = emptyMap(),
     val telemetry: TelemetrySnapshot = TelemetrySnapshot(),
@@ -167,6 +168,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 ),
                 overlayEnabled = prefs.getBoolean(Prefs.OVERLAY_ENABLED, false),
                 autoStartEnabled = prefs.getBoolean(Prefs.AUTO_START_ENABLED, false),
+                profileSwitchNotificationsEnabled = prefs.getBoolean(
+                    Prefs.PROFILE_SWITCH_NOTIFICATIONS_ENABLED,
+                    true,
+                ),
             )
         }
     }
@@ -705,6 +710,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun setAutoStartEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(Prefs.AUTO_START_ENABLED, enabled) }
         mutableState.update { it.copy(autoStartEnabled = enabled) }
+    }
+
+    fun setProfileSwitchNotificationsEnabled(enabled: Boolean) {
+        prefs.edit { putBoolean(Prefs.PROFILE_SWITCH_NOTIFICATIONS_ENABLED, enabled) }
+        mutableState.update { it.copy(profileSwitchNotificationsEnabled = enabled) }
     }
 
     private fun joystickProfileIds(): Set<String> =

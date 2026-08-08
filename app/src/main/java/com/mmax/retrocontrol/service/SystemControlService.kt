@@ -73,7 +73,9 @@ class SystemControlService : Service() {
     companion object {
         private const val TAG = "SystemControlService"
         const val CHANNEL_ID = "fan_control"
+        private const val PROFILE_SWITCH_CHANNEL_ID = "profile_switches"
         private const val NOTIFICATION_ID = 1
+        private const val PROFILE_SWITCH_NOTIFICATION_ID = 2
         const val ACTION_UPDATE = "com.mmax.retrocontrol.UPDATE"
         const val ACTION_SET_PROJECTION_INTENT =
             "com.mmax.retrocontrol.SET_PROJECTION_INTENT"
@@ -465,6 +467,7 @@ class SystemControlService : Service() {
                     loadJoystickPreferences()
                     applyButtonLayout()
                     applyPerformanceProfile()
+                    showProfileSwitchNotification(foreground)
                     Log.i(
                         TAG,
                         "Foreground changed: package=$foreground, " +
@@ -645,7 +648,8 @@ class SystemControlService : Service() {
     }
 
     private fun createNotificationChannel() {
-        getSystemService(NotificationManager::class.java).createNotificationChannel(
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
                 getString(R.string.notification_channel_name),
@@ -655,6 +659,121 @@ class SystemControlService : Service() {
                 setShowBadge(false)
             }
         )
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                PROFILE_SWITCH_CHANNEL_ID,
+                getString(R.string.profile_switch_notification_channel_name),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = getString(R.string.profile_switch_notification_channel_description)
+                setShowBadge(false)
+            }
+        )
+    }
+
+    private fun showProfileSwitchNotification(packageName: String?) {
+        if (packageName.isNullOrBlank()) return
+        if (!prefs.getBoolean(Prefs.PROFILE_SWITCH_NOTIFICATIONS_ENABLED, true)) return
+
+        val fanCatalog = FanCurvePreferences.load(prefs).catalog
+        val joystickCatalog = JoystickProfilePreferences.load(prefs)
+        val buttonLayoutCatalog = ButtonLayoutProfilePreferences.load(prefs)
+        val performanceConfig = PerformanceProfilePreferences.load(
+            prefs,
+            CpuFrequencyController.detectPolicies(),
+        )
+        val presetConfig = PresetPreferences.load(
+            prefs = prefs,
+            availableFanCurveIds = fanCatalog.profiles.mapTo(mutableSetOf()) { it.id },
+            availableJoystickProfileIds = joystickCatalog.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availablePerformanceProfileIds = performanceConfig.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availableButtonLayoutProfileIds = buttonLayoutCatalog.profiles
+                .mapTo(mutableSetOf()) { it.id },
+        )
+        val appProfiles = AppProfilePreferences.load(
+            prefs = prefs,
+            availablePresetIds = presetConfig.catalog.presets
+                .mapTo(mutableSetOf()) { it.id },
+            availableFanCurveIds = fanCatalog.profiles.mapTo(mutableSetOf()) { it.id },
+            availableJoystickProfileIds = joystickCatalog.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availablePerformanceProfileIds = performanceConfig.profiles
+                .mapTo(mutableSetOf()) { it.id },
+            availableButtonLayoutProfileIds = buttonLayoutCatalog.profiles
+                .mapTo(mutableSetOf()) { it.id },
+        )
+        val appProfile = appProfiles[packageName]
+        val appIsGame = AppProfilePreferences.isGame(this, packageName)
+        val effectivePreset = AppProfilePreferences.effectivePreset(
+            appProfile,
+            presetConfig,
+            appIsGame,
+        )
+        val hasCustomControl = appProfile?.let {
+            it.fanCurveId != null ||
+                it.joystickId != null ||
+                it.buttonLayoutId != null ||
+                it.performanceProfileId != null
+        } == true
+        if (
+            !appIsGame &&
+            effectivePreset.isDefault &&
+            !hasCustomControl
+        ) {
+            return
+        }
+
+        val fanName = fanConfig.activeProfile?.displayName(this)
+            ?: getString(R.string.fan_mode_off)
+        val joystickName = joystickProfile?.name ?: getString(R.string.profile_control_off)
+        val buttonLayoutName = ButtonLayoutProfilePreferences.resolveEffectiveProfile(
+            prefs,
+            packageName,
+            appIsGame,
+        )?.name ?: getString(R.string.button_layout_unmanaged)
+        val performanceTargetId = PerformanceTilePreferences.selectedProfileId(
+            prefs,
+            performanceConfig,
+        ) ?: PerformanceProfileResolver.resolveTargetProfileId(
+            profileConfig = performanceConfig,
+            presetConfig = presetConfig,
+            appProfile = appProfile,
+            appIsGame = appIsGame,
+        )
+        val performanceName = (
+            performanceConfig.profile(performanceTargetId) ?: performanceConfig.stockProfile
+        )?.displayName(this) ?: getString(R.string.performance_unmanaged)
+        val content = getString(
+            R.string.profile_switch_notification_content,
+            fanName,
+            joystickName,
+            buttonLayoutName,
+            performanceName,
+        )
+        val appName = runCatching {
+            val info = packageManager.getApplicationInfo(packageName, 0)
+            packageManager.getApplicationLabel(info).toString()
+        }.getOrDefault(packageName)
+        val openApp = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notification = NotificationCompat.Builder(this, PROFILE_SWITCH_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_tile_fan)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentTitle(getString(R.string.profile_switch_notification_title, appName))
+            .setContentText(content)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(content))
+            .setContentIntent(openApp)
+            .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+        getSystemService(NotificationManager::class.java)
+            .notify(PROFILE_SWITCH_NOTIFICATION_ID, notification)
     }
 
     private fun buildNotification(): Notification {

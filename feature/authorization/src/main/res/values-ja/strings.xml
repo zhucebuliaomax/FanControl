@@ -7,6 +7,8 @@
     <string name="authorization_auto_start">起動時に開始</string>
     <string name="authorization_auto_start_enabled">有効、再起動後にハードウェアプロファイルを自動的に再開できます</string>
     <string name="authorization_auto_start_disabled">無効、再起動後にアプリを自動起動しません</string>
+    <string name="authorization_profile_switch_notifications">プロファイル切替時に通知</string>
+    <string name="authorization_profile_switch_notifications_summary">アプリのプロファイルが有効になったときに通知します。他の通知には影響しません</string>
     <string name="authorization_root">Root 権限</string>
     <string name="authorization_root_granted">Root 権限を取得済み</string>
     <string name="authorization_root_not_granted">Root 権限がありません、タップして更新</string>
