@@ -42,7 +42,7 @@ enum class GamepadTriggerMode(val sysfsValue: String) {
 data class ButtonLayoutProfile(
     val id: String,
     val name: String,
-    val layout: FaceButtonLayout = FaceButtonLayout.XBOX,
+    val layout: FaceButtonLayout = FaceButtonLayout.NINTENDO,
     val m1: GamepadButtonMapping = GamepadButtonMapping.NONE,
     val m2: GamepadButtonMapping = GamepadButtonMapping.NONE,
     val triggerMode: GamepadTriggerMode = GamepadTriggerMode.BOTH,
@@ -52,12 +52,28 @@ data class ButtonLayoutProfile(
         require(name.isNotBlank()) { "A button layout profile requires a name" }
     }
 
-    fun normalized(): ButtonLayoutProfile = copy(
-        name = name.trim().take(40).ifBlank { "Button layout" },
-    )
+    fun normalized(): ButtonLayoutProfile {
+        val normalized = copy(name = name.trim().take(40).ifBlank { "Button layout" })
+        return when (id) {
+            ButtonLayoutProfileCatalog.XBOX_ID -> normalized.copy(
+                name = "Xbox",
+                layout = FaceButtonLayout.XBOX,
+            )
+            ButtonLayoutProfileCatalog.NINTENDO_ID -> normalized.copy(
+                name = "Nintendo",
+                layout = FaceButtonLayout.NINTENDO,
+            )
+            else -> normalized
+        }
+    }
 
     fun renamed(value: String): ButtonLayoutProfile =
         copy(name = value.trim().take(40).ifBlank { name })
+
+    val isBuiltIn: Boolean
+        get() = id == ButtonLayoutProfileCatalog.XBOX_ID ||
+            id == ButtonLayoutProfileCatalog.NINTENDO_ID
+
 }
 
 data class ButtonLayoutProfileCatalog(
@@ -75,16 +91,20 @@ data class ButtonLayoutProfileCatalog(
         profiles = profiles.filterNot { it.id == profile.id } + profile.normalized(),
     )
 
-    fun remove(id: String): ButtonLayoutProfileCatalog =
+    fun remove(id: String): ButtonLayoutProfileCatalog = if (id in factoryIds) {
+        this
+    } else {
         copy(profiles = profiles.filterNot { it.id == id })
+    }
 
     companion object {
         const val XBOX_ID = "button-layout-xbox"
         const val NINTENDO_ID = "button-layout-nintendo"
+        val factoryIds: Set<String> = setOf(XBOX_ID, NINTENDO_ID)
 
         fun factoryProfiles(): List<ButtonLayoutProfile> = listOf(
-            ButtonLayoutProfile(XBOX_ID, "Xbox", FaceButtonLayout.XBOX),
             ButtonLayoutProfile(NINTENDO_ID, "Nintendo", FaceButtonLayout.NINTENDO),
+            ButtonLayoutProfile(XBOX_ID, "Xbox", FaceButtonLayout.XBOX),
         )
     }
 }
@@ -93,9 +113,13 @@ object ButtonLayoutProfilePreferences {
     fun load(prefs: SharedPreferences): ButtonLayoutProfileCatalog {
         val stored = prefs.getString(Prefs.BUTTON_LAYOUT_PROFILE_CATALOG, null)
         val decoded = stored?.let(::decode) ?: ButtonLayoutProfileCatalog()
+        val decodedProfiles = decoded.profiles.distinctBy(ButtonLayoutProfile::id)
+            .map(ButtonLayoutProfile::normalized)
+        val decodedById = decodedProfiles.associateBy(ButtonLayoutProfile::id)
         val normalized = ButtonLayoutProfileCatalog(
-            decoded.profiles.distinctBy(ButtonLayoutProfile::id)
-                .map(ButtonLayoutProfile::normalized),
+            ButtonLayoutProfileCatalog.factoryProfiles().map { factory ->
+                decodedById[factory.id] ?: factory
+            } + decodedProfiles.filterNot(ButtonLayoutProfile::isBuiltIn),
         )
         if (stored == null || decoded != normalized) persist(prefs, normalized)
         return normalized
@@ -108,10 +132,7 @@ object ButtonLayoutProfilePreferences {
         val current = load(prefs)
         val id = "button-layout-${UUID.randomUUID()}"
         val cleanName = name.trim().take(40).ifBlank { "New button layout" }
-        val profile = (current.profiles.lastOrNull() ?: ButtonLayoutProfile(id, cleanName)).copy(
-            id = id,
-            name = cleanName,
-        )
+        val profile = ButtonLayoutProfile(id = id, name = cleanName)
         return current.plus(profile).also { persist(prefs, it) } to id
     }
 
@@ -127,13 +148,21 @@ object ButtonLayoutProfilePreferences {
         prefs: SharedPreferences,
         profileId: String,
         name: String,
-    ): ButtonLayoutProfileCatalog = update(prefs, profileId) { it.renamed(name) }
+    ): ButtonLayoutProfileCatalog = if (profileId in ButtonLayoutProfileCatalog.factoryIds) {
+        load(prefs)
+    } else {
+        update(prefs, profileId) { it.renamed(name) }
+    }
 
     fun setLayout(
         prefs: SharedPreferences,
         profileId: String,
         layout: FaceButtonLayout,
-    ): ButtonLayoutProfileCatalog = update(prefs, profileId) { it.copy(layout = layout) }
+    ): ButtonLayoutProfileCatalog = if (profileId in ButtonLayoutProfileCatalog.factoryIds) {
+        load(prefs)
+    } else {
+        update(prefs, profileId) { it.copy(layout = layout) }
+    }
 
     fun setM1(
         prefs: SharedPreferences,
@@ -156,6 +185,7 @@ object ButtonLayoutProfilePreferences {
     }
 
     fun delete(prefs: SharedPreferences, profileId: String): ButtonLayoutProfileCatalog {
+        if (profileId in ButtonLayoutProfileCatalog.factoryIds) return load(prefs)
         val updated = load(prefs).remove(profileId)
         persist(prefs, updated)
         return updated

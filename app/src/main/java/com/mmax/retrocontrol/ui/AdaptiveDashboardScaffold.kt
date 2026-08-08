@@ -134,8 +134,6 @@ internal enum class ControlModule(@param:StringRes val label: Int) {
     CORE(R.string.control_core),
 }
 
-internal const val DEFAULT_PRESET_APP_KEY = "@default-preset"
-
 /**
  * Landscape-first Material layout. Window size classes keep the list/detail
  * behavior usable when the same activity is resized or shown in multi-window.
@@ -164,7 +162,6 @@ internal fun AdaptiveDashboardScaffold(
     presetAction: @Composable () -> Unit,
     performanceContent: @Composable () -> Unit,
     performanceAction: @Composable () -> Unit,
-    globalPresetContent: @Composable () -> Unit,
     appProfileContent: @Composable (String) -> Unit,
     accessContent: @Composable () -> Unit,
     footer: @Composable () -> Unit,
@@ -271,7 +268,6 @@ internal fun AdaptiveDashboardScaffold(
                     installedApps = installedApps,
                     showTwoPanes = showTwoControlPanes,
                     appFocusRequester = appFocusRequester,
-                    globalPresetContent = globalPresetContent,
                     appProfileContent = appProfileContent,
                 )
 
@@ -670,7 +666,6 @@ private fun AppsPage(
     installedApps: List<InstalledAppInfo>,
     showTwoPanes: Boolean,
     appFocusRequester: FocusRequester,
-    globalPresetContent: @Composable () -> Unit,
     appProfileContent: @Composable (String) -> Unit,
 ) {
     BackHandler(enabled = !showTwoPanes && selectedApp != null) {
@@ -692,19 +687,9 @@ private fun AppsPage(
             )
             selectedApp?.let { appKey ->
                 AppDetailPane(
-                    title = if (appKey == DEFAULT_PRESET_APP_KEY) {
-                        stringResource(R.string.app_default_preset)
-                    } else {
-                        installedApps.firstOrNull { it.packageName == appKey }?.label
-                            ?: appKey
-                    },
-                    content = {
-                        if (appKey == DEFAULT_PRESET_APP_KEY) {
-                            globalPresetContent()
-                        } else {
-                            appProfileContent(appKey)
-                        }
-                    },
+                    title = installedApps.firstOrNull { it.packageName == appKey }?.label
+                        ?: appKey,
+                    content = { appProfileContent(appKey) },
                     modifier = Modifier
                         .weight(1f)
                         .windowInsetsPadding(
@@ -729,20 +714,10 @@ private fun AppsPage(
         )
     } else {
         AppDetailPane(
-            title = if (selectedApp == DEFAULT_PRESET_APP_KEY) {
-                stringResource(R.string.app_default_preset)
-            } else {
-                installedApps.firstOrNull { it.packageName == selectedApp }?.label
-                    ?: selectedApp
-            },
+            title = installedApps.firstOrNull { it.packageName == selectedApp }?.label
+                ?: selectedApp,
             onBack = { onAppSelected(null) },
-            content = {
-                if (selectedApp == DEFAULT_PRESET_APP_KEY) {
-                    globalPresetContent()
-                } else {
-                    appProfileContent(selectedApp)
-                }
-            },
+            content = { appProfileContent(selectedApp) },
             modifier = Modifier
                 .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
@@ -865,35 +840,6 @@ private fun AppListPane(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 8.dp),
             ) {
-                SegmentedListItem(
-                    selected = selectedApp == DEFAULT_PRESET_APP_KEY,
-                    onClick = { onAppSelected(DEFAULT_PRESET_APP_KEY) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester)
-                        .bringIntoViewOnFocus(),
-                    shapes = settingsSegmentedShapes(
-                        index = 0,
-                        count = 1,
-                    ),
-                    colors = ListItemDefaults.segmentedColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    ),
-                    trailingContent = {
-                        Icon(Icons.Default.ChevronRight, contentDescription = null)
-                    },
-                    content = {
-                        Text(
-                            text = stringResource(R.string.app_default_preset),
-                            style = if (selectedApp == DEFAULT_PRESET_APP_KEY) {
-                                MaterialTheme.typography.titleMediumEmphasized
-                            } else {
-                                MaterialTheme.typography.titleMedium
-                            },
-                        )
-                    },
-                )
-                Spacer(Modifier.size(12.dp))
                 if (filteredApps.isEmpty()) {
                     Text(
                         text = stringResource(R.string.no_apps_found),
@@ -910,6 +856,10 @@ private fun AppListPane(
                                 onClick = { onAppSelected(app.packageName) },
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .then(
+                                        if (index == 0) Modifier.focusRequester(focusRequester)
+                                        else Modifier
+                                    )
                                     .bringIntoViewOnFocus(),
                                 shapes = settingsSegmentedShapes(
                                     index = index,

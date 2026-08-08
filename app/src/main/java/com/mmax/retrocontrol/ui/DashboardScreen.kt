@@ -265,9 +265,6 @@ fun DashboardScreen(
     val presetFocusRequesters = remember(presetIds) {
         List(presetIds.size) { FocusRequester() }
     }
-    val globalPresetFocusRequesters = remember(presetIds) {
-        List(presetIds.size) { FocusRequester() }
-    }
     val addPresetFocusRequester = remember { FocusRequester() }
     val appFocusRequester = remember { FocusRequester() }
     val overlayFocusRequester = remember { FocusRequester() }
@@ -712,6 +709,26 @@ fun DashboardScreen(
             )
         },
         presetContent = {
+            val gameProfile = state.presetConfig.defaultPreset(true)
+            val nonGameProfile = state.presetConfig.defaultPreset(false)
+            DefaultProfileSection(
+                gameProfileId = gameProfile.id,
+                gameProfileName = gameProfile.name,
+                nonGameProfileId = nonGameProfile.id,
+                nonGameProfileName = nonGameProfile.name,
+                profileChoices = state.presetConfig.catalog.presets.map {
+                    AppProfileChoice(it.id, it.name)
+                },
+                onDefaultProfileSelected = { isGame, id ->
+                    vm.selectDefaultProfile(isGame, id)
+                    onFanCurveSelected(true)
+                },
+                onProfileEdit = { editingPresetId = it },
+                onAddProfile = {
+                    editingPresetId = vm.addPreset(resources.getString(R.string.new_preset))
+                },
+            )
+            Spacer(Modifier.height(24.dp))
             PresetManagementSection(
                 presets = presetItems,
                 onPresetClick = { editingPresetId = it },
@@ -798,61 +815,6 @@ fun DashboardScreen(
                         left = FocusRequester.Default
                         right = FocusRequester.Default
                     },
-            )
-        },
-        globalPresetContent = {
-            val gameProfile = state.presetConfig.defaultPreset(true)
-            val nonGameProfile = state.presetConfig.defaultPreset(false)
-            DefaultProfileSection(
-                gameProfileId = gameProfile.id,
-                gameProfileName = gameProfile.name,
-                nonGameProfileId = nonGameProfile.id,
-                nonGameProfileName = nonGameProfile.name,
-                profileChoices = state.presetConfig.catalog.presets.map {
-                    AppProfileChoice(it.id, it.name)
-                },
-                fanCurveChoices = state.fanConfig.catalog.profiles.map {
-                    AppProfileChoice(it.id, it.displayName(context))
-                },
-                joystickChoices = state.joystickProfiles.profiles.map {
-                    AppProfileChoice(it.id, it.name)
-                },
-                buttonLayoutChoices = state.buttonLayoutProfiles.profiles.map {
-                    AppProfileChoice(it.id, it.name)
-                },
-                performanceChoices = state.performanceProfiles.profiles.map {
-                    AppProfileChoice(it.id, it.displayName(context))
-                },
-                onDefaultProfileSelected = { isGame, id ->
-                    vm.selectDefaultProfile(isGame, id)
-                    onFanCurveSelected(true)
-                },
-                onProfileEdit = { editingPresetId = it },
-                onAddProfile = {
-                    editingPresetId = vm.addPreset(resources.getString(R.string.new_preset))
-                },
-                onFanCurveEdit = { editingProfileId = it },
-                onAddFanCurve = {
-                    editingProfileId = vm.addFanCurve(resources.getString(R.string.new_fan_curve))
-                },
-                onJoystickEdit = { editingJoystickProfileId = it },
-                onAddJoystick = {
-                    editingJoystickProfileId = vm.addJoystickProfile(
-                        resources.getString(JoystickR.string.joystick_new_profile)
-                    )
-                },
-                onButtonLayoutEdit = { editingButtonLayoutProfileId = it },
-                onAddButtonLayout = {
-                    editingButtonLayoutProfileId = vm.addButtonLayoutProfile(
-                        resources.getString(R.string.new_button_layout),
-                    )
-                },
-                onPerformanceEdit = { editingPerformanceProfileId = it },
-                onAddPerformance = {
-                    vm.addPerformanceProfile(
-                        resources.getString(R.string.new_performance_profile)
-                    )?.let { editingPerformanceProfileId = it }
-                },
             )
         },
         appProfileContent = { packageName ->

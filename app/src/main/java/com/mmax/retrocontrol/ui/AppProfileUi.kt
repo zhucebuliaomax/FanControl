@@ -30,7 +30,7 @@ import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
 
 data class AppProfileChoice(val id: String?, val name: String)
 
-private enum class DefaultPicker { GAME, NON_GAME, FAN_LIBRARY, JOYSTICK_LIBRARY, BUTTON, PERFORMANCE }
+private enum class DefaultPicker { GAME, NON_GAME }
 private enum class AppPicker { PROFILE, FAN, JOYSTICK, BUTTON, PERFORMANCE }
 
 @Composable
@@ -40,26 +40,14 @@ fun DefaultProfileSection(
     nonGameProfileId: String,
     nonGameProfileName: String,
     profileChoices: List<AppProfileChoice>,
-    fanCurveChoices: List<AppProfileChoice>,
-    joystickChoices: List<AppProfileChoice>,
-    buttonLayoutChoices: List<AppProfileChoice>,
-    performanceChoices: List<AppProfileChoice>,
     onDefaultProfileSelected: (Boolean, String) -> Unit,
     onProfileEdit: (String) -> Unit,
     onAddProfile: () -> Unit,
-    onFanCurveEdit: (String) -> Unit,
-    onAddFanCurve: () -> Unit,
-    onJoystickEdit: (String) -> Unit,
-    onAddJoystick: () -> Unit,
-    onButtonLayoutEdit: (String) -> Unit,
-    onAddButtonLayout: () -> Unit,
-    onPerformanceEdit: (String) -> Unit,
-    onAddPerformance: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var picker by remember { mutableStateOf<DefaultPicker?>(null) }
     Column(modifier.fillMaxWidth()) {
-        SettingsSectionTitle(stringResource(R.string.app_profile))
+        SettingsSectionTitle(stringResource(R.string.app_default_preset))
         Spacer(Modifier.height(8.dp))
         Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
             SettingRow(
@@ -77,19 +65,6 @@ fun DefaultProfileSection(
                 onClick = { picker = DefaultPicker.NON_GAME },
             )
         }
-        Spacer(Modifier.height(24.dp))
-        SettingsSectionTitle(stringResource(R.string.control_title))
-        Spacer(Modifier.height(8.dp))
-        ControlsCard(
-            fanSummary = null,
-            joystickSummary = null,
-            buttonSummary = null,
-            performanceSummary = null,
-            onFanClick = { picker = DefaultPicker.FAN_LIBRARY },
-            onJoystickClick = { picker = DefaultPicker.JOYSTICK_LIBRARY },
-            onButtonClick = { picker = DefaultPicker.BUTTON },
-            onPerformanceClick = { picker = DefaultPicker.PERFORMANCE },
-        )
     }
 
     picker?.let { active ->
@@ -103,42 +78,6 @@ fun DefaultProfileSection(
                 onSelected = { id -> id?.let { onDefaultProfileSelected(active == DefaultPicker.GAME, it) } },
                 onItemClick = { id -> id?.let(onProfileEdit) },
                 onAdd = onAddProfile,
-                onDismiss = { picker = null },
-            )
-            DefaultPicker.FAN_LIBRARY -> ChoiceDialog(
-                title = stringResource(R.string.control_fan),
-                choices = fanCurveChoices,
-                showRadio = false,
-                addLabel = stringResource(R.string.add_fan_curve),
-                onItemClick = { id -> id?.let(onFanCurveEdit) },
-                onAdd = onAddFanCurve,
-                onDismiss = { picker = null },
-            )
-            DefaultPicker.JOYSTICK_LIBRARY -> ChoiceDialog(
-                title = stringResource(R.string.control_joystick),
-                choices = joystickChoices,
-                showRadio = false,
-                addLabel = stringResource(R.string.add_preset),
-                onItemClick = { id -> id?.let(onJoystickEdit) },
-                onAdd = onAddJoystick,
-                onDismiss = { picker = null },
-            )
-            DefaultPicker.PERFORMANCE -> ChoiceDialog(
-                title = stringResource(R.string.control_core),
-                choices = performanceChoices,
-                showRadio = false,
-                addLabel = stringResource(R.string.add_performance_profile),
-                onItemClick = { id -> id?.let(onPerformanceEdit) },
-                onAdd = onAddPerformance,
-                onDismiss = { picker = null },
-            )
-            DefaultPicker.BUTTON -> ChoiceDialog(
-                title = stringResource(R.string.control_button_layout),
-                choices = buttonLayoutChoices.filter { it.id != null },
-                showRadio = false,
-                addLabel = stringResource(R.string.add_button_layout),
-                onItemClick = { id -> id?.let(onButtonLayoutEdit) },
-                onAdd = onAddButtonLayout,
                 onDismiss = { picker = null },
             )
         }

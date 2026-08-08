@@ -42,10 +42,16 @@ object AppProfilePreferences {
                 fanCurveId = profile.fanCurveId?.takeIf(availableFanCurveIds::contains),
                 joystickId = profile.joystickId
                     ?.takeIf(availableJoystickProfileIds::contains),
-                buttonLayoutId = if (availableButtonLayoutProfileIds == null) {
-                    profile.buttonLayoutId
-                } else {
-                    profile.buttonLayoutId?.takeIf(availableButtonLayoutProfileIds::contains)
+                buttonLayoutId = when {
+                    availableButtonLayoutProfileIds == null -> profile.buttonLayoutId
+                    profile.buttonLayoutId == null -> null
+                    profile.buttonLayoutId in availableButtonLayoutProfileIds -> {
+                        profile.buttonLayoutId
+                    }
+                    ButtonLayoutProfileCatalog.NINTENDO_ID in availableButtonLayoutProfileIds -> {
+                        ButtonLayoutProfileCatalog.NINTENDO_ID
+                    }
+                    else -> null
                 },
                 performanceProfileId = if (availablePerformanceProfileIds == null) {
                     profile.performanceProfileId

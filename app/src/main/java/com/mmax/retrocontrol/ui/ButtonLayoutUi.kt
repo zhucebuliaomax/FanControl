@@ -52,6 +52,7 @@ import com.mmax.retrocontrol.data.FaceButtonLayout
 import com.mmax.retrocontrol.data.GamepadButtonMapping
 import com.mmax.retrocontrol.data.GamepadTriggerMode
 import com.mmax.retrocontrol.designsystem.SecondaryMenuList
+import com.mmax.retrocontrol.designsystem.SecondaryMenuListItem
 import com.mmax.retrocontrol.designsystem.SwipeToDeleteSecondaryMenuListItem
 import com.mmax.retrocontrol.designsystem.bringIntoViewOnFocus
 import com.mmax.retrocontrol.designsystem.settingsSegmentedShapes
@@ -103,32 +104,45 @@ fun ButtonLayoutProfilesSection(
         profiles.forEachIndexed { index, profile ->
             key(profile.id) {
                 var showDelete by remember(profile.id) { mutableStateOf(false) }
-                SwipeToDeleteSecondaryMenuListItem(
-                    index = index,
-                    count = profiles.size,
-                    onClick = { onProfileSelected(profile.id) },
-                    onDeleteRequest = { showDelete = true },
-                    deleteIcon = Icons.Default.Delete,
-                    deleteContentDescription = stringResource(R.string.delete_button_layout),
-                    trailingContent = {
-                        Icon(Icons.Default.ChevronRight, contentDescription = null)
-                    },
-                    modifier = profileModifier(index),
-                    supportingContent = {
-                        Text(
-                            stringResource(
-                                R.string.button_layout_summary,
-                                stringResource(profile.layout.labelRes),
-                                stringResource(profile.m1.labelRes),
-                                stringResource(profile.m2.labelRes),
-                                stringResource(profile.triggerMode.labelRes),
-                            ),
-                        )
-                    },
-                    content = {
-                        Text(profile.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    },
+                val summary = stringResource(
+                    R.string.button_layout_summary,
+                    stringResource(profile.layout.labelRes),
+                    stringResource(profile.m1.labelRes),
+                    stringResource(profile.m2.labelRes),
+                    stringResource(profile.triggerMode.labelRes),
                 )
+                if (profile.isBuiltIn) {
+                    SecondaryMenuListItem(
+                        index = index,
+                        count = profiles.size,
+                        onClick = { onProfileSelected(profile.id) },
+                        trailingContent = {
+                            Icon(Icons.Default.ChevronRight, contentDescription = null)
+                        },
+                        modifier = profileModifier(index),
+                        supportingContent = { Text(summary) },
+                        content = {
+                            Text(profile.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        },
+                    )
+                } else {
+                    SwipeToDeleteSecondaryMenuListItem(
+                        index = index,
+                        count = profiles.size,
+                        onClick = { onProfileSelected(profile.id) },
+                        onDeleteRequest = { showDelete = true },
+                        deleteIcon = Icons.Default.Delete,
+                        deleteContentDescription = stringResource(R.string.delete_button_layout),
+                        trailingContent = {
+                            Icon(Icons.Default.ChevronRight, contentDescription = null)
+                        },
+                        modifier = profileModifier(index),
+                        supportingContent = { Text(summary) },
+                        content = {
+                            Text(profile.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        },
+                    )
+                }
                 if (showDelete) {
                     DeleteButtonLayoutConfirmation(
                         name = profile.name,
@@ -188,24 +202,26 @@ fun ButtonLayoutProfileEditorDialog(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(
-                        onClick = { showRename = true },
-                        shapes = IconButtonDefaults.shapes(),
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.ic_edit_square),
-                            contentDescription = stringResource(R.string.rename_button_layout),
-                        )
-                    }
-                    IconButton(
-                        onClick = { showDelete = true },
-                        shapes = IconButtonDefaults.shapes(),
-                    ) {
-                        Icon(
-                            Icons.Default.DeleteForever,
-                            contentDescription = stringResource(R.string.delete_button_layout),
-                            tint = MaterialTheme.colorScheme.error,
-                        )
+                    if (!profile.isBuiltIn) {
+                        IconButton(
+                            onClick = { showRename = true },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
+                            Icon(
+                                painterResource(R.drawable.ic_edit_square),
+                                contentDescription = stringResource(R.string.rename_button_layout),
+                            )
+                        }
+                        IconButton(
+                            onClick = { showDelete = true },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
+                            Icon(
+                                Icons.Default.DeleteForever,
+                                contentDescription = stringResource(R.string.delete_button_layout),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(14.dp))
@@ -213,25 +229,31 @@ fun ButtonLayoutProfileEditorDialog(
                     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
                 ) {
+                    val rowCount = 4
                     EditorRow(
                         stringResource(R.string.button_layout_layout),
                         stringResource(profile.layout.labelRes),
-                        0,
+                        index = 0,
+                        count = rowCount,
+                        enabled = !profile.isBuiltIn,
                     ) { picker = "layout" }
                     EditorRow(
                         stringResource(R.string.button_layout_m1),
                         stringResource(profile.m1.labelRes),
                         1,
+                        rowCount,
                     ) { picker = "m1" }
                     EditorRow(
                         stringResource(R.string.button_layout_m2),
                         stringResource(profile.m2.labelRes),
                         2,
+                        rowCount,
                     ) { picker = "m2" }
                     EditorRow(
                         stringResource(R.string.trigger_mode_title),
                         stringResource(profile.triggerMode.labelRes),
                         3,
+                        rowCount,
                     ) { picker = "trigger" }
                 }
             }
@@ -329,10 +351,18 @@ fun ButtonLayoutProfileEditorDialog(
 }
 
 @Composable
-private fun EditorRow(title: String, summary: String, index: Int, onClick: () -> Unit) {
+private fun EditorRow(
+    title: String,
+    summary: String,
+    index: Int,
+    count: Int,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
     SegmentedListItem(
         onClick = onClick,
-        shapes = settingsSegmentedShapes(index, 4),
+        enabled = enabled,
+        shapes = settingsSegmentedShapes(index, count),
         content = { Text(title) },
         supportingContent = { Text(summary) },
         trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },

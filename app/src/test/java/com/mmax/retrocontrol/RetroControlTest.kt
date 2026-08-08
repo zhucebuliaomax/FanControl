@@ -122,12 +122,12 @@ class RetroControlTest {
             availableFanCurveIds = setOf(BuiltInFanCurve.NORMAL.id),
             availableJoystickProfileIds = setOf("available-joystick"),
             availablePerformanceProfileIds = setOf(BuiltInPerformanceProfile.STOCK.id),
-            availableButtonLayoutProfileIds = setOf(ButtonLayoutProfileCatalog.XBOX_ID),
+            availableButtonLayoutProfileIds = setOf(ButtonLayoutProfileCatalog.NINTENDO_ID),
         )
 
         assertNull(normalized.fanCurveId)
         assertNull(normalized.joystickId)
-        assertNull(normalized.buttonLayoutId)
+        assertEquals(ButtonLayoutProfileCatalog.NINTENDO_ID, normalized.buttonLayoutId)
         assertEquals(BuiltInPerformanceProfile.STOCK.id, normalized.performanceProfileId)
     }
 
@@ -291,6 +291,12 @@ class RetroControlTest {
     fun buttonLayoutCatalog_hasStableXboxAndNintendoDefaults() {
         val catalog = ButtonLayoutProfileCatalog()
 
+        assertEquals(ButtonLayoutProfileCatalog.NINTENDO_ID, catalog.profiles.first().id)
+        assertEquals(
+            ButtonLayoutProfileCatalog.NINTENDO_ID,
+            ControlPresetCatalog.defaultPreset().buttonLayoutId,
+        )
+        assertEquals(FaceButtonLayout.NINTENDO, ButtonLayoutProfile("custom", "Custom").layout)
         assertEquals(FaceButtonLayout.XBOX, catalog.profile(ButtonLayoutProfileCatalog.XBOX_ID)?.layout)
         assertEquals(
             GamepadTriggerMode.BOTH,
@@ -300,6 +306,22 @@ class RetroControlTest {
             FaceButtonLayout.NINTENDO,
             catalog.profile(ButtonLayoutProfileCatalog.NINTENDO_ID)?.layout,
         )
+    }
+
+    @Test
+    fun builtInButtonLayouts_keepIdentityAndCannotBeRemoved() {
+        val xbox = ButtonLayoutProfile(
+            id = ButtonLayoutProfileCatalog.XBOX_ID,
+            name = "Renamed",
+            layout = FaceButtonLayout.NINTENDO,
+        ).normalized()
+        val catalog = ButtonLayoutProfileCatalog(
+            ButtonLayoutProfileCatalog.factoryProfiles().take(1) + xbox,
+        ).remove(ButtonLayoutProfileCatalog.XBOX_ID)
+
+        assertEquals("Xbox", xbox.name)
+        assertEquals(FaceButtonLayout.XBOX, xbox.layout)
+        assertEquals(xbox, catalog.profile(ButtonLayoutProfileCatalog.XBOX_ID))
     }
 
     @Test
@@ -386,18 +408,18 @@ class RetroControlTest {
         )
 
         assertEquals(
-            ButtonLayoutProfileCatalog.XBOX_ID,
+            ButtonLayoutProfileCatalog.NINTENDO_ID,
             ButtonLayoutTilePreferences.nextProfile(catalog, null)?.id,
         )
         assertEquals(
             "custom",
             ButtonLayoutTilePreferences.nextProfile(
                 catalog,
-                ButtonLayoutProfileCatalog.NINTENDO_ID,
+                ButtonLayoutProfileCatalog.XBOX_ID,
             )?.id,
         )
         assertEquals(
-            ButtonLayoutProfileCatalog.XBOX_ID,
+            ButtonLayoutProfileCatalog.NINTENDO_ID,
             ButtonLayoutTilePreferences.nextProfile(catalog, "custom")?.id,
         )
     }
