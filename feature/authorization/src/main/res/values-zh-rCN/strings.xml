@@ -8,7 +8,7 @@
     <string name="authorization_auto_start_enabled">已开启，重启后可自动恢复硬件方案</string>
     <string name="authorization_auto_start_disabled">已关闭，重启后不会自动启动</string>
     <string name="authorization_profile_switch_notifications">切换配置时通知</string>
-    <string name="authorization_profile_switch_notifications_summary">应用切换配置时显示提示；此开关不影响其他通知</string>
+    <string name="authorization_profile_switch_notifications_summary">打开游戏或使用自定义配置的应用时显示通知。</string>
     <string name="authorization_root">Root 权限</string>
     <string name="authorization_root_granted">已获取 Root 权限</string>
     <string name="authorization_root_not_granted">未获取 Root 权限，点击刷新</string>

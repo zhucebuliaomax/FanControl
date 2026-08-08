@@ -146,6 +146,7 @@ private data class PendingExportFile(
 @Composable
 fun DashboardScreen(
     vm: DashboardViewModel = viewModel(),
+    startOnAccess: Boolean = false,
     onFanCurveSelected: (Boolean) -> Unit = {},
     onRefreshRoot: () -> Unit = {},
 ) {
@@ -221,7 +222,10 @@ fun DashboardScreen(
     var editingPerformanceProfileId by remember { mutableStateOf<String?>(null) }
     var restorePerformanceFocusId by remember { mutableStateOf<String?>(null) }
     var selectedDestination by rememberSaveable {
-        mutableStateOf(DashboardDestination.CONTROLS)
+        mutableStateOf(
+            if (startOnAccess) DashboardDestination.ACCESS
+            else DashboardDestination.CONTROLS
+        )
     }
     var selectedControl by rememberSaveable { mutableStateOf<ControlModule?>(null) }
     var selectedApp by rememberSaveable { mutableStateOf<String?>(null) }

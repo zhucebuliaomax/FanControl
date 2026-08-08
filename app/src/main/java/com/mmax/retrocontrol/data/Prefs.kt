@@ -41,4 +41,5 @@ object Prefs {
         "profile_switch_notifications_enabled"
     const val NOTIFICATION_PERMISSION_REQUESTED = "notification_permission_requested"
     const val ROOT_NOTICE_ACKNOWLEDGED = "root_notice_acknowledged"
+    const val FIRST_LAUNCH_ACCESS_SHOWN = "first_launch_access_shown"
 }

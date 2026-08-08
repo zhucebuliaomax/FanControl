@@ -36,12 +36,17 @@ class MainActivity : ComponentActivity() {
             window.isNavigationBarContrastEnforced = false
         }
         val prefs = getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+        val startOnAccess = !prefs.getBoolean(Prefs.FIRST_LAUNCH_ACCESS_SHOWN, false)
+        if (startOnAccess) {
+            prefs.edit { putBoolean(Prefs.FIRST_LAUNCH_ACCESS_SHOWN, true) }
+        }
         var showRootNotice by mutableStateOf(
             !prefs.getBoolean(Prefs.ROOT_NOTICE_ACKNOWLEDGED, false)
         )
         setContent {
             RetroControlTheme {
                 DashboardScreen(
+                    startOnAccess = startOnAccess,
                     onFanCurveSelected = ::onFanCurveSelected,
                     onRefreshRoot = { requestRoot(forceRefresh = true) },
                 )
