@@ -285,10 +285,10 @@ fun DashboardScreen(
     fun buttonLayoutProfileName(profileId: String?): String = profileId
         ?.let { state.buttonLayoutProfiles.profile(it)?.name }
         ?: unmanagedButtonLayoutName
-    val unmanagedPerformanceName = stringResource(R.string.performance_unmanaged)
+    val stockPerformanceName = stringResource(R.string.performance_stock)
     fun performanceProfileName(profileId: String?): String = profileId
         ?.let { state.performanceProfiles.profile(it)?.displayName(context) }
-        ?: unmanagedPerformanceName
+        ?: stockPerformanceName
     fun joystickProfileUi(profileId: String): JoystickProfileUiState? =
         state.joystickProfiles.profile(profileId)?.let { profile ->
             JoystickProfileUiState(
@@ -1114,12 +1114,6 @@ fun DashboardScreen(
             },
             performanceProfileName = performanceProfileName(preset.performanceProfileId),
             performanceChoices = buildList {
-                add(
-                    PresetPerformanceChoice(
-                        id = null,
-                        name = unmanagedPerformanceName,
-                    )
-                )
                 state.performanceProfiles.profiles.forEach { profile ->
                     add(
                         PresetPerformanceChoice(

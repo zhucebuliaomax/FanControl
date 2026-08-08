@@ -69,11 +69,10 @@ object PresetPreferences {
         },
         performanceProfileId = when {
             availablePerformanceProfileIds == null -> preset.performanceProfileId
-            preset.performanceProfileId == null && preset.isDefault &&
+            preset.performanceProfileId == null &&
                 BuiltInPerformanceProfile.STOCK.id in availablePerformanceProfileIds -> {
                 BuiltInPerformanceProfile.STOCK.id
             }
-            preset.performanceProfileId == null -> null
             preset.performanceProfileId in availablePerformanceProfileIds -> {
                 preset.performanceProfileId
             }

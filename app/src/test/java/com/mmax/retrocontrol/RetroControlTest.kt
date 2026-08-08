@@ -132,9 +132,13 @@ class RetroControlTest {
     }
 
     @Test
-    fun legacyDefaultProfile_withoutFrequencyProfile_migratesToStock() {
+    fun legacyProfile_withoutFrequencyProfile_migratesToStock() {
         val normalized = PresetPreferences.normalizeControlReferences(
-            preset = ControlPresetCatalog.defaultPreset().copy(performanceProfileId = null),
+            preset = ControlPreset(
+                id = "legacy",
+                name = "Legacy",
+                performanceProfileId = null,
+            ),
             availableFanCurveIds = setOf(BuiltInFanCurve.NORMAL.id),
             availableJoystickProfileIds = emptySet(),
             availablePerformanceProfileIds = setOf(BuiltInPerformanceProfile.STOCK.id),
